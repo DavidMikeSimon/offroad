@@ -1,4 +1,4 @@
-class CreateOfflineBridgeTables < ActiveRecord::Migration
+class CreateOfflineMirrorTables < ActiveRecord::Migration
 	def self.up
 		create_table :offline_mirror_group_states, :force => true do |t|
 			t.column :app_group_id, :integer

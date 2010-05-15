@@ -16,7 +16,7 @@ OfflineMirror::Internal::init
 end
 
 # TODO
-# - Write a generator for making a bridge controller scaffold; have that controller inherit from a base controller which has all the actual guts that don't need configuration
+# - Write a generator for making a mirror controller scaffold; have that controller inherit from a base controller which has all the actual guts that don't need configuration
 # - Only allow one mirror operation at a time for a given group; make sure this can recover from mid-mirror crashes; do mirror ops in background
 # - Creating/updating the installer (ideally, git to target platform, one rake task, then upload back to original server)
 # - Intercept group deletions, drop corresponding group_state
