@@ -1,4 +1,4 @@
-module OfflineBridge
+module OfflineMirror
 	module ModelExtensions
 		OFFLINE_BRIDGE_VALID_MODES = [:group_base, :group_owned, :global]
 		OFFLINE_BRIDGE_GROUP_MODES = [:group_base, :group_owned]

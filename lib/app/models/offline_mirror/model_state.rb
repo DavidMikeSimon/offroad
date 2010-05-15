@@ -1,6 +1,6 @@
-module OfflineBridge
+module OfflineMirror
 	class ModelState < ActiveRecord::Base
-		set_table_name "offline_bridge_model_states"
+		set_table_name "offline_mirror_model_states"
 		
 		has_many :group_model_pairings
 		
@@ -25,7 +25,7 @@ module OfflineBridge
 		end
 		
 		def self.ensure_group_base_model(cls)
-			raise "Passed class is not a group_base_model" unless cls.offline_bridge_mode == :group_base_model
+			raise "Passed class is not a group_base_model" unless cls.offline_mirror_mode == :group_base_model
 		end
 	end
 end

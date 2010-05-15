@@ -1,4 +1,4 @@
-module OfflineBridge
+module OfflineMirror
 	def app_offline?
 		RAILS_ENV == "offline"
 	end

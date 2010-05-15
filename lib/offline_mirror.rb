@@ -1,12 +1,12 @@
-# OfflineBridge
+# OfflineMirror
 
 require 'model_extensions'
 class ActiveRecord::Base
-	extend OfflineBridge::ModelExtensions
+	extend OfflineMirror::ModelExtensions
 end
 
 require 'global_methods'
-OfflineBridge::Internal::init
+OfflineMirror::Internal::init
 
 %w{ models controllers }.each do |dir|
 	path = File.join(File.dirname(__FILE__), 'app', dir)

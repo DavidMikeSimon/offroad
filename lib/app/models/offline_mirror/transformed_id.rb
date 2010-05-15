@@ -1,6 +1,6 @@
-module OfflineBridge
+module OfflineMirror
 	class TransformedId < ActiveRecord::Base
-		set_table_name "offline_bridge_transformed_ids"
+		set_table_name "offline_mirror_transformed_ids"
 
 		belongs_to :group_model_pairing
 	end
