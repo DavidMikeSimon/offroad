@@ -1,0 +1,4 @@
+# configuration for the offline_bridge plugin
+# offline_group_id: If this app is offline, this is the id of the group this installation is for. -1 means this app is online.
+
+offline_group_id: -1

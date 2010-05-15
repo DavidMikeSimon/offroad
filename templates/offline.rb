@@ -1,0 +1,34 @@
+# This file defines the offline envrionment
+# "Offline" means that the application is running on a local network, with only a subset of the real online app's data
+# It is implemented by the offline_bridge plugin
+
+# Settings specified here will take precedence over those in config/environment.rb
+
+# Use the offline database configuration file instead of the regular one
+config.database_configuration_file = "config/offline_database.yml"
+
+# Code is not reloaded between requests
+config.cache_classes = true
+
+# Full error reports are disabled and caching is turned on
+config.action_controller.consider_all_requests_local = false
+config.action_controller.perform_caching             = true
+config.action_view.cache_template_loading            = true
+
+# See everything in the log (default is :info)
+# config.log_level = :debug
+
+# Use a different logger for distributed setups
+# config.logger = SyslogLogger.new
+
+# Use a different cache store in production
+# config.cache_store = :mem_cache_store
+
+# Enable serving of images, stylesheets, and javascripts from an asset server
+# config.action_controller.asset_host = "http://assets.example.com"
+
+# Disable delivery errors, bad email addresses will be ignored
+# config.action_mailer.raise_delivery_errors = false
+
+# Enable threaded mode
+# config.threadsafe!
