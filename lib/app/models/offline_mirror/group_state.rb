@@ -1,4 +1,6 @@
 module OfflineMirror
+	private
+
 	class GroupState < ActiveRecord::Base
 		set_table_name "offline_mirror_group_states"
 		

@@ -1,4 +1,6 @@
 module OfflineMirror
+	private
+
 	class GroupModelPairing < ActiveRecord::Base
 		set_table_name "offline_mirror_group_model_pairings"
 

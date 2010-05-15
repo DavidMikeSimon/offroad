@@ -1,4 +1,6 @@
 # configuration for the offline_mirror plugin
 # offline_group_id: If this app is offline, this is the id of the group this installation is for. -1 means this app is online.
+# online_url: The URL that offline users should go to when they want to exchange mirror files
 
 offline_group_id: -1
+online_url: example.com

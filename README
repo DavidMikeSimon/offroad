@@ -121,3 +121,10 @@ NECESSARY TASKS
 * Make sure installer and launcher work on Win2k, XP, Vista, Win7. Also test OSX and Ubuntu if possible.
 * Make sure it doesn't conflict with Windows' built-in firewall, as well as whatever AVG/Avast do.
 * Unit testing!
+
+
+=====
+GEM DEPENDENCIES
+=====
+
+* Workling (and also a suitable background job runner)

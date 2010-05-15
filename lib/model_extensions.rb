@@ -20,12 +20,12 @@ module OfflineMirror
 			case mode
 			when :group_owned then
 				raise "For :group_owned_model, need to specify :group_key, an attribute name for this model's owning group" unless opts[:group_key]
-				Internal::note_group_owned_model(self)
+				OfflineMirror::note_group_owned_model(self)
 				set_internal_cattr :offline_mirror_group_key, opts.delete(:group_key)
 			when :group_base then
-				Internal::note_group_base_model(self)
+				OfflineMirror::note_group_base_model(self)
 			when :global then
-				Internal::note_global_data_model(self)
+				OfflineMirror::note_global_data_model(self)
 			end
 			
 			# We should have deleted all the options from the hash by this point
@@ -58,7 +58,7 @@ module OfflineMirror
 				return {
 					:down_mirror_at => s.last_down_mirror_at,
 					:up_mirror_at => s.last_up_mirror_at,
-					:framework_version => s.last_known_framework_version,
+					:launcher_version => s.last_known_launcher_version,
 					:app_version => s.last_known_app_version,
 					:os => s.last_known_os
 				}
@@ -78,7 +78,7 @@ module OfflineMirror
 			
 			def owning_group
 				case offline_mirror_mode
-					when :group_owned_model then Internal::group_base_model.find_by_id(self.send offline_mirror_group_key)
+					when :group_owned_model then OfflineMirror::group_base_model.find_by_id(self.send offline_mirror_group_key)
 					when :group_base_model then self
 					else raise "Unable to find owning group"
 				end
@@ -93,9 +93,10 @@ module OfflineMirror
 			
 			def check_group_data_save
 				raise ActiveRecord::ReadOnlyRecord if locked_by_offline_mirror?
+				
+				# If the app is offline, then we need to make sure that this record belongs to the group this offline instance of the app is for
 				if app_offline?
-					# If the app is offline, then we need to make sure that this record belongs to the group this offline instance of the app is for
-					# TODO Implement
+					group_state.app_group_id == OfflineMirror::current_group_id
 				end
 			end
 			

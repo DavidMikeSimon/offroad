@@ -6,8 +6,8 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
 			t.column :last_installer_download_at, :datetime
 			t.column :last_down_mirror_at, :datetime
 			t.column :last_up_mirror_at, :datetime
-			t.column :last_known_framework_version, :datetime
-			t.column :last_known_app_version, :datetime
+			t.column :launcher_version, :datetime
+			t.column :app_version, :datetime
 			t.column :last_known_os, :string
 		end
 		

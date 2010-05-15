@@ -1,4 +1,6 @@
 module OfflineMirror
+	private
+
 	class ModelState < ActiveRecord::Base
 		set_table_name "offline_mirror_model_states"
 		
