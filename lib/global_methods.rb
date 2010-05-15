@@ -11,7 +11,7 @@ module OfflineMirror
 	
 	class Internal
 		def self.init
-			@@config = YAML.load_file(File.join(RAILS_ROOT, "config", "offline_bridge.yml"))
+			@@config = YAML.load_file(File.join(RAILS_ROOT, "config", "offline_mirror.yml"))
 		end
 		
 		def self.current_group_id
