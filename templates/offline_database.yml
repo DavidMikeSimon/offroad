@@ -1,3 +1,6 @@
+# Database settings for the offline_mirror plugin
+# This database config file is used by the 'offline' environment
+
 offline:
   adapter: sqlite3
   database: db/offline.sqlite3

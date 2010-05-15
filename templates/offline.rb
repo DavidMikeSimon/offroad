@@ -1,6 +1,6 @@
 # This file defines the offline envrionment
 # "Offline" means that the application is running on a local network, with only a subset of the real online app's data
-# It is implemented by the offline_bridge plugin
+# It is implemented by the offline_mirror plugin
 
 # Settings specified here will take precedence over those in config/environment.rb
 
