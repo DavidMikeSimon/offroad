@@ -12,10 +12,12 @@ module OfflineMirror
 	class Internal
 		def self.init
 			@@config = YAML.load_file(File.join(RAILS_ROOT, "config", "offline_mirror.yml"))
+		rescue
+			@@config = {}
 		end
 		
 		def self.current_group_id
-			@@config[:offline_group_id]
+			@@config[:offline_group_id] or raise "No offline group id specified in config"
 		end
 		
 		def self.note_global_data_model(cls)
@@ -28,7 +30,7 @@ module OfflineMirror
 		end
 		
 		def self.note_group_base_model(cls)
-			raise "You can only define one group base model" if defined?(@@group_base_model)
+			raise "You can only define one group base model" if defined?(@@group_base_model) and @@group_base_model.to_s != cls.to_s
 			@@group_base_model = cls
 		end
 		
