@@ -41,15 +41,23 @@ module OfflineMirror
 		@@config = {}
 	end
 	
-	private
-	
-	def self.current_group_id
-		raise "The current_group_id config value is only meaningful if the app is offline" unless app_offline?
+	def self.offline_group_id
+		raise "'Offline group' is only meaningful if the app is offline" unless app_offline?
 		@@config[:offline_group_id] or raise "No offline group id specified in config"
 	end
 
+	def self.offline_group
+		@@group_base_model.find(offline_group_id)
+	end
+	
+	private
+
 	def self.online_url
-		@@config[:online_url] or raise "No online url specified in config"
+		@@config[:online_url] or raise "No online url specified in offline mirror config"
+	end
+	
+	def self.app_name
+		@@config[:app_name] or raise "No app name specified in offline mirror config"
 	end
 	
 	def self.note_global_data_model(cls)

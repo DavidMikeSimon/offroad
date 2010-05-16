@@ -96,7 +96,7 @@ module OfflineMirror
 				
 				# If the app is offline, then we need to make sure that this record belongs to the group this offline instance of the app is for
 				if app_offline?
-					group_state.app_group_id == OfflineMirror::current_group_id
+					group_state.app_group_id == OfflineMirror::offline_group_id
 				end
 			end
 			
