@@ -15,7 +15,10 @@ module OfflineMirror
 		def generate_up_mirror_file(options)
 			collect_results do |r|
 				raise "Cannot generate up-mirror file when app in online mode" if OfflineMirror::app_online?
-				f = MirrorFile.create_up_mirror_for(options[:group])
+				f = MirrorFile.new(OfflineMirror::offline_group_state)
+				f.set_standard_title("Uploadable")
+				f.message = "<p>This is a " + OfflineMirror::app_name + " data file for upload.</p>"
+				f.message += "<p>Please use the website at <a href=\"" + OfflineMirror::online_url + "\">" + OfflineMirror::online_url + "</a> to upload it.</p>"
 				r.filename = f.save_to_tmp
 				r.finished = true
 			end
@@ -24,7 +27,6 @@ module OfflineMirror
 		def generate_down_mirror_file(options)
 			collect_results do |r|
 				raise "Cannot generate down-mirror file when app in offline mode" if OfflineMirror::app_offline?
-				f = MirrorFile.create_down_mirror_for(options[:group])
 				r.filename = f.save_to_tmp
 				r.finished = true
 			end
@@ -38,6 +40,8 @@ module OfflineMirror
 		rescue Exception => e
 			results_setter.error = e
 			raise
+		ensure
+			results_setter.update
 		end
 	end
 	
@@ -77,25 +81,19 @@ module OfflineMirror
 		def initialize(uid)
 			@uid = uid
 			@data = {}
-			update
 		end
 		
 		def error=(v)
 			@data[:error] = v
-			update
 		end
 		
 		def finished=(v)
 			@data[:finished] = v
-			update
 		end
 
 		def filename=(v)
 			@data[:filename] = v
-			update
 		end
-		
-		private
 		
 		def update
 			Workling.return.set(@uid, @data)

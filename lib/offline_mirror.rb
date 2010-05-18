@@ -5,6 +5,8 @@ class ActiveRecord::Base
 	extend OfflineMirror::ModelExtensions
 end
 
+require 'mirror_file'
+
 %w{ models workers }.each do |dir|
 	path = File.join(File.dirname(__FILE__), 'app', dir)
 	$LOAD_PATH << path
@@ -49,6 +51,10 @@ module OfflineMirror
 	def self.offline_group
 		@@group_base_model.find(offline_group_id)
 	end
+
+	def self.offline_group_state
+		OfflineMirror::GroupState::find_or_create_by_group(offline_group)
+	end
 	
 	private
 
@@ -91,6 +97,7 @@ end
 
 OfflineMirror::init
 
+
 # TODO
 # - Write a generator for making a mirror controller scaffold
 # - Only allow one mirror load operation at a time for a given group, and use transactions 
@@ -101,8 +108,11 @@ OfflineMirror::init
 # - When applying upmirror files, use all supplied permission checks and also check to make sure object being changed belongs to logged-in user's group
 # - The launcher should keep a log file
 # - Include recent log lines (for both Rails and the launcher) in generated up-mirror files, for debugging purposes
-# - Support use of several comparison columns, defined by model, used in descending order upon equality. Here should be the defaults:
+# - Support use of several versioning columns, defined by model, just like how Rails defines sorting. Here should be the defaults:
 	# - If app is online, then uses "lock_version, updated_at" if lock_version available, otherwise uses "updated_at"
 	# - If app is offline, uses "lock_version" if available, otherwise uses nothing (so all records always considered dirty)
-# - Take an md5sum of mirror data and include it for verification
+# - Properly deal with a new app version changing version column definition for one or more models (check against version_columns field)
 # - Use rails logger to note activity
+# - Clean tmp directory
+# - Document that the id of the group model itself is _never_ transformed, but all group_owned models and global models do have their id's transformed
+# - Consider streaming cargo data in MirrorFile instead of loading and saving it all at once (though it probably isn't a big deal)
