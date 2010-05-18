@@ -20,14 +20,14 @@ module OfflineMirror
 			
 			if options[:group_state]
 				@cargo_table[:file_info] = {
-					:created_by => OfflineMirror::app_online? ? "Online App" : ("Offline App for Group " + OfflineMirror::offline_group_id),
-					:created_at => Time.now,
-					:online_site => OfflineMirror::online_url,
-					:app => OfflineMirror::app_name,
-					:app_version => OfflineMirror::app_version,
-					:launcher_version => OfflineMirror::app_offline? ? OfflineMirror::launcher_version : "Online",
-					:operating_system => RUBY_PLATFORM,
-					:for_group => options[:group_state].app_group_id
+					"created_by" => OfflineMirror::app_online? ? "Online App" : ("Offline App for Group " + OfflineMirror::offline_group_id),
+					"created_at" => Time.now,
+					"online_site" => OfflineMirror::online_url,
+					"app" => OfflineMirror::app_name,
+					"app_version" => OfflineMirror::app_version,
+					"launcher_version" => OfflineMirror::app_offline? ? OfflineMirror::launcher_version : "Online",
+					"operating_system" => RUBY_PLATFORM,
+					"for_group" => options[:group_state].app_group_id
 				}
 			elsif options[:ioh]
 				read_from(options[:ioh])
@@ -110,6 +110,9 @@ module OfflineMirror
 					in_cargo = true if line == CARGO_BEGIN
 				end
 			end
+			
+			raise MirrorFileCorruptionError.new("Mirror file contained un-terminated cargo section") unless in_cargo == false
+			raise MirrorFileCorruptionError.new("Mirror file contained no importable data") unless @cargo_table.size > 0
 		end
 		
 		def import_cargo(name, digest, b64_data)
