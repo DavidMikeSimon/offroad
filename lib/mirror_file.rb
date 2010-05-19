@@ -36,13 +36,12 @@ module OfflineMirror
 			end
 		end
 		
+		# Returns a closed Tempfile which contains the cargo data.
 		def save_to_tmp
-			# FIXME Come up with an actual random file name
-			fn = File.join(RAILS_ROOT, "tmp", "test")
-			File.open(fn, "w") do |ioh|
-				write_to(ioh)
-			end
-			return fn
+			ioh = Tempfile.new("mirror_" + @cargo_table[:file_info]["for_group"].to_s + "_")
+			write_to(ioh)
+			ioh.close()
+			return ioh
 		end
 		
 		def apply_to_database
@@ -59,7 +58,7 @@ module OfflineMirror
 		def write_to(ioh)
 			ioh.puts "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n"
 			ioh.puts "<!-- This file contains Offline Mirror data."
-			@file_info.keys.map{ |k| [k.to_s, @file_info[k]] }.sort.each do |k, v|
+			@cargo_table[:file_info].keys.map{ |k| [k.to_s, @cargo_table[:file_info][k]] }.sort.each do |k, v|
 				ioh.puts clean_for_html_comment(k.titleize) + ": " + clean_for_html_comment(v)
 			end
 			ioh.puts "-->"
@@ -112,7 +111,6 @@ module OfflineMirror
 			end
 			
 			raise MirrorFileCorruptionError.new("Mirror file contained un-terminated cargo section") unless in_cargo == false
-			raise MirrorFileCorruptionError.new("Mirror file contained no importable data") unless @cargo_table.size > 0
 		end
 		
 		def import_cargo(name, digest, b64_data)

@@ -27,7 +27,7 @@ module OfflineMirror
 		end
 		
 		def self.ensure_group_base_model(cls)
-			raise "Passed class is not a group_base_model" unless cls.offline_mirror_mode == :group_base_model
+			raise "Passed class is not a group_base_model" unless cls.offline_mirror_mode == :group_base
 		end
 	end
 end

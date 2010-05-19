@@ -78,8 +78,8 @@ module OfflineMirror
 			
 			def owning_group
 				case offline_mirror_mode
-					when :group_owned_model then OfflineMirror::group_base_model.find_by_id(self.send offline_mirror_group_key)
-					when :group_base_model then self
+					when :group_owned then OfflineMirror::group_base_model.find_by_id(self.send offline_mirror_group_key)
+					when :group_base then self
 					else raise "Unable to find owning group"
 				end
 			end
@@ -88,7 +88,7 @@ module OfflineMirror
 			
 			def check_group_data_destroy
 				# If the group is offline but the app is online, the only thing that can be deleted is the entire group
-				raise ActiveRecord::ReadOnlyRecord if (locked_by_offline_mirror? and offline_mirror_mode != :group_base_model)
+				raise ActiveRecord::ReadOnlyRecord if (locked_by_offline_mirror? and offline_mirror_mode != :group_base)
 			end
 			
 			def check_group_data_save

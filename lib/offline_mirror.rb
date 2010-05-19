@@ -116,3 +116,4 @@ OfflineMirror::init
 # - Clean tmp directory
 # - Document that the id of the group model itself is _never_ transformed, but all group_owned models and global models do have their id's transformed
 # - Consider streaming cargo data in MirrorFile instead of loading and saving it all at once (though it probably isn't a big deal)
+# - Regularly delete old tempfiles
