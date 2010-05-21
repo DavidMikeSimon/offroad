@@ -16,7 +16,7 @@ module OfflineMirror
 		
 		# Creates a new CargoFile; if an argument is given, it is treated as an input stream from which encoded cargo data is read
 		def initialize(ioh = nil)
-			@cargo_table = { :file_info => {} }
+			@cargo_table = { "file_info" => {} }
 			if ioh
 				read_from(ioh)
 			end
@@ -25,7 +25,7 @@ module OfflineMirror
 		# Writes HTML comments containing the cargo data to the given IO stream
 		def write_to(ioh)
 			ioh.write "<!-- This file contains encapsulated data.\n"
-			@cargo_table[:file_info].keys.map{ |k| [k.to_s, @cargo_table[:file_info][k]] }.sort.each do |k, v|
+			@cargo_table["file_info"].keys.map{ |k| [k.to_s, @cargo_table["file_info"][k]] }.sort.each do |k, v|
 				ioh.write clean_for_html_comment(k.titleize) + ": " + clean_for_html_comment(v) + "\n"
 			end
 			ioh.write "-->\n"
@@ -91,7 +91,7 @@ module OfflineMirror
 			deflated_data = Base64.decode64(b64_data)
 			raise "MD5 check failure" unless Digest::MD5::hexdigest(deflated_data) == digest
 			data = ActiveSupport::JSON.decode(Zlib::Inflate::inflate(deflated_data))
-			@cargo_table[name.to_sym] = data
+			@cargo_table[name] = data
 		rescue StandardError => e
 			raise CargoFileCorruptionError.new("Corrupted mirror file (segment '" + name + "') : " + e.class.to_s + " : " + e.to_s)
 		end
