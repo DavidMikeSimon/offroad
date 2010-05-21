@@ -7,16 +7,17 @@ module OfflineMirror
 			super(msg)
 		end
 	end
-
-	#private # FIXME Testing
 	
-	class MirrorFile	
-		attr_accessor :message, :title, :cargo_table
+	private
+	
+	class MirrorFile
+		attr_accessor :message, :title, :css, :cargo_table
 		
 		def initialize(options = {})
 			@cargo_table = {}
 			@message = ""
 			@title = ""
+			@css = ""
 			
 			if options[:group_state]
 				@cargo_table[:file_info] = {
@@ -44,9 +45,6 @@ module OfflineMirror
 			return ioh
 		end
 		
-		def apply_to_database
-		end
-		
 		def set_standard_title(mode)
 			@title = OfflineMirror::app_name + " " + mode + " Data"
 		end
@@ -64,11 +62,11 @@ module OfflineMirror
 			ioh.puts "-->"
 			
 			ioh.puts "<html>"
-			ioh.puts "<head><title>" + @title + "</title></head>"
+			ioh.puts "<head><style type=\"text/css\">" + @css + "</style><title>" + @title + "</title></head>"
 			ioh.puts "<body>" + @message + "</body>"
 			ioh.puts "</html>"
 			
-			cargo_to_include = @cargo_table.merge({:html_title => @title, :html_message => @message})
+			cargo_to_include = @cargo_table.merge({:html_title => @title, :html_message => @message, :html_css => @css})
 			cargo_to_include.each_pair do |k, v|
 				name = k.to_s
 				deflated_data = Zlib::Deflate::deflate(v.to_json)
@@ -123,6 +121,8 @@ module OfflineMirror
 					@title = data
 				when :html_message
 					@message = data
+				when :html_css
+					@css = data
 				else
 					@cargo_table[sym] = data
 			end

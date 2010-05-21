@@ -6,6 +6,6 @@ module OfflineMirror
 
 		belongs_to :group_state
 		belongs_to :model_state
-		has_many :transformed_ids
+		has_many :mirrored_records
 	end
 end
