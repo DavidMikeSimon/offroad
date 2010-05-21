@@ -2,18 +2,18 @@ module OfflineMirror
 	class GroupBaseController < ApplicationController
 		protected
 		
-		def render_up_mirror_file(group, render_args = {})
+		def render_up_mirror_file(group, filename, render_args = {})
 			raise "Cannot generate up-mirror file when app in online mode" if OfflineMirror::app_online?
 			f = create_mirror_file(group)
 			# TODO Add up mirror data
-			render_appending_cargo_file(render_args, f)
+			render_appending_cargo_file(render_args, f, filename)
 		end
 		
-		def render_down_mirror_file(group, render_args = {})
+		def render_down_mirror_file(group, filename, render_args = {})
 			raise "Cannot generate down-mirror file when app in offline mode" if OfflineMirror::app_offline?
 			f = create_mirror_file(group)
 			# TODO Add down mirror data
-			render_appending_cargo_file(render_args, f)
+			render_appending_cargo_file(render_args, f, filename)
 		end
 		
 		private
@@ -34,13 +34,9 @@ module OfflineMirror
 			return f
 		end
 		
-		def render_appending_cargo_file(render_args, cargo_file)
-			visible_html = render_to_string render_args
-			generator = Proc.new do |response, output|
-				output.write(visible_html)
-				cargo_file.write_to(output)
-			end
-			render :text => generator
+		def render_appending_cargo_file(render_args, cargo_file, filename)
+			data = (render_to_string render_args) + (cargo_file.write_to_string)
+			send_data data, :filename => filename
 		end
 	end
 end

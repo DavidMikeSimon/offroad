@@ -14,6 +14,7 @@ module OfflineMirror
 		# Hash with symbols as keys, values either json-ifiable data or an object with a call method that returns json-ifiable data
 		attr_accessor :cargo_table
 		
+		# Creates a new CargoFile; if an argument is given, it is treated as an input stream from which encoded cargo data is read
 		def initialize(ioh = nil)
 			@cargo_table = { :file_info => {} }
 			if ioh
@@ -44,6 +45,14 @@ module OfflineMirror
 				ioh.write b64_data + "\n"
 				ioh.write CARGO_END + "\n"
 			end
+		end
+
+		# Calls the write_to method and returns a string with the output
+		def write_to_string
+			sio = StringIO.new
+			write_to(sio)
+			sio.close
+			return sio.string
 		end
 		
 		private
