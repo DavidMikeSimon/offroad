@@ -5,7 +5,7 @@ class ActiveRecord::Base
 	extend OfflineMirror::ModelExtensions
 end
 
-require 'mirror_file'
+require 'cargo_file'
 
 %w{ models controllers }.each do |dir|
 	path = File.join(File.dirname(__FILE__), 'app', dir)
@@ -14,7 +14,13 @@ require 'mirror_file'
 	ActiveSupport::Dependencies.load_once_paths.delete(path)
 end
 
+require 'view_helper'
+ActionView::Base.send :include, OfflineMirror::ViewHelper
+
 module OfflineMirror
+	VERSION_MAJOR = 0
+	VERSION_MINOR = 1
+	
 	def self.app_offline?
 		RAILS_ENV == "offline"
 	end
@@ -26,7 +32,7 @@ module OfflineMirror
 	def self.app_version
 		# TODO Implement
 		# Online - When app is launched, scan all application files, this is the timestamp of the most recently changed file
-		# Offline - Based on the app version noted in the last down-mirror file
+		# Offline - Based on the app version noted in the last down-mirror file successfully loaded
 		return 1
 	end
 	
@@ -113,7 +119,4 @@ OfflineMirror::init
 	# - If app is offline, uses "lock_version" if available, otherwise uses nothing (so all records always considered dirty)
 # - Properly deal with a new app version changing version column definition for one or more models (check against version_columns field)
 # - Use rails logger to note activity
-# - Clean tmp directory
 # - Document that the id of the group model itself is _never_ transformed, but all group_owned models and global models do have their id's transformed
-# - Consider streaming cargo data in MirrorFile instead of loading and saving it all at once (though it probably isn't a big deal)
-# - Regularly delete old tempfiles
