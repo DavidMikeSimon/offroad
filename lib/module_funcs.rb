@@ -24,8 +24,6 @@ module OfflineMirror
 	#:nodoc#
 	def self.init
 		@@config = YAML.load_file(File.join(RAILS_ROOT, "config", "offline_mirror.yml"))
-	rescue
-		@@config = {}
 	end
 	
 	# Returns the ID of the record of the group base model that this app is in charge of
@@ -43,6 +41,16 @@ module OfflineMirror
 	
 	private
 	
+	def self.system_state
+		sys_state = OfflineMirror::SystemState::first
+		if sys_state
+			return sys_state
+		else
+			current_mirror_version = app_online? ? 1 : (offline_group_state.up_mirror_version + 1)
+			return OfflineMirror::SystemState::create(:current_mirror_version => current_mirror_version)
+		end
+	end
+	
 	def self.offline_group_state
 		OfflineMirror::GroupState::find_or_create_by_group(offline_group)
 	end
@@ -53,8 +61,6 @@ module OfflineMirror
 	
 	def self.add_global_mirror_cargo(group, cargo_file)
 		@@global_data_models.each do |name, cls|
-			# TODO If possible, only include changed records
-			# TODO Try to find a good way to do this with find instead of select_all
 			data = cls.connection.select_all("SELECT * FROM \"#{cls.table_name}\"")
 			cargo_file.cargo_table["global_model_data_#{cls.name}"] = data
 		end

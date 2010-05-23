@@ -4,7 +4,7 @@ module OfflineMirror
 		OFFLINE_MIRROR_GROUP_MODES = [:group_base, :group_owned]
 		
 		def acts_as_mirrored_offline(mode, opts = {})
-			raise "You already called mirrored_offline" if respond_to? :offline_mirror_mode
+			raise "You can only call acts_as_mirrored_offline once per model" if respond_to? :offline_mirror_mode
 			raise "You must specify a mode, one of " + OFFLINE_MIRROR_VALID_MODES.map(&:inspect).join("/") unless OFFLINE_MIRROR_VALID_MODES.include?(mode)
 			
 			set_internal_cattr :offline_mirror_mode, mode
