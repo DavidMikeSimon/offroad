@@ -25,8 +25,6 @@
 	- WRITING:
 	- In add_*_mirror_cargo, don't load an entire table's result set into memory at once; use find_in_batches
 	- Use render :text => Proc, with response.header['whatever'] to set necessary headers (like attachment disposition)
-	- READING:
-	- Can we migrate on a chunk-by-chunk basis? Is this even a good idea? Probably not.
 	- TESTING:
 	- Try this out with large data sets and make sure it is sufficiently speedy.
 - Make extra sure to check that I'm not encoding ActiveRecord instances in cargo

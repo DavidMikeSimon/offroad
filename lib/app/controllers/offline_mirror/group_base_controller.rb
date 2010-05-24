@@ -59,26 +59,27 @@ module OfflineMirror
 			end
 		end
 		
-		def render_appending_cargo_data(group, filename, render_args)
-			file_info = {
-				"created_at" => Time.now,
-				"online_site" => OfflineMirror::online_url,
-				"app" => OfflineMirror::app_name,
-				"app_mode" => OfflineMirror::app_online? ? "Online" : ("Offline for Group " + OfflineMirror::offline_group_id),
-				"app_version" => OfflineMirror::app_version,
-				"operating_system" => RUBY_PLATFORM,
-				"for_group" => group.id,
-				"plugin" => "Offline Mirror " + OfflineMirror::VERSION_MAJOR.to_s + "." + OfflineMirror::VERSION_MINOR.to_s
-			}
-			
+		def render_appending_cargo_data(group, filename, render_args)	
+			# Encourage browser to download this to disk instead of displaying it
+			headers['Content-Disposition'] = "attachment; filename=\"#{filename}\""
+
 			orig_html = render_to_string render_args
 			render :text => Proc.new { |response, output|
-				# Encourage browser to download this to disk instead of displaying it
-				response.header['Content-Disposition'] = "attachment; filename=\"#{filename}\""
-				
 				output.write(orig_html)
 				cargo_streamer = CargoStreamer.new(output, "w")
+				
+				file_info = {
+					"created_at" => Time.now,
+					"online_site" => OfflineMirror::online_url,
+					"app" => OfflineMirror::app_name,
+					"app_mode" => OfflineMirror::app_online? ? "Online" : ("Offline for Group " + OfflineMirror::offline_group_id),
+					"app_version" => OfflineMirror::app_version,
+					"operating_system" => RUBY_PLATFORM,
+					"for_group" => group.id,
+					"plugin" => "Offline Mirror " + OfflineMirror::VERSION_MAJOR.to_s + "." + OfflineMirror::VERSION_MINOR.to_s
+				}
 				cargo_streamer.write_cargo_section("file_info", file_info, :human_readable => true)
+				
 				yield cargo_streamer
 			}
 		end
