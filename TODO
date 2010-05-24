@@ -21,10 +21,5 @@
 - In documentation, note that migrations which change records' primary keys will break synchronization
 - Try to gather some kind of machine identifier to put in up-mirror information, so admins can know when there's more than one offline setup for a group
 - Add a comment to generated migrations letting the app developer know about stuff they need to be careful of due to Offline Mirror
-- Stream cargo data out to user without keeping large chunks of stuff in memory. As separate problems:
-	- WRITING:
-	- In add_*_mirror_cargo, don't load an entire table's result set into memory at once; use find_in_batches
-	- Use render :text => Proc, with response.header['whatever'] to set necessary headers (like attachment disposition)
-	- TESTING:
-	- Try this out with large data sets and make sure it is sufficiently speedy.
+- Try streaming out with large data sets and make sure it is sufficiently speedy, and is actually streaming (i.e. no Content-Length header)
 - Make extra sure to check that I'm not encoding ActiveRecord instances in cargo

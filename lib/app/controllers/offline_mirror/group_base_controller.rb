@@ -24,13 +24,8 @@ module OfflineMirror
 			# FIXME: Indicate what up-mirror version this is, and what migrations are applied
 			# FIXME: Also allow for a full-sync mode (includes all records)
 			OfflineMirror::group_owned_models.each do |name, cls|
-				cargo_streamer.write_cargo_section("group_model_schema_#{name}", cls.columns)
-				
-				# FIXME: Also include id transformation by joining with the mirrored_records table
 				# FIXME: Check against mirror version
-				# FIXME: Mark deleted records
-				data = cls.find(:all, :conditions => { cls.offline_mirror_group_key.to_sym => group })
-				cargo_streamer.write_cargo_section("group_model_data_#{name}", data.map(&:attributes))
+				write_model_cargo(cargo_streamer, "group_model", cls, :conditions => { cls.offline_mirror_group_key.to_sym => group })
 			end
 			
 			cargo_streamer.write_cargo_section("group_state", group.group_state.attributes)
@@ -46,16 +41,22 @@ module OfflineMirror
 			# FIXME: Indicate what down-mirror version this is
 			# FIXME: Also allow for a full-sync mode (includes all records)
 			OfflineMirror::global_data_models.each do |name, cls|
-				cargo_streamer.write_cargo_section("global_model_schema_#{name}", cls.columns)
-				# No need to worry about id transformation global data models, it's not necessary
 				# FIXME: Check against mirror version
-				# FIXME: Mark deleted records
-				cargo_streamer.write_cargo_section("global_model_data_#{name}", cls.all.map(&:attributes))
+				write_model_cargo(cargo_streamer, "global_model", cls)
 			end
 			
 			# If this group has no confirmed down mirror, also include all group data to be the offline app's initial state
 			if group.group_state.down_mirror_version == 0
 				write_group_specific_cargo(group, cargo_streamer)
+			end
+		end
+		
+		def write_model_cargo(cargo_streamer, prefix, model, find_options = {})
+			# FIXME: Also include id transformation by joining with the mirrored_records table
+			# FIXME: Mark deleted records
+			cargo_streamer.write_cargo_section("#{prefix}_schema_#{model.name}", model.columns)
+			model.find_in_batches(find_options.merge({:batch_size => 100})) do |batch|
+				cargo_streamer.write_cargo_section("#{prefix}_data_#{model.name}", batch.map(&:attributes))
 			end
 		end
 		
