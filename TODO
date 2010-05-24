@@ -24,11 +24,9 @@
 - Stream cargo data out to user without keeping large chunks of stuff in memory. As separate problems:
 	- WRITING:
 	- In add_*_mirror_cargo, don't load an entire table's result set into memory at once; use find_in_batches
-	- Change CargoTable to CargoStreamer, so that we don't need to hold all the cargo in memory at once either; give chunks the same name if the same cargo
 	- Use render :text => Proc, with response.header['whatever'] to set necessary headers (like attachment disposition)
 	- READING:
-	- First scan through file, find the location of the start of each cargo comment and get all names, so we can jump to an arbitrary section easily
-	- Then have the read function accept a block, which is fed each chunk of a section individually (after that chunk is decoded, verified, and inflated)
 	- Can we migrate on a chunk-by-chunk basis? Is this even a good idea? Probably not.
 	- TESTING:
 	- Try this out with large data sets and make sure it is sufficiently speedy.
+- Make extra sure to check that I'm not encoding ActiveRecord instances in cargo

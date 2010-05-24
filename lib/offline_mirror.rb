@@ -1,7 +1,7 @@
 # OfflineMirror
 
 require 'module_funcs'
-require 'cargo_table'
+require 'cargo_streamer'
 
 %w{ models controllers }.each do |dir|
 	path = File.join(File.dirname(__FILE__), 'app', dir)
