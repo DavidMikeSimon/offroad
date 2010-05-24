@@ -24,6 +24,8 @@ module OfflineMirror
 	#:nodoc#
 	def self.init
 		@@config = YAML.load_file(File.join(RAILS_ROOT, "config", "offline_mirror.yml"))
+	rescue
+		@@config = {}
 	end
 	
 	# Returns the ID of the record of the group base model that this app is in charge of
@@ -56,15 +58,43 @@ module OfflineMirror
 	end
 	
 	def self.add_group_specific_mirror_cargo(group, cargo_file)
-		# TODO Include schema information so that the online app can do an in-place migration of the data before importing it
+		# FIXME: Is there some way to make sure this entire process occurs in a kind of read transaction?
+		# FIXME: Indicate what up-mirror version this is, and what migrations are applied
+		# FIXME: Also allow for a full-sync mode (includes all records)
+		group_owned_models.each do |name, cls|
+			cargo_file["group_model_schema_#{name}"] = cls.columns
+			
+			# FIXME: Also include id transformation by joining with the mirrored_records table
+			# FIXME: Check against mirror version
+			# FIXME: Mark deleted records
+			data = cls.find(:all, :conditions => { cls.offline_mirror_group_key.to_sym => group })
+			cargo_file["group_model_data_#{name}"] = data.map(&:attributes)
+		end
+		
+		cargo_file["group_state"] = group.group_state.attributes
+		
+		# Have to include the schema so all tables are available to pre-import migrations, even if we don't send any changes to this table
+		cargo_file["group_model_schema_#{group_base_model.name}"] = group_base_model.columns
+		# FIXME: Check against mirror version; don't include if there are no changes
+		cargo_file["group_model_data_#{group_base_model.name}"] = group.attributes
 	end
 	
 	def self.add_global_mirror_cargo(group, cargo_file)
-		@@global_data_models.each do |name, cls|
-			data = cls.connection.select_all("SELECT * FROM \"#{cls.table_name}\"")
-			cargo_file.cargo_table["global_model_data_#{cls.name}"] = data
+		# FIXME: Is there some way to make sure this entire process occurs in a kind of read transaction?
+		# FIXME: Indicate what down-mirror version this is
+		# FIXME: Also allow for a full-sync mode (includes all records)
+		# FIXME: Include any changed files in the app, if necessary
+		global_data_models.each do |name, cls|
+			# No need to worry about id transformation global data models, it's not necessary
+			# FIXME: Check against mirror version
+			# FIXME: Mark deleted records
+			cargo_file["global_model_data_#{name}"] = cls.all.map(&:attributes)
 		end
-		# TODO If this group has no confirmed down mirror, also include all group data
+		
+		# If this group has no confirmed down mirror, also include all group data to be the offline app's initial state
+		if group.group_state.down_mirror_version == 0
+			add_group_specific_mirror_cargo(group, cargo_file)
+		end
 	end
 	
 	def self.online_url

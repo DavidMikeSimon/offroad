@@ -13,6 +13,7 @@ module OfflineMirror
 			[:create_permitted?, :update_permitted?, :delete_permitted?].each do |o|
 				if opts[o]
 					raise "Can't specify " + inspect(o) + " for non-group models" unless OFFLINE_MIRROR_GROUP_MODES.include?(mode)
+					# FIXME: Make use of these when loading mirror data
 					offline_mirror_permission_checkers[o] = opts.delete(o)
 				end
 			end
@@ -20,8 +21,16 @@ module OfflineMirror
 			case mode
 			when :group_owned then
 				raise "For :group_owned_model, need to specify :group_key, an attribute name for this model's owning group" unless opts[:group_key]
+				begin
+					raise "The :group_key is invalid, there's no column with that name" unless columns.include?(opts[:group_key].to_s)
+				rescue
+					unless opts[:group_key].to_s.end_with?("_id")
+						opts[:group_key] = opts[:group_key].to_s + "_id"
+						retry
+					end
+				end
 				OfflineMirror::note_group_owned_model(self)
-				set_internal_cattr :offline_mirror_group_key, opts.delete(:group_key)
+				set_internal_cattr :offline_mirror_group_key, opts.delete(:group_key).to_sym
 			when :group_base then
 				OfflineMirror::note_group_base_model(self)
 			when :global then
@@ -33,9 +42,11 @@ module OfflineMirror
 			
 			if OFFLINE_MIRROR_GROUP_MODES.include?(mode)
 				include GroupDataInstanceMethods
-				before_destroy :check_group_data_destroy
-				before_save :check_group_data_save
+			else
+				include GlobalDataInstanceMethods
 			end
+			before_destroy :check_mirrored_data_destroy
+			before_save :check_mirrored_data_save
 		end
 		
 		private
@@ -43,6 +54,23 @@ module OfflineMirror
 		def set_internal_cattr(name, value)
 			write_inheritable_attribute name, value
 			class_inheritable_reader name
+		end
+		
+		# Only the online app can change global data
+		module GlobalDataInstanceMethods
+			def check_mirrored_data_destroy
+				ensure_online
+			end
+			
+			def check_mirrored_data_save
+				ensure_online
+			end
+			
+			private
+			
+			def ensure_online
+				raise ActiveRecord::ReadOnlyRecord if OfflineMirror::app_offline?
+			end
 		end
 		
 		module GroupDataInstanceMethods
@@ -55,13 +83,19 @@ module OfflineMirror
 			def last_known_status
 				raise "This method is only for offline group data accessed from an online app" unless locked_by_offline_mirror?
 				s = group_state
-				return {
-					:down_mirror_at => s.last_down_mirror_at,
-					:up_mirror_at => s.last_up_mirror_at,
-					:launcher_version => s.last_known_launcher_version,
-					:app_version => s.last_known_app_version,
-					:os => s.last_known_os
-				}
+				fields_of_interest = [
+					:offline,
+					:last_installer_downloaded_at,
+					:last_installation_at,
+					:last_down_mirror_created_at,
+					:last_down_mirror_loaded_at,
+					:last_up_mirror_created_at,
+					:last_up_mirror_loaded_at,
+					:launcher_version,
+					:app_version,
+					:last_known_offline_os
+				]
+				return fields_of_interest.map {|field_name| s.send(field_name)} 
 			end
 			
 			def group_offline?
@@ -84,22 +118,26 @@ module OfflineMirror
 				end
 			end
 			
-			private
-			
-			def check_group_data_destroy
+			# Methods below this point are only to be used internally by OfflineMirror
+			# However, marking them private makes using them from elsewhere in the plugin troublesome
+
+			#:nodoc#
+			def check_mirrored_data_destroy
 				# If the group is offline but the app is online, the only thing that can be deleted is the entire group
 				raise ActiveRecord::ReadOnlyRecord if (locked_by_offline_mirror? and offline_mirror_mode != :group_base)
 			end
 			
-			def check_group_data_save
+			#:nodoc#
+			def check_mirrored_data_save
 				raise ActiveRecord::ReadOnlyRecord if locked_by_offline_mirror?
 				
 				# If the app is offline, then we need to make sure that this record belongs to the group this offline instance of the app is for
 				if app_offline?
-					group_state.app_group_id == OfflineMirror::offline_group_id
+					return group_state.app_group_id == OfflineMirror::offline_group_id
 				end
 			end
 			
+			#:nodoc#
 			def group_state
 				GroupState.find_or_create_by_group(owning_group)
 			end

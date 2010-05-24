@@ -9,11 +9,11 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
 			t.column :offline, :boolean, :default => false, :null => false
 			t.column :up_mirror_version, :integer, :default => 0, :null => false
 			t.column :down_mirror_version, :integer, :default => 0, :null => false
-			t.column :last_installer_download_at, :datetime
+			t.column :last_installer_downloaded_at, :datetime
 			t.column :last_installation_at, :datetime
-			t.column :last_down_mirror_downloaded_at, :datetime
+			t.column :last_down_mirror_created_at, :datetime
 			t.column :last_down_mirror_loaded_at, :datetime
-			t.column :last_up_mirror_downloaded_at, :datetime
+			t.column :last_up_mirror_created_at, :datetime
 			t.column :last_up_mirror_loaded_at, :datetime
 			t.column :launcher_version, :integer, :default => 0, :null => false
 			t.column :app_version, :integer, :default => 0, :null => false
@@ -25,7 +25,7 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
 		end
 		
 		create_table :offline_mirror_group_model_pairings do |t|
-			t.column :group_state_id, :integer
+			t.column :group_state_id, :integer # If NULL, that means this pairing is for a non-group-owned model (aka global data model)
 			t.column :model_state_id, :integer, :null => false
 		end
 		
