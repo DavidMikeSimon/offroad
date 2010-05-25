@@ -10,7 +10,7 @@
 - Scenario to deal with: offline app applies an initial down mirror, then makes local changes, then attempts to reapply _another_ initial down mirror
  - To deal with this, just ignore all non-global records in the second initial down mirror, since they should be identical
 - Versioning the app : how to do this?
-- When we import first down mirror w/ group data, set current_mirror_version to up_mirror_version + 1. OfflineMirror::system_state tries to do this; test.
+- When we import first down mirror w/ group data, set current_mirror_version to up_mirror_version + 1. SystemState::get tries to do this; test.
 - Make sure the filters catch typical ActiveRecord class methods: create, update, delete, etc.
 - Split the offline environment into 'offline-production' and 'offline-test'
 - Only update current_mirror_version after a confirmed transfer; that way, if 1st mirror file generated is lost, no big deal
@@ -23,3 +23,4 @@
 - Add a comment to generated migrations letting the app developer know about stuff they need to be careful of due to Offline Mirror
 - Try streaming out with large data sets and make sure it is sufficiently speedy, and is actually streaming (i.e. no Content-Length header)
 - Make extra sure to check that I'm not encoding ActiveRecord instances in cargo
+- When transforming primary keys, also transform foreign key columns

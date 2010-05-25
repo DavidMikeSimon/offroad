@@ -43,16 +43,6 @@ module OfflineMirror
 	
 	private
 	
-	def self.system_state
-		sys_state = OfflineMirror::SystemState::first
-		if sys_state
-			return sys_state
-		else
-			current_mirror_version = app_online? ? 1 : (offline_group_state.up_mirror_version + 1)
-			return OfflineMirror::SystemState::create(:current_mirror_version => current_mirror_version)
-		end
-	end
-	
 	def self.offline_group_state
 		OfflineMirror::GroupState::find_or_create_by_group(offline_group)
 	end

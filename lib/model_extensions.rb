@@ -46,7 +46,9 @@ module OfflineMirror
 				include GlobalDataInstanceMethods
 			end
 			before_destroy :check_mirrored_data_destroy
+			after_destroy :note_mirrored_data_destroy
 			before_save :check_mirrored_data_save
+			after_save :note_mirrored_data_save
 		end
 		
 		private
@@ -56,19 +58,38 @@ module OfflineMirror
 			class_inheritable_reader name
 		end
 		
-		# Only the online app can change global data
-		module GlobalDataInstanceMethods
+		module GlobalDataInstanceMethods	
+			# Methods below this point are only to be used internally by OfflineMirror
+			# However, marking all of them private would make using them from elsewhere in the plugin troublesome
+			
+			#:nodoc#
 			def check_mirrored_data_destroy
 				ensure_online
+				return true
 			end
 			
+			#:nodoc#
+			def note_mirrored_data_destroy
+				OfflineMirror::MirroredRecord::note_record_destroyed(nil, self, id) if app_online?
+				return true
+			end
+			
+			#:nodoc#
 			def check_mirrored_data_save
 				ensure_online
+				return true
+			end
+			
+			#:nodoc#
+			def note_mirrored_data_save
+				OfflineMirror::MirroredRecord::note_record_created_or_updated(nil, self, id) if app_online?
+				return true
 			end
 			
 			private
 			
 			def ensure_online
+				# Only the online app can change global data
 				raise ActiveRecord::ReadOnlyRecord if OfflineMirror::app_offline?
 			end
 		end
@@ -120,11 +141,18 @@ module OfflineMirror
 			
 			# Methods below this point are only to be used internally by OfflineMirror
 			# However, marking them private makes using them from elsewhere in the plugin troublesome
-
+			
 			#:nodoc#
 			def check_mirrored_data_destroy
 				# If the group is offline but the app is online, the only thing that can be deleted is the entire group
 				raise ActiveRecord::ReadOnlyRecord if (locked_by_offline_mirror? and offline_mirror_mode != :group_base)
+				return true
+			end
+			
+			#:nodoc#
+			def note_mirrored_data_destroy
+				OfflineMirror::MirroredRecord::note_record_destroyed(owning_group, self, id) if app_offline?
+				return true
 			end
 			
 			#:nodoc#
@@ -135,6 +163,13 @@ module OfflineMirror
 				if app_offline?
 					return group_state.app_group_id == OfflineMirror::offline_group_id
 				end
+				return true
+			end
+			
+			#:nodoc#
+			def note_mirrored_data_save
+				OfflineMirror::MirroredRecord::note_record_created_or_updated(owning_group, self, id) if app_offline?
+				return true
 			end
 			
 			#:nodoc#
