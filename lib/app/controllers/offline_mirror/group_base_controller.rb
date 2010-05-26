@@ -12,7 +12,7 @@ module OfflineMirror
 		def render_down_mirror_file(group, filename, render_args = {})
 			raise "Cannot generate down-mirror file when app in offline mode" if OfflineMirror::app_offline?
 			render_appending_cargo_data(group, filename, render_args) do |cargo_streamer|
-				# FIXME: Include an updated version of the app here, if necessary
+				# FIXME: Include an updated version of the app here, if one is available
 				write_global_cargo(group, cargo_streamer)
 			end
 		end
@@ -21,8 +21,6 @@ module OfflineMirror
 		
 		def write_group_specific_cargo(group, cargo_streamer)
 			# FIXME: Make sure that when this is being called by the online app, it doesn't accidentally fill mirrored_records with group-specific junk
-			# FIXME: Is there some way to make sure this entire process occurs in a kind of read transaction?
-			# FIXME: Indicate what up-mirror version this is, and what migrations are applied
 			# FIXME: Also allow for a full-sync mode (includes all records)
 			OfflineMirror::group_owned_models.each do |name, cls|
 				write_model_cargo(cargo_streamer, "group_model", cls, :conditions => { cls.offline_mirror_group_key.to_sym => group })
@@ -35,7 +33,6 @@ module OfflineMirror
 		end
 		
 		def write_global_cargo(group, cargo_streamer)
-			# FIXME: Is there some way to make sure this entire process occurs in a kind of read transaction?
 			# FIXME: Indicate what down-mirror version this is
 			# FIXME: Also allow for a full-sync mode (includes all records)
 			OfflineMirror::global_data_models.each do |name, cls|
@@ -52,7 +49,6 @@ module OfflineMirror
 			# FIXME: Also include id transformation by joining with the mirrored_records table
 			# FIXME: Mark deleted records
 			# FIXME: Check against mirror version
-			# FIXME: Actually, this method belongs in a model somewhere, with a yield to the code that sends data to cargo_streamer
 			cargo_streamer.write_cargo_section("#{prefix}_schema_#{model.name}", model.columns)
 			model.find_in_batches(find_options.merge({:batch_size => 100})) do |batch|
 				cargo_streamer.write_cargo_section("#{prefix}_data_#{model.name}", batch.map(&:attributes))
@@ -67,6 +63,11 @@ module OfflineMirror
 			render :text => Proc.new { |response, output|
 				output.write(orig_html)
 				cargo_streamer = CargoStreamer.new(output, "w")	
+				
+				# FIXME: Is there some way to make sure this entire process occurs in a kind of read transaction?
+				
+				# These lines append standard information that should be included in every mirror file
+				cargo_streamer.write_cargo_section("group_state", group.group_state.attributes)
 				file_info = {
 					"created_at" => Time.now,
 					"online_site" => OfflineMirror::online_url,
@@ -78,7 +79,8 @@ module OfflineMirror
 					"plugin" => "Offline Mirror " + OfflineMirror::VERSION_MAJOR.to_s + "." + OfflineMirror::VERSION_MINOR.to_s
 				}
 				cargo_streamer.write_cargo_section("file_info", file_info, :human_readable => true)
-				cargo_streamer.write_cargo_section("group_state", group.group_state.attributes)
+				schema_migrations = OfflineMirror::group_base_model.connection.select_all("SELECT * FROM schema_migrations")
+				cargo_streamer.write_cargo_section("schema_migrations", schema_migrations)
 				
 				yield cargo_streamer
 			}

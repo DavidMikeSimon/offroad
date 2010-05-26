@@ -18,39 +18,32 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
 			t.column :launcher_version, :integer, :default => 0, :null => false
 			t.column :app_version, :integer, :default => 0, :null => false
 			t.column :last_known_offline_os, :string, :default => "Unknown", :null => false
-			
-			t.add_index :app_group_id
-			
-			# This index allows us to quickly find the min(down_mirror_version), for clearing old global record deletions
-			t.add_index :down_mirror_version
 		end
+		add_index :offline_mirror_group_states, :app_group_id
+		# This lets us quickly find min(down_mirror_version) for clearing old global record deletions
+		add_index :offline_mirror_group_states, :down_mirror_version
 		
 		create_table :offline_mirror_model_states do |t|
 			t.column :app_model_name, :string, :null => false
-			
-			t.add_index :app_model_name
 		end
+		add_index :offline_mirror_model_states, :app_model_name, :unique => true
 		
 		create_table :offline_mirror_sendable_records do |t|
-			t.column :group_state_id, :integer, :null => false # If 0, that means this record is of a non-group-owned model (aka global data model)
 			t.column :model_state_id, :integer, :null => false
 			t.column :local_record_id, :integer, :null => false # If 0, record doesn't exist in this app (it has been deleted)
 			t.column :remote_record_id, :integer, :null => false # If 0, record might not exist in the remote app (i.e. hasn't yet been created)
 			t.column :mirror_version, :integer, :default => 0, :null => false
-			
-			# This index is for locating a MirroredRecord model for any given app record
-			t.add_index [:local_record_id, :model_state_id], :unique => true
-			
-			# This index is for generating mirror files,
-			# where we are concerned about everything above a certain mirror_version for each group/model pairing
-			t.add_index [:group_state_id, :model_state_id, :mirror_version]
 		end
+		# This index is for locating a MirroredRecord model for any given local app record
+		add_index :offline_mirror_sendable_records, [:local_record_id, :model_state_id], :unique => true
+		# This index is for generating mirror files, where for each model we need to find everything above a given mirror_version
+		add_index :offline_mirror_sendable_records, [:model_state_id, :mirror_version]
 	end
 	
 	def self.down
 		drop_table :offline_mirror_system_state
 		drop_table :offline_mirror_group_states
 		drop_table :offline_mirror_model_states
-		drop_table :offline_mirror_mirrored_records
+		drop_table :offline_mirror_sendable_records
 	end
 end
