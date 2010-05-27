@@ -7,9 +7,6 @@
 - Include recent log lines (for both Rails and the launcher) in generated up-mirror files, for debugging purposes
 - Use rails logger to note activity
 - Document that the id of the group model itself is _never_ transformed, but all group_owned models and global models do have their id's transformed
-- Scenario to deal with: offline app applies an initial down mirror, then makes local changes, then attempts to reapply _another_ initial down mirror
- - To deal with this, just ignore all non-global records in the second initial down mirror, since they should be identical
-- Scenario to deal with: offline app creates an up-mirror, makes local changes, then up-mirror is applied and confirmed. Are local changes version-lost?
 - Versioning the app : how to do this?
 - When we import first down mirror w/ group data, set current_mirror_version to up_mirror_version + 1. SystemState::get tries to do this; test.
 - At offline app: When an up-mirror of a given version is confirmed, increment current_mirror_version. Complain if confirmation is not on current version.
@@ -27,3 +24,11 @@
 - Try streaming out with large data sets and make sure it is sufficiently speedy, and is actually streaming (i.e. no Content-Length header)
 - Make extra sure to check that I'm not encoding ActiveRecord instances in cargo
 - When transforming primary keys, also transform foreign key columns
+
+- Scenario to deal with: offline app applies an initial down mirror, then makes local changes, then attempts to reapply _another_ initial down mirror
+ - To deal with this, just ignore all non-global records in the second initial down mirror, since they should be identical
+- Scenario to deal with: offline app creates an up-mirror, makes local changes, then up-mirror is applied and confirmed. Are local changes version-lost?
+- Scenario to deal with: offline app reverts to a prior backup, and prior backup either:
+	- Has the same mirror version as online, or
+	- Has prior version to online, or
+	- Has newer version than online (this shouldn't require any special handling...)
