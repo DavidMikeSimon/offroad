@@ -18,7 +18,7 @@
  - This causes problems if we aren't getting a nice back-and-forth of up-mirror and down-mirror, which is intentional
 - In online app, increment current_mirror_version whenever anyone confirms that they received a down mirror
 - In offline app, increment current_mirror_version whenever an up-mirror is confirmed
-- In documentation, note that migrations which change records' primary keys will break synchronization
+- In documentation, note that migrations which alter records' primary keys, or change model names, will break synchronization. Table name changes are fine.
 - Try to gather some kind of machine identifier to put in up-mirror information, so admins can know when there's more than one offline setup for a group
 - Add a comment to generated migrations letting the app developer know about stuff they need to be careful of due to Offline Mirror
 - Try streaming out with large data sets and make sure it is sufficiently speedy, and is actually streaming (i.e. no Content-Length header)
@@ -32,3 +32,5 @@
 	- Has the same mirror version as online, or
 	- Has prior version to online, or
 	- Has newer version than online (this shouldn't require any special handling...)
+- Scenario to deal with: offline app loses its offline_mirror_* table
+	- It should be possible to handle this case by just sending out an up-mirror file that solicits an initial down-mirror file

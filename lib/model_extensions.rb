@@ -4,7 +4,7 @@ module OfflineMirror
 		OFFLINE_MIRROR_GROUP_MODES = [:group_base, :group_owned]
 		
 		def acts_as_mirrored_offline(mode, opts = {})
-			raise "You can only call acts_as_mirrored_offline once per model" if respond_to? :offline_mirror_mode
+			raise "You can only call acts_as_mirrored_offline once per model" if acts_as_mirrored_offline? 
 			raise "You must specify a mode, one of " + OFFLINE_MIRROR_VALID_MODES.map(&:inspect).join("/") unless OFFLINE_MIRROR_VALID_MODES.include?(mode)
 			
 			set_internal_cattr :offline_mirror_mode, mode
@@ -12,7 +12,7 @@ module OfflineMirror
 			set_internal_cattr :offline_mirror_permission_checkers, {}
 			[:create_permitted?, :update_permitted?, :delete_permitted?].each do |o|
 				if opts[o]
-					raise "Can't specify " + inspect(o) + " for non-group models" unless OFFLINE_MIRROR_GROUP_MODES.include?(mode)
+					raise "Can't specify " + inspect(o) + " for non-group models" unless offline_mirror_group_data?
 					# FIXME: Make use of these when loading mirror data
 					offline_mirror_permission_checkers[o] = opts.delete(o)
 				end
@@ -40,7 +40,7 @@ module OfflineMirror
 			# We should have deleted all the options from the hash by this point
 			raise "Unknown or inapplicable option(s) specified" unless opts.size == 0
 			
-			if OFFLINE_MIRROR_GROUP_MODES.include?(mode)
+			if offline_mirror_group_data?
 				include GroupDataInstanceMethods
 			else
 				include GlobalDataInstanceMethods
@@ -49,6 +49,20 @@ module OfflineMirror
 			after_destroy :note_mirrored_data_destroy
 			before_save :check_mirrored_data_save
 			after_save :note_mirrored_data_save
+		end
+
+		def acts_as_mirrored_offline?
+			respond_to? :offline_mirror_mode
+		end
+		
+		def offline_mirror_group_data?
+			raise "You must call acts_as_offline_mirror for this model" unless acts_as_mirrored_offline?
+			OFFLINE_MIRROR_GROUP_MODES.include?(offline_mirror_mode)
+		end
+		
+		def offline_mirror_global_data?
+			raise "You must call acts_as_offline_mirror for this model" unless acts_as_mirrored_offline?
+			offline_mirror_mode == :global
 		end
 		
 		private

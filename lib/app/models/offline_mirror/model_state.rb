@@ -10,24 +10,24 @@ module OfflineMirror
 		
 		def self.find_by_model(cls, opts = {})
 			cls = classifize(cls) 
-			ensure_group_base_model(cls)
+			ensure_mirrored_model(cls)
 			find_by_app_model_name(cls.to_s, opts)
 		end
 		
 		def self.find_or_create_by_model(cls, opts = {})
 			cls = classifize(cls) 
-			ensure_group_base_model(cls)
+			ensure_mirrored_model(cls)
 			find_or_create_by_app_model_name(cls.to_s, opts)
 		end
 		
 		private
 		
-		def self.classifize(obj)
+		def self.classifize(cls)
 			cls.class === Class ? cls : cls.class
 		end
 		
-		def self.ensure_group_base_model(cls)
-			raise "Passed class is not a group_base_model" unless cls.offline_mirror_mode == :group_base
+		def self.ensure_mirrored_model(cls)
+			raise "Passed class doesn't specify acts_as_mirrored_offline" unless cls.acts_as_mirrored_offline?
 		end
 	end
 end

@@ -14,6 +14,11 @@ module OfflineMirror
 			render_appending_cargo_data(group, filename, render_args) do |cargo_streamer|
 				# FIXME: Include an updated version of the app here, if one is available
 				write_global_cargo(group, cargo_streamer)
+				
+				# If this group has no confirmed down mirror, also include all group data to be the offline app's initial state
+				if group.group_state.down_mirror_version == 0
+					write_group_specific_cargo(group, cargo_streamer)
+				end
 			end
 		end
 		
@@ -38,16 +43,11 @@ module OfflineMirror
 			OfflineMirror::global_data_models.each do |name, cls|
 				write_model_cargo(cargo_streamer, "global_model", cls)
 			end
-			
-			# If this group has no confirmed down mirror, also include all group data to be the offline app's initial state
-			if group.group_state.down_mirror_version == 0
-				write_group_specific_cargo(group, cargo_streamer)
-			end
 		end
 		
 		def write_model_cargo(cargo_streamer, prefix, model, find_options = {})
 			# FIXME: Also include id transformation by joining with the mirrored_records table
-			# FIXME: Mark deleted records
+			# FIXME: Include entries for deleted records
 			# FIXME: Check against mirror version
 			cargo_streamer.write_cargo_section("#{prefix}_schema_#{model.name}", model.columns)
 			model.find_in_batches(find_options.merge({:batch_size => 100})) do |batch|
