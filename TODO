@@ -24,6 +24,7 @@
 - Try streaming out with large data sets and make sure it is sufficiently speedy, and is actually streaming (i.e. no Content-Length header)
 - Make extra sure to check that I'm not encoding ActiveRecord instances in cargo
 - When transforming primary keys, also transform foreign key columns
+- Change mime-type of mirror files to something that doesn't allow it to be accidentally viewed in-browser
 
 - Scenario to deal with: offline app applies an initial down mirror, then makes local changes, then attempts to reapply _another_ initial down mirror
  - To deal with this, just ignore all non-global records in the second initial down mirror, since they should be identical
