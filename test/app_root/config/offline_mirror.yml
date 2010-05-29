@@ -1,0 +1,7 @@
+# Configuration for the offline_mirror plugin
+# :online_url: The URL for the regular online version of the app 
+# :app_name: The name of the application, to be used in helpful messages in the generated mirror data files.
+# :offline_group_id: If this app is offline, this is the id of the group this installation is for. Leave unspecified if app is online.
+
+:online_url: "http://example.com"
+:app_name: Example Application

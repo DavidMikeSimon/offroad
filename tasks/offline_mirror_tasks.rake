@@ -43,7 +43,7 @@ namespace :offline_mirror do
 	desc "Installs or reinstalls the default offline_mirror configuration files"
 	task :install_conf => :environment do
 		install_template_files(["config"], ["offline_mirror.yml", "offline_database.yml", "offline_test_database.yml"])
-		install_template_files(["config", "environments"], ["offline.rb", "offline-test.rb"])
+		install_template_files(["config", "environments"], ["offline.rb", "offline_test.rb"])
 	end
 	
 	desc "Initializes offline_mirror's internal tables to follow any records already existing in acts_as_mirrored_offline models"
