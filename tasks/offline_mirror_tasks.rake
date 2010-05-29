@@ -12,6 +12,14 @@ namespace :offline_mirror do
 		Rake::Task["db:schema:dump"].invoke if ActiveRecord::Base.schema_format == :ruby
 	end
 
+	def install_template_files(target_dir_array, filenames)
+		filenames.each do |filename|
+			src_path = File.join(File.dirname(__FILE__), "..", "templates", filename)
+			tgt_path = File.join([RAILS_ROOT] + target_dir_array + [filename])
+			cp src_path, tgt_path
+		end
+	end
+	
 	def setup_mirroring_for_model_data(model)
 		model.find_each do |rec|
 			OfflineMirror::SendableRecord::note_record_created_or_updated(model, rec.id)
@@ -34,9 +42,8 @@ namespace :offline_mirror do
 	
 	desc "Installs or reinstalls the default offline_mirror configuration files"
 	task :install_conf => :environment do
-		cp File.join(File.dirname(__FILE__), "..", "templates", "offline_mirror.yml"), File.join(RAILS_ROOT, "config", "offline_mirror.yml")
-		cp File.join(File.dirname(__FILE__), "..", "templates", "offline_database.yml"), File.join(RAILS_ROOT, "config", "offline_database.yml")
-		cp File.join(File.dirname(__FILE__), "..", "templates", "offline.rb"), File.join(RAILS_ROOT, "config", "environments", "offline.rb")
+		install_template_files(["config"], ["offline_mirror.yml", "offline_database.yml", "offline_test_database.yml"])
+		install_template_files(["config", "environments"], ["offline.rb", "offline-test.rb"])
 	end
 	
 	desc "Initializes offline_mirror's internal tables to follow any records already existing in acts_as_mirrored_offline models"
