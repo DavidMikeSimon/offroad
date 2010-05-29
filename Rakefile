@@ -10,13 +10,13 @@ end
 
 Rake::TestTask.new(:online_test) do |t|
 	set_common_test_attrs(t)
-	t.pattern = 'test/(?:online|common)/**/*_test.rb'
+	t.pattern = 'test/{online,common}/**/*_test.rb'
 end
 
 Rake::TestTask.new(:offline_test) do |t|
 	RAILS_ENV = ENV['RAILS_ENV'] = 'offline-test'
 	set_common_test_attrs(t)
-	t.pattern = 'test/(?:offline|common)/**/*_test.rb'
+	t.pattern = 'test/{offline,common}/**/*_test.rb'
 end
 
 desc 'Generate documentation for the offline_mirror plugin.'
