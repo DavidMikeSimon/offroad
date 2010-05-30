@@ -1,29 +1,42 @@
 require 'rake'
-require 'rake/testtask'
 require 'rake/rdoctask'
 
 def run_tests(desc)
-	# Running tests this strange way due to odd ActiveSupport::Dependencies issues.
-	# Maybe will try again to resolve them later, but it's low priority.
-	# Better to have an odd but working test suite than a standard one that's broken...
+	# Doing it this way because the regular rake testtask way had magic that didn't work properly for me
+	# It reloaded the migrations too often, and caused problems with ActiveSupport::Dependencies
   	Dir.glob('test/{unit,functional}/*_test.rb').each do |fn|
-		id = fork
-		if id
-			# In parent; wait for child to finish
-			Process.wait id
-		else
-			# In child; load the tests then finish the rake task, which will cause the tests to run
-			puts ""
-			puts ""
-			puts ""
-			puts "*"*50
-			puts "**** RUNNING %s TEST %s" % [desc, fn]
-			puts "*"*50
-			load fn
-			break
-		end
+		puts ""
+		puts ""
+		puts ""
+		puts "*"*50
+		puts "**** RUNNING %s TEST %s" % [desc, fn]
+		puts "*"*50
+		load fn
 	end
 	puts ""
+end
+
+task :default => [:test]
+
+desc 'Runs both the offline and online tests'
+task :test do
+	[:offline_test, :online_test].each do |taskname|
+		id = fork # Forking so that we can initialize two different Rails environments
+		if id
+			# Parent process; wait for the child process to end
+			Process.wait id
+		else
+			# Child process; run the rake task then end process
+			puts ""
+			puts ""
+			puts ""
+			puts "!"*80
+			puts "!!!! BEGINNING FORKED RAKE TASK %s" % taskname.to_s
+			puts "!"*80
+			Rake::Task[taskname].invoke
+			exit!
+		end
+	end
 end
 
 desc 'Runs the plugin tests in offline mode'

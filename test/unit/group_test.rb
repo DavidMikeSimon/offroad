@@ -6,3 +6,5 @@ class GroupTest < ActiveSupport::TestCase
 		assert Group.find_by_name("An Offline Group").group_offline?, "Offline group should respond true to group_offline?"
 	end
 end
+
+run_test_class GroupTest
