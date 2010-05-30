@@ -4,6 +4,15 @@ require 'test_help'
 require 'test/unit'
 require 'test/unit/ui/console/testrunner'
 
+begin
+	# Try to load the 'redgreen' gem and use it for test output
+	require 'redgreen'
+	TestRunner = Test::Unit::UI::Console::RedGreenTestRunner
+rescue
+	# Stick with the regular TestRunner
+	TestRunner = Test::Unit::UI::Console::TestRunner
+end
+
 # Undo changes to RAILS_ENV made by the prior requires
 silence_warnings {RAILS_ENV = ENV['RAILS_ENV']}
 
@@ -24,7 +33,7 @@ end
 
 # Runs a given test class immediately; this should be at the end of each test file
 def run_test_class(cls)
-	Test::Unit::UI::Console::TestRunner.run(cls)
+	TestRunner.run(cls)
 end
 
 # Convenience methods to create tests that apply to online-mode only, offline-mode only, or to both
