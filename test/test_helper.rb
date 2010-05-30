@@ -6,6 +6,7 @@ require 'test_help'
 silence_warnings {RAILS_ENV = ENV['RAILS_ENV']}
 
 # Run the migrations to set up the in-memory test database
+ActiveRecord::Migration.verbose = false
 ActiveRecord::Migrator.migrate("#{Rails.root}/db/migrate") # Migrations for the testing pseudo-Rails app
 ActiveRecord::Migrator.migrate("#{File.dirname(__FILE__)}/../lib/migrate/") # Plugin-internal tables
 
