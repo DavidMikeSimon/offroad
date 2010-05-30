@@ -3,7 +3,6 @@ require 'rake/rdoctask'
 
 def run_tests(desc)
 	# Doing it this way because the regular rake testtask way had magic that didn't work properly for me
-	# It reloaded the migrations too often, and caused problems with ActiveSupport::Dependencies
   	Dir.glob('test/{unit,functional}/*_test.rb').each do |fn|
 		puts ""
 		puts ""
