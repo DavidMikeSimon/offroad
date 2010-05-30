@@ -2,24 +2,22 @@ require 'rake'
 require 'rake/testtask'
 require 'rake/rdoctask'
 
+def run_tests
+  	Dir.glob('test/{unit,functional}/*_test.rb').each do |fn|
+		load fn
+	end
+end
+
 desc 'Runs the plugin tests in offline mode'
 task :offline_test do
 	RAILS_ENV = ENV["RAILS_ENV"] = 'offline_test'
-	Rake::Task["internal_test"].invoke
+	run_tests
 end
 
 desc 'Runs the plugin tests in online mode'
 task :online_test do
 	RAILS_ENV = ENV["RAILS_ENV"] = 'test'
-	Rake::Task["internal_test"].invoke
-end
-
-Rake::TestTask.new(:internal_test) do |t|
-  	t.libs << 'lib'
-  	t.libs << 'test'
-  	t.verbose = true
-  	t.pattern = 'test/{unit,functional}/*_test.rb'
-	RAILS_ENV = ENV['RAILS_ENV'] = "test"
+	run_tests
 end
 
 desc 'Generate documentation for the offline_mirror plugin.'

@@ -188,7 +188,7 @@ module OfflineMirror
 			
 			#:nodoc#
 			def group_state
-				GroupState.find_or_create_by_group(owning_group)
+				OfflineMirror::GroupState.find_or_create_by_group(owning_group)
 			end
 		end
 		

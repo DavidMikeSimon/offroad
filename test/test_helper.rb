@@ -1,15 +1,13 @@
-# Set the default environment to sqlite3's in_memory database
-#ENV['RAILS_ENV'] ||= 'in_memory'
-
 # Load the Rails environment and testing framework
 require "#{File.dirname(__FILE__)}/app_root/config/environment"
 require 'test_help'
 
-# Undo changes to RAILS_ENV
+# Undo changes to RAILS_ENV made by the prior requires
 silence_warnings {RAILS_ENV = ENV['RAILS_ENV']}
 
-# Run the migrations
-ActiveRecord::Migrator.migrate("#{Rails.root}/db/migrate")
+# Run the migrations to set up the in-memory test database
+ActiveRecord::Migrator.migrate("#{Rails.root}/db/migrate") # Migrations for the testing pseudo-Rails app
+ActiveRecord::Migrator.migrate("#{File.dirname(__FILE__)}/../lib/migrate/") # Plugin-internal tables
 
 # Set default fixture loading properties
 ActiveSupport::TestCase.class_eval do
@@ -20,7 +18,7 @@ ActiveSupport::TestCase.class_eval do
   fixtures :all
 end
 
-# Convenience methods to create tests that apply to online only, offline only, or both
+# Convenience methods to create tests that apply to online-mode only, offline-mode only, or to both
 
 def online_test(name, &block)
 	common_test(name, &block) unless RAILS_ENV.start_with?("offline")
