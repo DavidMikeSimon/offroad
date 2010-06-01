@@ -5,12 +5,12 @@ require 'test/unit'
 require 'test/unit/ui/console/testrunner'
 
 begin
-	# Try to load the 'redgreen' gem and use it for test output
-	require 'redgreen'
-	TestRunner = Test::Unit::UI::Console::RedGreenTestRunner
+  # Try to load the 'redgreen' gem and use it for test output
+  require 'redgreen'
+  TestRunner = Test::Unit::UI::Console::RedGreenTestRunner
 rescue
-	# Stick with the regular TestRunner
-	TestRunner = Test::Unit::UI::Console::TestRunner
+  # Stick with the regular TestRunner
+  TestRunner = Test::Unit::UI::Console::TestRunner
 end
 
 # Undo changes to RAILS_ENV made by the prior requires
@@ -33,19 +33,19 @@ end
 
 # Runs a given test class immediately; this should be at the end of each test file
 def run_test_class(cls)
-	TestRunner.run(cls)
+  TestRunner.run(cls)
 end
 
 # Convenience methods to create tests that apply to online-mode only, offline-mode only, or to both
 
 def online_test(name, &block)
-	common_test(name, &block) unless RAILS_ENV.start_with?("offline")
+  common_test(name, &block) unless RAILS_ENV.start_with?("offline")
 end
 
 def offline_test(name, &block)
-	common_test(name, &block) if RAILS_ENV.start_with?("offline")
+  common_test(name, &block) if RAILS_ENV.start_with?("offline")
 end
 
 def common_test(name, &block)
-	define_method ("test_" + name.to_s).to_sym, &block
+  define_method ("test_" + name.to_s).to_sym, &block
 end
