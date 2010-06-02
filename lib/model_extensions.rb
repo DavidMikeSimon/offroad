@@ -110,7 +110,7 @@ module OfflineMirror
     
     module GroupDataInstanceMethods
       def locked_by_offline_mirror?
-        group_offline? && app_online?
+        OfflineMirror::app_online? && group_offline?
       end
       
       # If called on a group_owned_model, methods below bubble up to the group_base_model
@@ -134,11 +134,13 @@ module OfflineMirror
       end
       
       def group_offline?
-        group_state.offline?
+        not group_online?
       end
       
       def group_online?
-        not group_state.offline?
+        # We cannot get group_state if the record isn't saved...
+        # But, we know that the default state of newly created groups is online
+        new_record? or group_state.online?
       end
       
       def group_offline=(b)
@@ -165,7 +167,7 @@ module OfflineMirror
       
       #:nodoc#
       def note_mirrored_data_destroy
-        OfflineMirror::MirroredRecord::note_record_destroyed(owning_group, self, id) if app_offline?
+        OfflineMirror::MirroredRecord::note_record_destroyed(owning_group, self, id) if OfflineMirror::app_offline?
         return true
       end
       
@@ -174,7 +176,7 @@ module OfflineMirror
         raise ActiveRecord::ReadOnlyRecord if locked_by_offline_mirror?
         
         # If the app is offline, then we need to make sure that this record belongs to the group this offline instance of the app is for
-        if app_offline?
+        if OfflineMirror::app_offline?
           return group_state.app_group_id == OfflineMirror::offline_group_id
         end
         return true
@@ -182,7 +184,7 @@ module OfflineMirror
       
       #:nodoc#
       def note_mirrored_data_save
-        OfflineMirror::MirroredRecord::note_record_created_or_updated(owning_group, self, id) if app_offline?
+        OfflineMirror::MirroredRecord::note_record_created_or_updated(owning_group, self, id) if OfflineMirror::app_offline?
         return true
       end
       

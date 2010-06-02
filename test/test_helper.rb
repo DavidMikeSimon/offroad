@@ -19,11 +19,11 @@ silence_warnings do
   end
 end
 
-# Monkey patch the backtrace filter so all the plugin's code is include
+# Monkey patch the backtrace filter to include all source files in the plugin
 module Test::Unit::Util::BacktraceFilter
   def filter_backtrace(backtrace, prefix = nil)
     backtrace = backtrace.select do |element|
-      element.include? "offline_mirror" or element.start_with? "./"
+      (element.include? "offline_mirror" or element.start_with? "./") and (!element.include? "Rakefile")
     end
     
     common_prefix = nil
@@ -34,7 +34,7 @@ module Test::Unit::Util::BacktraceFilter
           common_prefix.chop!
         end
       else
-        common_prefix = elem
+        common_prefix = String.new(elem)
       end
     end
     

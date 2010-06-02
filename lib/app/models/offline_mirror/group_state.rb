@@ -26,6 +26,10 @@ module OfflineMirror
       return rec
     end
     
+    def online?
+      not offline?
+    end
+    
     private
     
     def self.ensure_group_base_model(obj)
