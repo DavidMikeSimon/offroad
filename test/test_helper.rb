@@ -4,32 +4,26 @@ require 'test_help'
 require 'test/unit'
 require 'test/unit/ui/console/testrunner'
 
-begin
-  # Try to load the 'redgreen' gem and use it for test output
-  require 'redgreen'
-  TestRunner = Test::Unit::UI::Console::RedGreenTestRunner
-rescue
-  # Stick with the regular TestRunner
-  TestRunner = Test::Unit::UI::Console::TestRunner
+silence_warnings do
+  # Undo changes to RAILS_ENV made by the prior requires
+  RAILS_ENV = ENV['RAILS_ENV']
+  
+  begin
+    # Try to load the 'redgreen' gem and use it for test output
+    require 'redgreen'
+    TestRunner = Test::Unit::UI::Console::RedGreenTestRunner
+  rescue
+    # Stick with the regular TestRunner
+    TestRunner = Test::Unit::UI::Console::TestRunner
+  end
 end
 
-# Undo changes to RAILS_ENV made by the prior requires
-silence_warnings {RAILS_ENV = ENV['RAILS_ENV']}
 
 # Run the migrations to set up the in-memory test database
 # TODO Improve test speed by only migrating once per testing environment
 ActiveRecord::Migration.verbose = false
 ActiveRecord::Migrator.migrate("#{Rails.root}/db/migrate") # Migrations for the testing pseudo-Rails app
 ActiveRecord::Migrator.migrate("#{File.dirname(__FILE__)}/../lib/migrate/") # Plugin-internal tables
-
-# Set default fixture loading properties
-ActiveSupport::TestCase.class_eval do
-  self.use_transactional_fixtures = true
-  self.use_instantiated_fixtures = false
-  self.fixture_path = "#{File.dirname(__FILE__)}/fixtures"
-  
-  fixtures :all
-end
 
 # Runs a given test class immediately; this should be at the end of each test file
 def run_test_class(cls)

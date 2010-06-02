@@ -6,13 +6,9 @@ def run_tests(desc)
   Dir.glob('test/{unit,functional}/*_test.rb').each do |fn|
     puts ""
     puts ""
-    puts ""
-    puts "*"*50
-    puts "**** RUNNING %s TEST %s" % [desc, fn]
-    puts "*"*50
+    puts "#"*20 + " " + fn
     load fn
   end
-  puts ""
 end
 
 task :default => [:test]
@@ -27,10 +23,8 @@ task :test do
     else
       # Child process; run the rake task then end process
       puts ""
-      puts ""
-      puts ""
       puts "!"*80
-      puts "!!!! BEGINNING FORKED RAKE TASK %s" % taskname.to_s
+      puts "!!!! BEGINNING FORKED TEST %s" % taskname.to_s
       puts "!"*80
       Rake::Task[taskname].invoke
       exit!
