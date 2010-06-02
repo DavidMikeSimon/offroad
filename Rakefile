@@ -1,17 +1,50 @@
+require 'rubygems'
 require 'rake'
 require 'rake/rdoctask'
 
+begin
+  require 'rcov'
+rescue
+end
+
 def run_tests(desc)
+  analyzer = nil
+  if $rcov_enabled
+    analyzer = Rcov::CodeCoverageAnalyzer.new
+  end
+  
   # Doing it this way because the regular rake testtask way had magic that didn't work properly for me
   Dir.glob('test/{unit,functional}/*_test.rb').each do |fn|
     puts ""
     puts ""
     puts "#"*20 + " " + fn
-    load fn
+    if $rcov_enabled
+      analyzer.run_hooked do
+        load fn
+      end
+    else
+      load fn
+    end
+  end
+                                 
+  puts ""
+  
+  if $rcov_enabled
+    puts "Writing coverage analysis..."
+    formatter = Rcov::HTMLCoverage.new(
+      :ignore => [/\Wruby\W/, /\Wgems\W/, /^test\W/],
+      :destdir => "%s-coverage" % desc.downcase
+    )
+    analyzer.dump_coverage_info([formatter])
   end
 end
 
 task :default => [:test]
+
+desc 'Uses rcov for coverage-testing following tests'
+task :rcov do
+  $rcov_enabled = true
+end
 
 desc 'Runs both the offline and online tests'
 task :test do

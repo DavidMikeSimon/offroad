@@ -6,15 +6,14 @@ require 'test/unit/ui/console/testrunner'
 require 'test/unit/util/backtracefilter'
 
 silence_warnings do
-  # Undo changes to RAILS_ENV made by the prior requires
+  # Undo changes to RAILS_ENV made by Rails' test_help
   RAILS_ENV = ENV['RAILS_ENV']
   
+  # Try to load the 'redgreen' colorizing gem and use it for test output
   begin
-    # Try to load the 'redgreen' gem and use it for test output
     require 'redgreen'
     TestRunner = Test::Unit::UI::Console::RedGreenTestRunner
   rescue
-    # Stick with the regular TestRunner
     TestRunner = Test::Unit::UI::Console::TestRunner
   end
 end
@@ -61,7 +60,7 @@ def run_test_class(cls)
   TestRunner.run(cls)
 end
 
-# Convenience methods to create tests that apply to online-mode only, offline-mode only, or to both
+# Convenience methods to create tests that apply to particular environments
 
 def online_test(name, &block)
   common_test(name, &block) unless RAILS_ENV.start_with?("offline")
