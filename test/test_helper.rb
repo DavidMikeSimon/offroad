@@ -3,6 +3,7 @@ require "#{File.dirname(__FILE__)}/app_root/config/environment"
 require 'test_help'
 require 'test/unit'
 require 'test/unit/ui/console/testrunner'
+require 'test/unit/util/backtracefilter'
 
 silence_warnings do
   # Undo changes to RAILS_ENV made by the prior requires
@@ -18,9 +19,39 @@ silence_warnings do
   end
 end
 
+# Monkey patch the backtrace filter so all the plugin's code is include
+module Test::Unit::Util::BacktraceFilter
+  def filter_backtrace(backtrace, prefix = nil)
+    backtrace = backtrace.select do |element|
+      element.include? "offline_mirror" or element.start_with? "./"
+    end
+    
+    common_prefix = nil
+    backtrace.each do |elem|
+      next if elem.start_with? "./"
+      if common_prefix
+        until elem.start_with? common_prefix
+          common_prefix.chop!
+        end
+      else
+        common_prefix = elem
+      end
+    end
+    
+    return backtrace.map do |element|
+      if element.start_with? common_prefix
+        element[common_prefix.size, element.size]
+      elsif element.start_with? "./"
+        element[2, element.size]
+      else
+        element
+      end
+    end
+  end
+end
 
 # Run the migrations to set up the in-memory test database
-# TODO Improve test speed by only migrating once per testing environment
+# TODO Improve test speed by only migrating once per testing environment, then just clearing tables as needed
 ActiveRecord::Migration.verbose = false
 ActiveRecord::Migrator.migrate("#{Rails.root}/db/migrate") # Migrations for the testing pseudo-Rails app
 ActiveRecord::Migrator.migrate("#{File.dirname(__FILE__)}/../lib/migrate/") # Plugin-internal tables

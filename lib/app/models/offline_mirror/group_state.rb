@@ -14,6 +14,7 @@ module OfflineMirror
     end
     
     def self.find_or_create_by_group(obj, opts = {})
+      raise "Cannot perform OfflineMirror operations on unsaved group records" unless obj.id 
       ensure_group_base_model(obj)
       rec = find_or_initialize_by_app_group_id(obj.id, opts)
       if OfflineMirror::app_offline?
