@@ -13,7 +13,7 @@ def run_tests(desc)
     analyzer = Rcov::CodeCoverageAnalyzer.new
   end
   
-  # Doing it this way because the regular rake testtask way had magic that didn't work properly for me
+  # The regular rake testtask way had magic that didn't work properly for me
   Dir.glob('test/{unit,functional}/*_test.rb').each do |fn|
     puts ""
     puts ""
@@ -49,7 +49,7 @@ end
 desc 'Runs both the offline and online tests'
 task :test do
   [:offline_test, :online_test].each do |taskname|
-    id = fork # Forking so that we can initialize two different Rails environments
+    id = fork # Forking so that we can start different Rails environments
     if id
       # Parent process; wait for the child process to end
       Process.wait id

@@ -20,7 +20,7 @@ module OfflineMirror
       
       case mode
       when :group_owned then
-        raise "For :group_owned_model, need to specify :group_key, an attribute name for this model's owning group" unless opts[:group_key]
+        raise "For :group_owned models, need to specify :group_key, an attribute name for this model's owning group" unless opts[:group_key]
         begin
           raise "The :group_key is invalid, there's no column with that name" unless columns.include?(opts[:group_key].to_s)
         rescue
@@ -29,8 +29,8 @@ module OfflineMirror
             retry
           end
         end
-        OfflineMirror::note_group_owned_model(self)
         set_internal_cattr :offline_mirror_group_key, opts.delete(:group_key).to_sym
+        OfflineMirror::note_group_owned_model(self)
       when :group_base then
         OfflineMirror::note_group_base_model(self)
       when :global then
