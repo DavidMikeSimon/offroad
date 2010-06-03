@@ -159,6 +159,24 @@ class GroupDataTest < ActiveSupport::TestCase
   end
   
   online_test "group owned data cannot hold a foreign key to a record owned by another group" do
+    @another_group = Group.create(:name => "Another Group")
+    @another_group_data = GroupOwnedRecord.create(:description => "Another Piece of Data", :group => @another_group)
+    assert_raise RuntimeError do
+      @online_group_data.parent_id = @another_group_data.id
+      @online_group_data.save!
+    end
+  end
+  
+  online_test "group owned data can hold a foreign key to other group-owned data" do
+    #assert_nothing_raised do
+    #  @more_data = GroupOwnedRecord.create(:description => "More Data", :group => @online_group, :parent => @online_group_data)
+    #end
+  end
+  
+  offline_test "group owned data can hold a foreign key to other group-owned data" do
+    #assert_nothing_raised do
+    #  @more_data = GroupOwnedRecord.create(:description => "More Data", :group => @offline_group, :parent => @offline_group_data)
+    #end
   end
   
   common_test "group owned data cannot hold a foreign key to unmirrored data" do
@@ -166,9 +184,7 @@ class GroupDataTest < ActiveSupport::TestCase
   
   common_test "group owned data can hold a foreign key to global data" do
   end
-  
-  common_test "group owned data can hold a foreign key to other group-owned data" do
-  end
+
 end
 
 run_test_class GroupDataTest
