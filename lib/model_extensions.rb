@@ -193,8 +193,5 @@ module OfflineMirror
         OfflineMirror::GroupState.find_or_create_by_group(owning_group)
       end
     end
-    
-    module GlobalDataInstanceMethods
-    end
   end
 end
