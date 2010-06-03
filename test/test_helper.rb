@@ -63,13 +63,13 @@ end
 # Convenience methods to create tests that apply to particular environments
 
 def online_test(name, &block)
-  common_test(name, &block) unless RAILS_ENV.start_with?("offline")
+  common_test(name.to_s + " in online app", &block) unless RAILS_ENV.start_with?("offline")
 end
 
 def offline_test(name, &block)
-  common_test(name, &block) if RAILS_ENV.start_with?("offline")
+  common_test(name.to_s + " in offline app", &block) if RAILS_ENV.start_with?("offline")
 end
 
 def common_test(name, &block)
-  define_method ("test_" + name.to_s).to_sym, &block
+  define_method ("test_" + name.to_s.gsub(" ", "_")).to_sym, &block
 end
