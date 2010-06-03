@@ -128,13 +128,13 @@ class GroupDataTest < ActiveSupport::TestCase
     end
   end
   
-  offline_test "cannot change id of offline group data" do
-    assert_raise RuntimeError do
+  common_test "cannot change id of offline group data" do
+    assert_raise ActiveRecord::ReadOnlyRecord, RuntimeError do
       @offline_group.id += 1
       @offline_group.save!
     end
     
-    assert_raise RuntimeError do
+    assert_raise ActiveRecord::ReadOnlyRecord, RuntimeError do
       @offline_group_data.id += 1
       @offline_group_data.save!
     end
