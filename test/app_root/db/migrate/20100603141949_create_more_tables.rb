@@ -4,6 +4,7 @@ class CreateMoreTables < ActiveRecord::Migration
       t.string :description
       t.integer :some_integer
       t.integer :group_id
+      t.integer :parent_id
     end
     
     create_table :global_records do |t|

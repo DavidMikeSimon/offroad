@@ -45,10 +45,10 @@ module OfflineMirror
       else
         include GlobalDataInstanceMethods
       end
-      before_destroy :check_mirrored_data_destroy
-      after_destroy :note_mirrored_data_destroy
-      before_save :check_mirrored_data_save
-      after_save :note_mirrored_data_save
+      before_destroy :before_mirrored_data_destroy
+      after_destroy :after_mirrored_data_destroy
+      before_save :before_mirrored_data_save
+      after_save :after_mirrored_data_save
     end
     
     def acts_as_mirrored_offline?
@@ -77,25 +77,25 @@ module OfflineMirror
       # However, marking all of them private would make using them from elsewhere in the plugin troublesome
       
       #:nodoc#
-      def check_mirrored_data_destroy
+      def before_mirrored_data_destroy
         ensure_online
         return true
       end
       
       #:nodoc#
-      def note_mirrored_data_destroy
+      def after_mirrored_data_destroy
         OfflineMirror::MirroredRecord::note_record_destroyed(nil, self, id) if app_online?
         return true
       end
       
       #:nodoc#
-      def check_mirrored_data_save
+      def before_mirrored_data_save
         ensure_online
         return true
       end
       
       #:nodoc#
-      def note_mirrored_data_save
+      def after_mirrored_data_save
         OfflineMirror::MirroredRecord::note_record_created_or_updated(nil, self, id) if app_online?
         return true
       end
@@ -160,31 +160,37 @@ module OfflineMirror
       # However, marking them private makes using them from elsewhere in the plugin troublesome
       
       #:nodoc#
-      def check_mirrored_data_destroy
+      def before_mirrored_data_destroy
+        if offline_mirror_mode == :group_base
+          group_state.update_attribute(:group_being_destroyed, true)
+        end
+        
         if group_offline?
-          # If the app is online, the only thing that can be deleted is the entire group
+          # If the app is online, the only thing that can be deleted is the entire group (possibly with its records)
           # If the app is offline, the only thing that CAN'T be deleted is the group
           raise ActiveRecord::ReadOnlyRecord if OfflineMirror::app_offline? and offline_mirror_mode == :group_base
-          raise ActiveRecord::ReadOnlyRecord if OfflineMirror::app_online? and offline_mirror_mode != :group_base
+          raise ActiveRecord::ReadOnlyRecord if OfflineMirror::app_online? and offline_mirror_mode != :group_base and !group_being_destroyed
         end
+        # In the online app, we would normally block attempts to destroy group_owned data of an offline group
+        # However, if the group itself is being destroyed, then that becomes just fine
         return true
       end
       
       #:nodoc#
-      def note_mirrored_data_destroy
+      def after_mirrored_data_destroy
         OfflineMirror::SendableRecord::note_record_destroyed(self, id) if OfflineMirror::app_offline?
         return true
       end
       
       #:nodoc#
-      def check_mirrored_data_save
+      def before_mirrored_data_save
         raise ActiveRecord::ReadOnlyRecord if locked_by_offline_mirror?
         raise "Cannot change id of offline-mirror tracked records" if changed.include? "id"
         return true
       end
       
       #:nodoc#
-      def note_mirrored_data_save
+      def after_mirrored_data_save
         raise "Invalid owning group" if OfflineMirror::app_offline? && group_state.app_group_id != OfflineMirror::SystemState::offline_group_id
         OfflineMirror::SendableRecord::note_record_created_or_updated(self, id) if OfflineMirror::app_offline?
         return true
@@ -193,6 +199,13 @@ module OfflineMirror
       #:nodoc#
       def group_state
         OfflineMirror::GroupState.find_or_create_by_group(owning_group)
+      end
+      
+      private
+      
+      def group_being_destroyed
+        return true unless owning_group # If the group doesn't exist anymore, then it's pretty well "destroyed"
+        return group_state.group_being_destroyed
       end
     end
   end

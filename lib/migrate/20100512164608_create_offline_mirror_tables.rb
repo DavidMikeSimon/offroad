@@ -8,6 +8,12 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
     create_table :offline_mirror_group_states do |t|
       t.column :app_group_id, :integer, :null => false
       t.column :offline, :boolean, :default => false, :null => false
+      
+      # This is used to allow group_owned records to be destroyed when their parent is.
+      # Without this, groups with :dependent => :destroy would not be allowed on the online app.
+      # This is NOT used to propogate group deletion through mirror files.
+      t.column :group_being_destroyed, :boolean, :default => false, :null => false
+      
       t.column :up_mirror_version, :integer, :default => 0, :null => false
       t.column :down_mirror_version, :integer, :default => 0, :null => false
       t.column :last_installer_downloaded_at, :datetime
