@@ -179,6 +179,7 @@ module OfflineMirror
       #:nodoc#
       def check_mirrored_data_save
         raise ActiveRecord::ReadOnlyRecord if locked_by_offline_mirror?
+        raise "Cannot change id of offline-mirror tracked records" if changed.include? "id"
         return true
       end
       

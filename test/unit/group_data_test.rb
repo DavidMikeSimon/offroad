@@ -128,13 +128,46 @@ class GroupDataTest < ActiveSupport::TestCase
     end
   end
   
-  common_test "cannot change id of group data" do
+  offline_test "cannot change id of offline group data" do
+    assert_raise RuntimeError do
+      @offline_group.id += 1
+      @offline_group.save!
+    end
+    
+    assert_raise RuntimeError do
+      @offline_group_data.id += 1
+      @offline_group_data.save!
+    end
+  end
+  
+  online_test "cannot change id of online group data" do
+    assert_raise RuntimeError do
+      @online_group.id += 1
+      @online_group.save!
+    end
+    
+    assert_raise RuntimeError do
+      @online_group_data.id += 1
+      @online_group_data.save!
+    end
   end
   
   offline_test "cannot set offline group to online" do
     assert_raise RuntimeError do
       @offline_group.group_offline = false
     end
+  end
+  
+  online_test "group owned data cannot hold a foreign key to a record owned by another group" do
+  end
+  
+  common_test "group owned data cannot hold a foreign key to unmirrored data" do
+  end
+  
+  common_test "group owned data can hold a foreign key to global data" do
+  end
+  
+  common_test "group owned data can hold a foreign key to other group-owned data" do
   end
 end
 
