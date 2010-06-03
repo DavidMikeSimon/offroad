@@ -144,6 +144,7 @@ module OfflineMirror
       end
       
       def group_offline=(b)
+        raise "Unable to change a group's offline status in offline app" if OfflineMirror::app_offline?
         group_state.update_attribute(:offline, b)
       end
       

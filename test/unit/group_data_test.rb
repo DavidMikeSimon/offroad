@@ -11,11 +11,12 @@ class GroupDataTest < ActiveSupport::TestCase
     end
     
     @offline_group = Group.create(:name => "An Offline Group")
-    @offline_group.group_offline = true
     @offline_group_data = GroupOwnedRecord.create(:description => "Some Offline Data", :group => @offline_group)
     
     if OfflineMirror::app_online?
-      @online_group = Group.create(:name => "An Online Group")
+      @offline_group.group_offline = true
+      
+      @online_group = Group.create(:name => "An Online Group") # Will be online by default (tested below)
       @online_group_data = GroupOwnedRecord.create(:description => "Some Online Data", :group => @online_group)
     end
   end
@@ -23,6 +24,10 @@ class GroupDataTest < ActiveSupport::TestCase
   online_test "a new group is online by default" do
     g = Group.create(:name => "This Should Be Online")
     assert g.group_online?, "Newly created group should be online"
+  end
+  
+  offline_test "group is offline by default" do
+    assert @offline_group.group_offline?, "Newly created group should be offline"
   end
   
   online_test "online group data has expected offline status" do
@@ -127,6 +132,9 @@ class GroupDataTest < ActiveSupport::TestCase
   end
   
   offline_test "cannot set offline group to online" do
+    assert_raise RuntimeError do
+      @offline_group.group_offline = false
+    end
   end
 end
 
