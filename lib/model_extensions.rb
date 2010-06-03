@@ -160,8 +160,12 @@ module OfflineMirror
       
       #:nodoc#
       def check_mirrored_data_destroy
-        # If the group is offline but the app is online, the only thing that can be deleted is the entire group
-        raise ActiveRecord::ReadOnlyRecord if (locked_by_offline_mirror? and offline_mirror_mode != :group_base)
+        if group_offline?
+          # If the app is online, the only thing that can be deleted is the entire group
+          # If the app is offline, the only thing that CAN'T be deleted is the group
+          raise ActiveRecord::ReadOnlyRecord if OfflineMirror::app_offline? and offline_mirror_mode == :group_base
+          raise ActiveRecord::ReadOnlyRecord if OfflineMirror::app_online? and offline_mirror_mode != :group_base
+        end
         return true
       end
       

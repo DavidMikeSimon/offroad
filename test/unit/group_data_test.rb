@@ -9,10 +9,8 @@ class GroupDataTest < ActiveSupport::TestCase
       }
       OfflineMirror::SystemState::create(opts) or raise "Unable to create offline-mode testing SystemState"
     end
+    
     @offline_group = Group.create(:name => "An Offline Group")
-    if OfflineMirror::app_offline? && @offline_group.id != OfflineMirror::SystemState::offline_group_id
-      raise "System state offline group id mismatch" 
-    end
     @offline_group.group_offline = true
     @offline_group_data = GroupOwnedRecord.create(:description => "Some Offline Data", :group => @offline_group)
     
@@ -94,22 +92,35 @@ class GroupDataTest < ActiveSupport::TestCase
   end
   
   offline_test "offline groups unlocked and writable" do
-    assert_equal false, @offline_group_data.locked_by_offline_mirror?
+    assert_equal false, @offline_group.locked_by_offline_mirror?
     assert_nothing_raised do
-      @offline_group_data.save
+      @offline_group.save!
     end
   end
   
   offline_test "offline group owned data unlocked and writable" do
+    assert_equal false, @offline_group_data.locked_by_offline_mirror?
+    assert_nothing_raised do
+      @offline_group_data.save!
+    end
   end
   
-  offline_test "offline group owned data deletable" do
+  offline_test "offline group owned data destroyable" do
+    assert_nothing_raised do
+      @offline_group_data.destroy
+    end
   end
   
-  offline_test "cannot create new groups" do
+  offline_test "cannot create another group" do
+    assert_raise RuntimeError do
+      Group.create(:name => "Another Offline Group?")
+    end
   end
   
-  offline_test "cannot delete the group" do
+  offline_test "cannot destroy the group" do
+    assert_raise ActiveRecord::ReadOnlyRecord do
+      @offline_group.destroy
+    end
   end
   
   common_test "cannot change id of group data" do
