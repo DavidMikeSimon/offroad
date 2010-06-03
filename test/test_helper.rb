@@ -21,8 +21,8 @@ end
 # Monkey patch the backtrace filter to include all source files in the plugin
 module Test::Unit::Util::BacktraceFilter
   def filter_backtrace(backtrace, prefix = nil)
-    backtrace = backtrace.select do |element|
-      (element.include? "offline_mirror" or element.start_with? "./") and (!element.include? "Rakefile")
+    backtrace = backtrace.select do |e|
+      (e.include? "offline_mirror" or e.start_with? "./") and (!e.include? "Rakefile")
     end
     
     common_prefix = nil
@@ -38,7 +38,7 @@ module Test::Unit::Util::BacktraceFilter
     end
     
     return backtrace.map do |element|
-      if element.start_with? common_prefix
+      if element.start_with? common_prefix && common_prefix.size < element.size
         element[common_prefix.size, element.size]
       elsif element.start_with? "./"
         element[2, element.size]

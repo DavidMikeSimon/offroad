@@ -167,24 +167,20 @@ module OfflineMirror
       
       #:nodoc#
       def note_mirrored_data_destroy
-        OfflineMirror::MirroredRecord::note_record_destroyed(owning_group, self, id) if OfflineMirror::app_offline?
+        OfflineMirror::SendableRecord::note_record_destroyed(self, id) if OfflineMirror::app_offline?
         return true
       end
       
       #:nodoc#
       def check_mirrored_data_save
         raise ActiveRecord::ReadOnlyRecord if locked_by_offline_mirror?
-        
-        # If the app is offline, then we need to make sure that this record belongs to the group this offline instance of the app is for
-        if OfflineMirror::app_offline?
-          return group_state.app_group_id == OfflineMirror::offline_group_id
-        end
         return true
       end
       
       #:nodoc#
       def note_mirrored_data_save
-        OfflineMirror::MirroredRecord::note_record_created_or_updated(owning_group, self, id) if OfflineMirror::app_offline?
+        raise "Invalid owning group" if OfflineMirror::app_offline? && group_state.app_group_id != OfflineMirror::SystemState::offline_group_id
+        OfflineMirror::SendableRecord::note_record_created_or_updated(self, id) if OfflineMirror::app_offline?
         return true
       end
       

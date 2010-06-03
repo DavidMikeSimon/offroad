@@ -2,25 +2,39 @@ require File.dirname(__FILE__) + '/../test_helper'
 
 class GroupDataTest < ActiveSupport::TestCase
   def setup
-    @online_group = Group.create(:name => "An Online Group")
-    @online_group_data = GroupOwnedRecord.create(:description => "Some Online Data", :group => @online_group)
-    
+    if OfflineMirror::app_offline?
+      opts = {
+        :offline_group_id => 1,
+        :current_mirror_version => 1
+      }
+      OfflineMirror::SystemState::create(opts) or raise "Unable to create offline-mode testing SystemState"
+    end
     @offline_group = Group.create(:name => "An Offline Group")
+    if OfflineMirror::app_offline? && @offline_group.id != OfflineMirror::SystemState::offline_group_id
+      raise "System state offline group id mismatch" 
+    end
     @offline_group.group_offline = true
     @offline_group_data = GroupOwnedRecord.create(:description => "Some Offline Data", :group => @offline_group)
+    
+    if OfflineMirror::app_online?
+      @online_group = Group.create(:name => "An Online Group")
+      @online_group_data = GroupOwnedRecord.create(:description => "Some Online Data", :group => @online_group)
+    end
   end
   
-  common_test "a new group is online by default" do
+  online_test "a new group is online by default" do
     g = Group.create(:name => "This Should Be Online")
     assert g.group_online?, "Newly created group should be online"
   end
   
-  common_test "group data has expected offline status" do
+  online_test "online group data has expected offline status" do
     assert @online_group.group_online?, "Groups which are in online mode should return true to group_online?"
     assert_equal false, @online_group.group_offline?, "Groups in online mode should return false to group_offline?"
     assert @online_group_data.group_online?, "Data belonging to groups which are in online mode should return true to group_online?"
     assert_equal false, @online_group_data.group_offline?, "Data belonging to groups in online mode should return false to group_offline?"
-    
+  end
+  
+  common_test "offline group data has expected offline status" do
     assert @offline_group.group_offline?, "Groups which have been set offline should return true to group_offline?"
     assert_equal false, @offline_group.group_online?, "Groups which have been set offline should return false to group_online?"
     assert @offline_group_data.group_offline?, "Data belonging to groups which have been set offline should return true to group_offline?"
@@ -35,17 +49,27 @@ class GroupDataTest < ActiveSupport::TestCase
     assert_equal false, GroupOwnedRecord.offline_mirror_global_data?, "GroupData model should return false to offline_mirror_global_data?"
   end
   
-  online_test "only offline group data models locked and unsaveable" do
+  online_test "only offline groups locked and unsaveable" do
     assert @offline_group.locked_by_offline_mirror?, "Offline groups should be locked"
-    assert @offline_group_data.locked_by_offline_mirror?, "Offline group data should be locked"
     assert_raise ActiveRecord::ReadOnlyRecord do
       @offline_group.save!
     end
     
     assert_equal false, @online_group.locked_by_offline_mirror?, "Online groups should not be locked"
-    assert_equal false, @online_group_data.locked_by_offline_mirror?, "Online group data should not be locked"
     assert_nothing_raised do
       @online_group.save!
+    end
+  end
+  
+  online_test "only offline group owned data locked and unsaveable" do
+    assert @offline_group_data.locked_by_offline_mirror?, "Offline group data should be locked"
+    assert_raise ActiveRecord::ReadOnlyRecord do
+      @offline_group_data.save!
+    end
+    
+    assert_equal false, @online_group_data.locked_by_offline_mirror?, "Online group data should not be locked"
+    assert_nothing_raised do
+      @online_group_data.save!
     end
   end
   
@@ -59,9 +83,9 @@ class GroupDataTest < ActiveSupport::TestCase
     end
   end
   
-  online_test "offline group owned data cannot be destroyed" do
-    assert_nothing_raised do
-      @offline_group.destroy
+  online_test "only offline group owned data cannot be destroyed" do
+    assert_raise ActiveRecord::ReadOnlyRecord do
+      @offline_group_data.destroy
     end
     
     assert_nothing_raised do
@@ -69,13 +93,23 @@ class GroupDataTest < ActiveSupport::TestCase
     end
   end
   
-  offline_test "offline group data models unlocked and writable" do
+  offline_test "offline groups unlocked and writable" do
+    assert_equal false, @offline_group_data.locked_by_offline_mirror?
+    assert_nothing_raised do
+      @offline_group_data.save
+    end
+  end
+  
+  offline_test "offline group owned data unlocked and writable" do
+  end
+  
+  offline_test "offline group owned data deletable" do
   end
   
   offline_test "cannot create new groups" do
   end
   
-  offline_test "cannot delete groups" do
+  offline_test "cannot delete the group" do
   end
   
   common_test "cannot change id of group data" do

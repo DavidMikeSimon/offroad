@@ -4,7 +4,7 @@ module OfflineMirror
   
   # Returns true if the app is in offline mode (running on a local system without access to the main server)
   def self.app_offline?
-    RAILS_ENV == "offline"
+    RAILS_ENV.start_with? "offline"
   end
   
   # Returns true if the app is in online mode (or in other words, this is the main server)
@@ -28,17 +28,11 @@ module OfflineMirror
     @@config = {}
   end
   
-  # Returns the ID of the record of the group base model that this app is in charge of
-  # This is only applicable if the app is offline
-  def self.offline_group_id
-    raise "'Offline group' is only meaningful if the app is offline" unless app_offline?
-    @@config[:offline_group_id] or raise "No offline group id specified in config"
-  end
-  
   # Returns the record of the group base model that this app is in charge of
   # This is only applicable if the app is offline
   def self.offline_group
-    @@group_base_model.find(offline_group_id)
+    raise "'Offline group' is only meaningful if the app is offline" unless app_offline?
+    @@group_base_model.find(OfflineMirror::SystemState::offline_group_id)
   end
   
   private

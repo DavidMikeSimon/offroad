@@ -8,10 +8,13 @@ module OfflineMirror
   class SystemState < ActiveRecord::Base
     set_table_name "offline_mirror_system_state"
     
-    # Create class methods: attribute getters for the columns that contain system settings
+    # Create validators and class-level attribute getters for the columns that contain system settings
     extend SingleForwardable
-    for column in content_columns
-      def_delegator :instance_record, column.name.to_sym
+    for column in columns
+      sym = column.name.to_sym
+      next if sym == :id
+      validates_presence_of sym
+      def_delegator :instance_record, sym
     end
     
     # Returns the singleton record, first creating it if necessary
@@ -20,8 +23,8 @@ module OfflineMirror
       if sys_state
         return sys_state
       else
-        current_mirror_version = OfflineMirror::app_online? ? 1 : (OfflineMirror::offline_group_state.up_mirror_version + 1)
-        return create(:current_mirror_version => current_mirror_version)
+        raise "Cannot auto-generate system settings on offline app" if OfflineMirror::app_offline?
+        return create(:current_mirror_version => 1)
       end
     end
   end
