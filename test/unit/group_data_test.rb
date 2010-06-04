@@ -18,6 +18,12 @@ class GroupDataTest < ActiveSupport::TestCase
       
       @online_group = Group.create(:name => "An Online Group") # Will be online by default (tested below)
       @online_group_data = GroupOwnedRecord.create(:description => "Some Online Data", :group => @online_group)
+      
+      @editable_group = @online_group
+      @editable_group_data = @online_group_data
+    else
+      @editable_group = @offline_group
+      @editable_group_data = @offline_group_data
     end
   end
   
@@ -158,31 +164,30 @@ class GroupDataTest < ActiveSupport::TestCase
     end
   end
   
-  online_test "group owned data cannot hold a foreign key to a record owned by another group" do
+  online_test "group data cannot hold a foreign key to a record owned by another group" do
+    # This is an online test because the concept of "another group" doesn't fly in offline mode
     @another_group = Group.create(:name => "Another Group")
     @another_group_data = GroupOwnedRecord.create(:description => "Another Piece of Data", :group => @another_group)
+    assert_raise RuntimeError do
+      @online_group.favorite_id = @another_group_data.id
+      @online_group.save!
+    end
     assert_raise RuntimeError do
       @online_group_data.parent_id = @another_group_data.id
       @online_group_data.save!
     end
   end
   
-  online_test "group owned data can hold a foreign key to other group-owned data" do
+  common_test "group data can hold a foreign key to data owned by the same group" do
     #assert_nothing_raised do
-    #  @more_data = GroupOwnedRecord.create(:description => "More Data", :group => @online_group, :parent => @online_group_data)
+    #  @more_data = GroupOwnedRecord.create(:description => "More Data", :group => @editable_group, :parent => @editable_group_data)
     #end
   end
   
-  offline_test "group owned data can hold a foreign key to other group-owned data" do
-    #assert_nothing_raised do
-    #  @more_data = GroupOwnedRecord.create(:description => "More Data", :group => @offline_group, :parent => @offline_group_data)
-    #end
+  common_test "group data can hold a foreign key to global data" do
   end
   
-  common_test "group owned data cannot hold a foreign key to unmirrored data" do
-  end
-  
-  common_test "group owned data can hold a foreign key to global data" do
+  common_test "group data cannot hold a foreign key to unmirrored data" do
   end
 
 end

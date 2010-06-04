@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'rake'
 require 'rake/rdoctask'
+require 'cgi'
 
 begin
   require 'rcov'
@@ -10,7 +11,15 @@ end
 def run_tests(desc)
   analyzer = nil
   if $rcov_enabled
-    analyzer = Rcov::CodeCoverageAnalyzer.new
+    begin
+      fh = File.open($rcov_data_filename)
+      analyzer = Marshal.load(fh)
+      fh.close
+      puts "*** Loaded prior rcov data for aggregation"
+    rescue
+      analyzer = Rcov::CodeCoverageAnalyzer.new
+      puts "*** Created new rcov data"
+    end
   end
   
   # The regular rake testtask way had magic that didn't work properly for me
@@ -26,17 +35,31 @@ def run_tests(desc)
       load fn
     end
   end
-                                 
-  puts ""
   
   if $rcov_enabled
-    puts "Writing coverage analysis..."
-    formatter = Rcov::HTMLCoverage.new(
-      :ignore => [/\Wruby\W/, /\Wgems\W/, /^test\W/],
-      :destdir => "%s-coverage" % desc.downcase
-    )
-    analyzer.dump_coverage_info([formatter])
+    fh = File.open($rcov_data_filename, "w")
+    Marshal.dump(analyzer, fh)
+    fh.close
+    puts "*** Saved rcov data"
   end
+  
+  puts ""
+end
+
+def coverage_report
+  return unless $rcov_enabled
+  
+  puts "Writing coverage analysis..."
+  formatter = Rcov::HTMLCoverage.new(
+    :ignore => [/\Wruby\W/, /\Wgems\W/, /^test\W/],
+    :destdir => "coverage"
+  )
+  fh = File.open($rcov_data_filename)
+  analyzer = Marshal.load(fh)
+  fh.close
+  analyzer.dump_coverage_info([formatter])
+  
+  File.delete($rcov_data_filename)
 end
 
 task :default => [:test]
@@ -44,11 +67,12 @@ task :default => [:test]
 desc 'Uses rcov for coverage-testing following tests'
 task :rcov do
   $rcov_enabled = true
+  $rcov_data_filename = "rcov-%u.tmp" % Time.now.to_i
 end
 
 desc 'Runs both the offline and online tests'
 task :test do
-  [:offline_test, :online_test].each do |taskname|
+  ["OFFLINE", "ONLINE"].each do |desc|
     id = fork # Forking so that we can start different Rails environments
     if id
       # Parent process; wait for the child process to end
@@ -57,24 +81,36 @@ task :test do
       # Child process; run the rake task then end process
       puts ""
       puts "!"*80
-      puts "!!!! BEGINNING FORKED TEST %s" % taskname.to_s
+      puts "!!!! BEGINNING FORKED TEST %s" % desc.to_s
       puts "!"*80
-      Rake::Task[taskname].invoke
+      
+      case desc
+      when "OFFLINE"
+        RAILS_ENV = ENV["RAILS_ENV"] = "offline_test"
+      when "ONLINE"
+        RAILS_ENV = ENV["RAILS_ENV"] = "test"
+      end
+      
+      run_tests(desc)
       exit!
     end
   end
+  
+  coverage_report
 end
 
 desc 'Runs the plugin tests in offline mode'
 task :offline_test do
-  RAILS_ENV = ENV["RAILS_ENV"] = 'offline_test'
+  RAILS_ENV = ENV["RAILS_ENV"] = "offline_test"
   run_tests("OFFLINE")
+  coverage_report
 end
 
 desc 'Runs the plugin tests in online mode'
 task :online_test do
-  RAILS_ENV = ENV["RAILS_ENV"] = 'test'
+  RAILS_ENV = ENV["RAILS_ENV"] = "test"
   run_tests("ONLINE")
+  coverage_report
 end
 
 desc 'Generate documentation for the offline_mirror plugin.'
