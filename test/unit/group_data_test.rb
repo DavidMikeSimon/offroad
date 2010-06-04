@@ -169,19 +169,21 @@ class GroupDataTest < ActiveSupport::TestCase
     @another_group = Group.create(:name => "Another Group")
     @another_group_data = GroupOwnedRecord.create(:description => "Another Piece of Data", :group => @another_group)
     assert_raise RuntimeError do
-      @online_group.favorite_id = @another_group_data.id
+      @online_group.favorite = @another_group_data
       @online_group.save!
     end
     assert_raise RuntimeError do
-      @online_group_data.parent_id = @another_group_data.id
+      @online_group_data.parent = @another_group_data
       @online_group_data.save!
     end
   end
   
   common_test "group data can hold a foreign key to data owned by the same group" do
-    #assert_nothing_raised do
-    #  @more_data = GroupOwnedRecord.create(:description => "More Data", :group => @editable_group, :parent => @editable_group_data)
-    #end
+    assert_nothing_raised do
+      more_data = GroupOwnedRecord.create(:description => "More Data", :group => @editable_group, :parent => @editable_group_data)
+      @editable_group.favorite = more_data
+      @editable_group.save
+    end
   end
   
   common_test "group data can hold a foreign key to global data" do
