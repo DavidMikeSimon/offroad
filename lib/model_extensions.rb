@@ -115,11 +115,11 @@ module OfflineMirror
       
       # If called on a group_owned_model, methods below bubble up to the group_base_model
       
+      # Returns a hash of information about the last known state of the group in the offline app
       def last_known_status
-        raise "This method is only for offline group data accessed from an online app" unless locked_by_offline_mirror?
+        raise "This method is only for offline groups" if group_online?
         s = group_state
         fields_of_interest = [
-          :offline,
           :last_installer_downloaded_at,
           :last_installation_at,
           :last_down_mirror_created_at,

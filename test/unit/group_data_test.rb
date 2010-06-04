@@ -210,6 +210,17 @@ class GroupDataTest < ActiveSupport::TestCase
       @editable_group_data.save!
     end
   end
+  
+  online_test "last_known_status is not available for online groups" do
+    assert_raise RuntimeError do
+      status = @online_group.last_known_status
+    end
+  end
+  
+  common_test "last_known_status is available for offline groups" do
+    status = @offline_group.last_known_status
+    assert status
+  end
 
 end
 
