@@ -185,6 +185,7 @@ module OfflineMirror
       #:nodoc#
       def before_mirrored_data_save
         raise ActiveRecord::ReadOnlyRecord if locked_by_offline_mirror?
+        
         changed.each do |colname|
           raise "Cannot change id of offline-mirror tracked records" if colname == "id"
           if colname.end_with? "_id"
@@ -193,13 +194,15 @@ module OfflineMirror
               obj = send(accessor_name)
               if obj.class.acts_as_mirrored_offline?
                 if obj.class.offline_mirror_group_data? && obj.owning_group.id != owning_group.id
-                  raise "Invalid %s: Group data cannot hold a foreign key to data owned by another group" % colname
+                  raise "Invalid #{colname}: Group data cannot hold a foreign key to data owned by another group"
                 end
               else
+                raise "Invalid #{colname}: Group data cannot hold a foreign key to unmirrored data"
               end
             end
           end
         end
+        
         return true
       end
       

@@ -188,16 +188,27 @@ class GroupDataTest < ActiveSupport::TestCase
   
   online_test "group data can hold a foreign key to global data" do
     # This is an online test because an offline app cannot create global records
+    global_data = GlobalRecord.create(:title => "Some Global Data")
     assert_nothing_raised do
-      global_data = GlobalRecord.create(:title => "Some Global Data")
       @editable_group.global_record = global_data
       @editable_group.save!
+    end
+    assert_nothing_raised do
       @editable_group_data.global_record = global_data
       @editable_group_data.save!
     end
   end
   
   common_test "group data cannot hold a foreign key to unmirrored data" do
+    unmirrored_data = UnmirroredRecord.create(:content => "Some Unmirrored Data")
+    assert_raise RuntimeError do
+      @editable_group.unmirrored_record = unmirrored_data
+      @editable_group.save!
+    end
+    assert_raise RuntimeError do
+      @editable_group_data.unmirrored_record = unmirrored_data
+      @editable_group_data.save!
+    end
   end
 
 end
