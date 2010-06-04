@@ -3,6 +3,8 @@ class CreateGroups < ActiveRecord::Migration
     create_table :groups do |t|
       t.string :name
       t.integer :favorite_id
+      t.integer :unmirrored_record_id
+      t.integer :global_record_id
       t.timestamps
     end
   end

@@ -84,7 +84,7 @@ module OfflineMirror
       
       #:nodoc#
       def after_mirrored_data_destroy
-        OfflineMirror::MirroredRecord::note_record_destroyed(nil, self, id) if app_online?
+        OfflineMirror::SendableRecord::note_record_destroyed(self, id) if OfflineMirror::app_online?
         return true
       end
       
@@ -96,7 +96,7 @@ module OfflineMirror
       
       #:nodoc#
       def after_mirrored_data_save
-        OfflineMirror::MirroredRecord::note_record_created_or_updated(nil, self, id) if app_online?
+        OfflineMirror::SendableRecord::note_record_created_or_updated(self, id) if OfflineMirror::app_online?
         return true
       end
       
