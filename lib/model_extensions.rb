@@ -12,8 +12,8 @@ module OfflineMirror
       set_internal_cattr :offline_mirror_permission_checkers, {}
       [:create_permitted?, :update_permitted?, :delete_permitted?].each do |o|
         if opts[o]
-          raise "Can't specify " + inspect(o) + " for non-group models" unless offline_mirror_group_data?
-          # FIXME: Make use of these when loading mirror data
+          raise "Can't specify #{o.inspect} for non-group models" unless offline_mirror_group_data?
+          # TODO: Use these when loading mirror data
           offline_mirror_permission_checkers[o] = opts.delete(o)
         end
       end
@@ -45,6 +45,7 @@ module OfflineMirror
       else
         include GlobalDataInstanceMethods
       end
+      include CommonInstanceMethods
       before_destroy :before_mirrored_data_destroy
       after_destroy :after_mirrored_data_destroy
       before_save :before_mirrored_data_save
@@ -72,12 +73,66 @@ module OfflineMirror
       class_inheritable_reader name
     end
     
+    module CommonInstanceMethods
+      # This method allows a record to be saved or destroyed *once*, even when
+      # this would otherwise not be allowed due to i.e. trying to edit an
+      # offline group's data in the online app, trying to edit a global record
+      # in the offline app, etc. Do not use this method unless it's really
+      # necessary.
+      def bypass_offline_mirror_readonly_checks
+        @offline_mirror_readonly_bypassed = true
+      end
+      
+      #:nodoc#
+      def checks_bypassed?
+        if @offline_mirror_readonly_bypassed
+          @offline_mirror_readonly_bypassed = false
+          return true
+        end
+        return false
+      end
+      
+      #:nodoc#
+      def verify_changed_columns
+        changed.each do |colname|
+          raise "Cannot change id of offline-mirror tracked records" if colname == "id"
+          
+          next unless colname.end_with? "_id"
+          accessor_name = colname[0, colname.size-3]
+          next unless respond_to? accessor_name
+          obj = send(accessor_name)
+          
+          if self.class.offline_mirror_group_data?
+            if obj.class.acts_as_mirrored_offline?
+              if obj.class.offline_mirror_group_data? && obj.owning_group.id != owning_group.id
+                raise "Invalid #{colname}: Group data cannot hold a foreign key to data owned by another group"
+              end
+            else
+              raise "Invalid #{colname}: Group data cannot hold a foreign key to unmirrored data"
+            end
+          elsif self.class.offline_mirror_global_data?
+            if obj.class.acts_as_mirrored_offline?
+              unless obj.class.offline_mirror_global_data?
+                raise "Invalid #{colname}: Global mirrored data cannot hold a foreign key to group data"
+              end
+            else
+              raise "Invalid #{colname}: Global mirrored data cannot hold a foreign key to unmirrored data"
+            end
+          else
+            raise "Unknown mirrored data type"
+          end
+        end
+      end
+      
+    end
+    
     module GlobalDataInstanceMethods
       # Methods below this point are only to be used internally by OfflineMirror
       # However, marking all of them private would make using them from elsewhere in the plugin troublesome
       
       #:nodoc#
       def before_mirrored_data_destroy
+        return true if checks_bypassed?
         ensure_online
         return true
       end
@@ -90,7 +145,9 @@ module OfflineMirror
       
       #:nodoc#
       def before_mirrored_data_save
+        return true if checks_bypassed?
         ensure_online
+        verify_changed_columns
         return true
       end
       
@@ -115,7 +172,7 @@ module OfflineMirror
       
       # If called on a group_owned_model, methods below bubble up to the group_base_model
       
-      # Returns a hash of information about the last known state of the group in the offline app
+      # Returns a hash with the latest information about this group in the offline app
       def last_known_status
         raise "This method is only for offline groups" if group_online?
         s = group_state
@@ -152,7 +209,7 @@ module OfflineMirror
         case offline_mirror_mode
         when :group_owned then OfflineMirror::group_base_model.find_by_id(self.send offline_mirror_group_key)
         when :group_base then self
-        else raise "Unable to find owning group"
+        else raise "Invalid offline_mirror_mode %s" % offline_mirror_mode.to_s
         end
       end
       
@@ -164,6 +221,8 @@ module OfflineMirror
         if offline_mirror_mode == :group_base
           group_state.update_attribute(:group_being_destroyed, true)
         end
+        
+        return true if checks_bypassed?
         
         if group_offline?
           # If the app is online, the only thing that can be deleted is the entire group (possibly with its records)
@@ -184,25 +243,9 @@ module OfflineMirror
       
       #:nodoc#
       def before_mirrored_data_save
+        return true if checks_bypassed?
         raise ActiveRecord::ReadOnlyRecord if locked_by_offline_mirror?
-        
-        changed.each do |colname|
-          raise "Cannot change id of offline-mirror tracked records" if colname == "id"
-          if colname.end_with? "_id"
-            accessor_name = colname[0, colname.size-3]
-            if respond_to? accessor_name
-              obj = send(accessor_name)
-              if obj.class.acts_as_mirrored_offline?
-                if obj.class.offline_mirror_group_data? && obj.owning_group.id != owning_group.id
-                  raise "Invalid #{colname}: Group data cannot hold a foreign key to data owned by another group"
-                end
-              else
-                raise "Invalid #{colname}: Group data cannot hold a foreign key to unmirrored data"
-              end
-            end
-          end
-        end
-        
+        verify_changed_columns
         return true
       end
       

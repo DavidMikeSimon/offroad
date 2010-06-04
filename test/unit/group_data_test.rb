@@ -22,6 +22,8 @@ class GroupDataTest < ActiveSupport::TestCase
       @editable_group = @online_group
       @editable_group_data = @online_group_data
     else
+      raise "Test id mismatch" unless @offline_group.id == OfflineMirror::SystemState::current_mirror_version
+      
       @editable_group = @offline_group
       @editable_group_data = @offline_group_data
     end
@@ -54,8 +56,8 @@ class GroupDataTest < ActiveSupport::TestCase
     assert Group.offline_mirror_group_data?, "Group model should return true to offline_mirror_group_data?"
     assert_equal false, Group.offline_mirror_global_data?, "Group model should return false to offline_mirror_global_data?"
     
-    assert GroupOwnedRecord.offline_mirror_group_data?, "GroupData model should return true to offline_mirror_group_data?"
-    assert_equal false, GroupOwnedRecord.offline_mirror_global_data?, "GroupData model should return false to offline_mirror_global_data?"
+    assert GroupOwnedRecord.offline_mirror_group_data?, "Group-owned model should return true to offline_mirror_group_data?"
+    assert_equal false, GroupOwnedRecord.offline_mirror_global_data?, "Group-owned model should return false to offline_mirror_global_data?"
   end
   
   online_test "only offline groups locked and unsaveable" do
