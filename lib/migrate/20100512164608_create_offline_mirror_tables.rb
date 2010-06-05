@@ -42,7 +42,7 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
       t.column :mirror_version, :integer, :default => 0, :null => false
     end
     # This index is for locating the MirroredRecord model for any given local app record
-    add_index :offline_mirror_sendable_records, [:local_record_id, :model_state_id], :unique => true
+    add_index :offline_mirror_sendable_records, [:local_record_id, :model_state_id]
     # This index is for generating mirror files, where for each model we need to find everything above a given mirror_version
     add_index :offline_mirror_sendable_records, [:model_state_id, :mirror_version]
   end

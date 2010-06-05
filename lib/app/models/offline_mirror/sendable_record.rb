@@ -8,15 +8,17 @@ module OfflineMirror
     belongs_to :model_state
     
     def self.note_record_destroyed(model, local_id)
+      return unless noteworthy_model?(model)
       rec = find_or_initialize_by_model_and_id(model, local_id)
-      rec.mirror_version = OfflineMirror::SystemState::current_mirror_version
+      rec.mark_as_changed
       rec.local_record_id = 0
       rec.save!
     end
     
     def self.note_record_created_or_updated(model, local_id)
+      return unless noteworthy_model?(model)
       rec = find_or_initialize_by_model_and_id(model, local_id)
-      rec.mirror_version = OfflineMirror::SystemState::current_mirror_version
+      rec.mark_as_changed
       rec.save!
     end
     
@@ -29,13 +31,24 @@ module OfflineMirror
       if rec
         return rec
       else
-        return new(
-        :model_state_id => model_state_id,
-        :local_record_id => local_id,
-        :remote_record_id => 0,
-        :mirror_version => OfflineMirror::SystemState::current_mirror_version
+        rec = new(
+          :model_state_id => model_state_id,
+          :local_record_id => local_id,
+          :remote_record_id => 0
         )
+        rec.mark_as_changed
+        return rec
       end
+    end
+    
+    def mark_as_changed
+      mirror_version = OfflineMirror::SystemState::current_mirror_version
+    end
+    
+    private
+    
+    def self.noteworthy_model?(model)
+      model.acts_as_mirrored_offline?
     end
   end
 end

@@ -10,7 +10,9 @@ class GroupDataTest < ActiveSupport::TestCase
       OfflineMirror::SystemState::create(opts) or raise "Unable to create offline-mode testing SystemState"
     end
     
-    @offline_group = Group.create(:name => "An Offline Group")
+    @offline_group = Group.new(:name => "An Offline Group")
+    @offline_group.bypass_offline_mirror_readonly_checks
+    @offline_group.save!
     @offline_group_data = GroupOwnedRecord.create(:description => "Some Offline Data", :group => @offline_group)
     
     if OfflineMirror::app_online?

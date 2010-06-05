@@ -118,8 +118,6 @@ module OfflineMirror
             else
               raise "Invalid #{colname}: Global mirrored data cannot hold a foreign key to unmirrored data"
             end
-          else
-            raise "Unknown mirrored data type"
           end
         end
       end
@@ -139,7 +137,7 @@ module OfflineMirror
       
       #:nodoc#
       def after_mirrored_data_destroy
-        OfflineMirror::SendableRecord::note_record_destroyed(self, id) if OfflineMirror::app_online?
+        OfflineMirror::SendableRecord::note_record_destroyed(self.class, id)
         return true
       end
       
@@ -153,7 +151,7 @@ module OfflineMirror
       
       #:nodoc#
       def after_mirrored_data_save
-        OfflineMirror::SendableRecord::note_record_created_or_updated(self, id) if OfflineMirror::app_online?
+        OfflineMirror::SendableRecord::note_record_created_or_updated(self.class, id)
         return true
       end
       
@@ -207,9 +205,15 @@ module OfflineMirror
       
       def owning_group
         case offline_mirror_mode
-        when :group_owned then OfflineMirror::group_base_model.find_by_id(self.send offline_mirror_group_key)
-        when :group_base then self
-        else raise "Invalid offline_mirror_mode %s" % offline_mirror_mode.to_s
+          when :group_owned then OfflineMirror::group_base_model.find_by_id(owning_group_id)
+          when :group_base then self
+        end
+      end
+      
+      def owning_group_id
+        case offline_mirror_mode
+          when :group_owned then self.send offline_mirror_group_key
+          when :group_base then new_record? ? nil : self.id
         end
       end
       
@@ -230,14 +234,13 @@ module OfflineMirror
           raise ActiveRecord::ReadOnlyRecord if OfflineMirror::app_offline? and offline_mirror_mode == :group_base
           raise ActiveRecord::ReadOnlyRecord if OfflineMirror::app_online? and offline_mirror_mode != :group_base and !group_being_destroyed
         end
-        # In the online app, we would normally block attempts to destroy group_owned data of an offline group
-        # However, if the group itself is being destroyed, then that becomes just fine
+        
         return true
       end
       
       #:nodoc#
       def after_mirrored_data_destroy
-        OfflineMirror::SendableRecord::note_record_destroyed(self, id) if OfflineMirror::app_offline?
+        OfflineMirror::SendableRecord::note_record_destroyed(self.class, id)
         return true
       end
       
@@ -245,14 +248,21 @@ module OfflineMirror
       def before_mirrored_data_save
         return true if checks_bypassed?
         raise ActiveRecord::ReadOnlyRecord if locked_by_offline_mirror?
+        if OfflineMirror::app_offline?
+          case offline_mirror_mode
+          when :group_base
+            raise "Cannot create groups in offline mode" if new_record?
+          when :group_owned
+            raise "Invalid owning group" if owning_group_id != OfflineMirror::SystemState::offline_group_id
+          end
+        end
         verify_changed_columns
         return true
       end
       
       #:nodoc#
       def after_mirrored_data_save
-        raise "Invalid owning group" if OfflineMirror::app_offline? && group_state.app_group_id != OfflineMirror::SystemState::offline_group_id
-        OfflineMirror::SendableRecord::note_record_created_or_updated(self, id) if OfflineMirror::app_offline?
+        OfflineMirror::SendableRecord::note_record_created_or_updated(self.class, id)
         return true
       end
       

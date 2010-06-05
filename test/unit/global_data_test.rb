@@ -2,6 +2,19 @@ require File.dirname(__FILE__) + '/../test_helper'
 
 class GlobalDataTest < ActiveSupport::TestCase
   def setup
+    if OfflineMirror::app_offline?
+      opts = {
+        :offline_group_id => 1,
+        :current_mirror_version => 1
+      }
+      OfflineMirror::SystemState::create(opts) or raise "Unable to create offline-mode testing SystemState"
+      @offline_group = Group.new(:name => "An Offline Group")
+      @offline_group.bypass_offline_mirror_readonly_checks
+      @offline_group.save!
+      @offline_group_data = GroupOwnedRecord.create(:description => "Some Offline Data", :group => @offline_group)
+      raise "Test id mismatch" unless @offline_group.id == OfflineMirror::SystemState::current_mirror_version
+    end
+    
     @global_record = GlobalRecord.new(:title => "Something or other")
     # If we didn't do this, offline test wouldn't be able to create the record
     @global_record.bypass_offline_mirror_readonly_checks
