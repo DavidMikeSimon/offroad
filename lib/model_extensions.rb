@@ -12,7 +12,7 @@ module OfflineMirror
       set_internal_cattr :offline_mirror_permission_checkers, {}
       [:create_permitted?, :update_permitted?, :delete_permitted?].each do |o|
         if opts[o]
-          raise "Can't specify #{o.inspect} for non-group models" unless offline_mirror_group_data?
+          raise ModelError.new("Can't specify #{o.inspect} for non-group models") unless offline_mirror_group_data?
           # TODO: Use these when loading mirror data
           offline_mirror_permission_checkers[o] = opts.delete(o)
         end
@@ -20,9 +20,9 @@ module OfflineMirror
       
       case mode
       when :group_owned then
-        raise "For :group_owned models, need to specify :group_key, an attribute name for this model's owning group" unless opts[:group_key]
+        raise ModelError.new("For :group_owned models, need to specify :group_key, an attribute name for this model's owning group") unless opts[:group_key]
         begin
-          raise "The :group_key is invalid, there's no column with that name" unless columns.include?(opts[:group_key].to_s)
+          raise ModelError.new("The :group_key is invalid, there's no column with that name") unless columns.include?(opts[:group_key].to_s)
         rescue
           unless opts[:group_key].to_s.end_with?("_id")
             opts[:group_key] = opts[:group_key].to_s + "_id"
@@ -38,7 +38,7 @@ module OfflineMirror
       end
       
       # We should have deleted all the options from the hash by this point
-      raise "Unknown or inapplicable option(s) specified" unless opts.size == 0
+      raise ModelError.new("Unknown or inapplicable option(s) specified") unless opts.size == 0
       
       if offline_mirror_group_data?
         include GroupDataInstanceMethods
@@ -57,12 +57,12 @@ module OfflineMirror
     end
     
     def offline_mirror_group_data?
-      raise "You must call acts_as_offline_mirror for this model" unless acts_as_mirrored_offline?
+      raise ModelError.new("You must call acts_as_offline_mirror for this model") unless acts_as_mirrored_offline?
       OFFLINE_MIRROR_GROUP_MODES.include?(offline_mirror_mode)
     end
     
     def offline_mirror_global_data?
-      raise "You must call acts_as_offline_mirror for this model" unless acts_as_mirrored_offline?
+      raise ModelError.new("You must call acts_as_offline_mirror for this model") unless acts_as_mirrored_offline?
       offline_mirror_mode == :global
     end
     
@@ -95,7 +95,7 @@ module OfflineMirror
       #:nodoc#
       def verify_changed_columns
         changed.each do |colname|
-          raise "Cannot change id of offline-mirror tracked records" if colname == "id"
+          raise DataError.new("Cannot change id of offline-mirror tracked records") if colname == "id"
           
           next unless colname.end_with? "_id"
           accessor_name = colname[0, colname.size-3]
@@ -105,18 +105,18 @@ module OfflineMirror
           if self.class.offline_mirror_group_data?
             if obj.class.acts_as_mirrored_offline?
               if obj.class.offline_mirror_group_data? && obj.owning_group.id != owning_group.id
-                raise "Invalid #{colname}: Group data cannot hold a foreign key to data owned by another group"
+                raise DataError.new("Invalid #{colname}: Group data cannot hold a foreign key to data owned by another group")
               end
             else
-              raise "Invalid #{colname}: Group data cannot hold a foreign key to unmirrored data"
+              raise DataError.new("Invalid #{colname}: Group data cannot hold a foreign key to unmirrored data")
             end
           elsif self.class.offline_mirror_global_data?
             if obj.class.acts_as_mirrored_offline?
               unless obj.class.offline_mirror_global_data?
-                raise "Invalid #{colname}: Global mirrored data cannot hold a foreign key to group data"
+                raise DataError.new("Invalid #{colname}: Global mirrored data cannot hold a foreign key to group data")
               end
             else
-              raise "Invalid #{colname}: Global mirrored data cannot hold a foreign key to unmirrored data"
+              raise DataError.new("Invalid #{colname}: Global mirrored data cannot hold a foreign key to unmirrored data")
             end
           end
         end
@@ -172,7 +172,7 @@ module OfflineMirror
       
       # Returns a hash with the latest information about this group in the offline app
       def last_known_status
-        raise "This method is only for offline groups" if group_online?
+        raise DataError.new("This method is only for offline groups") if group_online?
         s = group_state
         fields_of_interest = [
           :last_installer_downloaded_at,
@@ -199,7 +199,7 @@ module OfflineMirror
       end
       
       def group_offline=(b)
-        raise "Unable to change a group's offline status in offline app" if OfflineMirror::app_offline?
+        raise DataError.new("Unable to change a group's offline status in offline app") if OfflineMirror::app_offline?
         group_state.update_attribute(:offline, b)
       end
       
@@ -251,9 +251,9 @@ module OfflineMirror
         if OfflineMirror::app_offline?
           case offline_mirror_mode
           when :group_base
-            raise "Cannot create groups in offline mode" if new_record?
+            raise DataError.new("Cannot create groups in offline mode") if new_record?
           when :group_owned
-            raise "Invalid owning group" if owning_group_id != OfflineMirror::SystemState::offline_group_id
+            raise DataError.new("Invalid owning group") if owning_group_id != OfflineMirror::SystemState::offline_group_id
           end
         end
         verify_changed_columns

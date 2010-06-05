@@ -46,8 +46,8 @@ class GlobalDataTest < ActiveSupport::TestCase
     end
   end
   
-  common_test "cannot change id of global data" do
-    assert_raise ActiveRecord::ReadOnlyRecord, RuntimeError do
+  online_test "cannot change id of global data" do
+    assert_raise OfflineMirror::DataError do
       @global_record.id += 1
       @global_record.save!
     end
@@ -63,7 +63,7 @@ class GlobalDataTest < ActiveSupport::TestCase
   end
   
   online_test "global data cannot hold a foreign key to group data" do
-    assert_raise RuntimeError do
+    assert_raise OfflineMirror::DataError do
       @global_record.some_group = @offline_group
       @global_record.save!
     end
@@ -71,7 +71,7 @@ class GlobalDataTest < ActiveSupport::TestCase
   
   online_test "global data cannot hold a foreign key to unmirrored data" do
     unmirrored_data = UnmirroredRecord.create(:content => "Some Unmirrored Data")
-    assert_raise RuntimeError do
+    assert_raise OfflineMirror::DataError do
       @global_record.unmirrored_record = unmirrored_data
       @global_record.save!
     end

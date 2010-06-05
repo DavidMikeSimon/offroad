@@ -101,7 +101,7 @@ class GroupDataTest < ActiveSupport::TestCase
   end
   
   offline_test "cannot create another group" do
-    assert_raise RuntimeError do
+    assert_raise OfflineMirror::DataError do
       Group.create(:name => "Another Offline Group?")
     end
   end
@@ -112,32 +112,32 @@ class GroupDataTest < ActiveSupport::TestCase
     end
   end
   
-  common_test "cannot change id of offline group data" do
-    assert_raise ActiveRecord::ReadOnlyRecord, RuntimeError do
+  offline_test "cannot change id of offline group data" do
+    assert_raise OfflineMirror::DataError do
       @offline_group.id += 1
       @offline_group.save!
     end
     
-    assert_raise ActiveRecord::ReadOnlyRecord, RuntimeError do
+    assert_raise OfflineMirror::DataError do
       @offline_group_data.id += 1
       @offline_group_data.save!
     end
   end
   
   online_test "cannot change id of online group data" do
-    assert_raise RuntimeError do
+    assert_raise OfflineMirror::DataError do
       @online_group.id += 1
       @online_group.save!
     end
     
-    assert_raise RuntimeError do
+    assert_raise OfflineMirror::DataError do
       @online_group_data.id += 1
       @online_group_data.save!
     end
   end
   
   offline_test "cannot set offline group to online" do
-    assert_raise RuntimeError do
+    assert_raise OfflineMirror::DataError do
       @offline_group.group_offline = false
     end
   end
@@ -146,11 +146,11 @@ class GroupDataTest < ActiveSupport::TestCase
     # This is an online test because the concept of "another group" doesn't fly in offline mode
     @another_group = Group.create(:name => "Another Group")
     @another_group_data = GroupOwnedRecord.create(:description => "Another Piece of Data", :group => @another_group)
-    assert_raise RuntimeError do
+    assert_raise OfflineMirror::DataError do
       @online_group.favorite = @another_group_data
       @online_group.save!
     end
-    assert_raise RuntimeError do
+    assert_raise OfflineMirror::DataError do
       @online_group_data.parent = @another_group_data
       @online_group_data.save!
     end
@@ -179,18 +179,18 @@ class GroupDataTest < ActiveSupport::TestCase
   
   common_test "group data cannot hold a foreign key to unmirrored data" do
     unmirrored_data = UnmirroredRecord.create(:content => "Some Unmirrored Data")
-    assert_raise RuntimeError do
+    assert_raise OfflineMirror::DataError do
       @editable_group.unmirrored_record = unmirrored_data
       @editable_group.save!
     end
-    assert_raise RuntimeError do
+    assert_raise OfflineMirror::DataError do
       @editable_group_data.unmirrored_record = unmirrored_data
       @editable_group_data.save!
     end
   end
   
   online_test "last_known_status is not available for online groups" do
-    assert_raise RuntimeError do
+    assert_raise OfflineMirror::DataError do
       status = @online_group.last_known_status
     end
   end
