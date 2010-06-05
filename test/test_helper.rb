@@ -60,6 +60,39 @@ def run_test_class(cls)
   TestRunner.run(cls)
 end
 
+# Test data setup methods (I don't like fixtures, for many reasons)
+class Test::Unit::TestCase
+  def create_testing_system_state_and_groups
+    if OfflineMirror::app_offline?
+      opts = {
+        :offline_group_id => 1,
+        :current_mirror_version => 1
+      }
+      OfflineMirror::SystemState::create(opts) or raise "Unable to create offline-mode testing SystemState"
+    end
+    
+    @offline_group = Group.new(:name => "An Offline Group")
+    @offline_group.bypass_offline_mirror_readonly_checks
+    @offline_group.save!
+    @offline_group_data = GroupOwnedRecord.create(:description => "Some Offline Data", :group => @offline_group)
+    
+    if OfflineMirror::app_online?
+      @offline_group.group_offline = true
+      
+      @online_group = Group.create(:name => "An Online Group") # Will be online by default (tested below)
+      @online_group_data = GroupOwnedRecord.create(:description => "Some Online Data", :group => @online_group)
+      
+      @editable_group = @online_group
+      @editable_group_data = @online_group_data
+    else
+      raise "Test id mismatch" unless @offline_group.id == OfflineMirror::SystemState::current_mirror_version
+      
+      @editable_group = @offline_group
+      @editable_group_data = @offline_group_data
+    end
+  end
+end
+
 # Convenience methods to create tests that apply to particular environments
 
 def online_test(name, &block)
