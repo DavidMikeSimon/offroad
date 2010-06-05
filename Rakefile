@@ -8,7 +8,7 @@ begin
 rescue
 end
 
-def run_tests(desc)
+def run_tests(desc, filename_substring = nil)
   analyzer = nil
   if $rcov_enabled
     begin
@@ -24,6 +24,7 @@ def run_tests(desc)
   
   # The regular rake testtask way had magic that didn't work properly for me
   Dir.glob('test/{unit,functional}/*_test.rb').each do |fn|
+    next if !filename_substring.nil? && !fn.include?(filename_substring)
     puts ""
     puts ""
     puts "#"*20 + " " + fn
@@ -71,7 +72,7 @@ task :rcov do
 end
 
 desc 'Runs both the offline and online tests'
-task :test do
+task :test, :filename_substring do |t, args|
   ["OFFLINE", "ONLINE"].each do |desc|
     id = fork # Forking so that we can start different Rails environments
     if id
@@ -91,7 +92,7 @@ task :test do
         RAILS_ENV = ENV["RAILS_ENV"] = "test"
       end
       
-      run_tests(desc)
+      run_tests(desc, args.filename_substring)
       exit!
     end
   end
@@ -100,16 +101,16 @@ task :test do
 end
 
 desc 'Runs the plugin tests in offline mode'
-task :offline_test do
+task :offline_test, :filename_substring do |t, args|
   RAILS_ENV = ENV["RAILS_ENV"] = "offline_test"
-  run_tests("OFFLINE")
+  run_tests("OFFLINE", args.filename_substring)
   coverage_report
 end
 
 desc 'Runs the plugin tests in online mode'
-task :online_test do
+task :online_test, :filename_substring do |t, args|
   RAILS_ENV = ENV["RAILS_ENV"] = "test"
-  run_tests("ONLINE")
+  run_tests("ONLINE", args.filename_substring)
   coverage_report
 end
 
