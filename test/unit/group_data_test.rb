@@ -36,6 +36,16 @@ class GroupDataTest < ActiveSupport::TestCase
     assert_equal false, GroupOwnedRecord.offline_mirror_global_data?, "Group-owned model should return false to offline_mirror_global_data?"
   end
   
+  common_test "group base reports being owned by itself" do
+    assert_equal @offline_group.id, @offline_group.owning_group.id
+    assert_equal @offline_group.id, @offline_group.owning_group_id
+  end
+  
+  common_test "group-owned data reports proper ownership" do
+    assert_equal @offline_group.id, @offline_group_data.owning_group.id
+    assert_equal @offline_group.id, @offline_group_data.owning_group_id
+  end
+  
   online_test "only offline groups locked and unsaveable" do
     assert @offline_group.locked_by_offline_mirror?, "Offline groups should be locked"
     assert_raise ActiveRecord::ReadOnlyRecord do

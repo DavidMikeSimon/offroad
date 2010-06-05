@@ -24,8 +24,6 @@ module OfflineMirror
   #:nodoc#
   def self.init
     @@config = YAML.load_file(File.join(RAILS_ROOT, "config", "offline_mirror.yml"))
-  rescue
-    @@config = {}
   end
   
   # Returns the record of the group base model that this app is in charge of

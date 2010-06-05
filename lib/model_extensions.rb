@@ -93,7 +93,7 @@ module OfflineMirror
       end
       
       #:nodoc#
-      def verify_changed_columns
+      def verify_changed_id_columns
         changed.each do |colname|
           raise DataError.new("Cannot change id of offline-mirror tracked records") if colname == "id"
           
@@ -145,7 +145,7 @@ module OfflineMirror
       def before_mirrored_data_save
         return true if checks_bypassed?
         ensure_online
-        verify_changed_columns
+        verify_changed_id_columns
         return true
       end
       
@@ -256,7 +256,7 @@ module OfflineMirror
             raise DataError.new("Invalid owning group") if owning_group_id != OfflineMirror::SystemState::offline_group_id
           end
         end
-        verify_changed_columns
+        verify_changed_id_columns
         return true
       end
       
