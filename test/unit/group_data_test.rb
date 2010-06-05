@@ -209,7 +209,11 @@ class GroupDataTest < ActiveSupport::TestCase
     status = @offline_group.last_known_status
     assert status
   end
-
+  
+  common_test "group data models return true to acts_as_mirrored_offline?" do
+    assert Group.acts_as_mirrored_offline?
+    assert GroupOwnedRecord.acts_as_mirrored_offline?
+  end
 end
 
 run_test_class GroupDataTest

@@ -76,6 +76,10 @@ class GlobalDataTest < ActiveSupport::TestCase
       @global_record.save!
     end
   end
+  
+  common_test "global data models return true to acts_as_mirrored_offline?" do
+    assert GlobalRecord.acts_as_mirrored_offline?
+  end
 end
 
 run_test_class GlobalDataTest
