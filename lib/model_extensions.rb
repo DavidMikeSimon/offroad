@@ -4,19 +4,10 @@ module OfflineMirror
     OFFLINE_MIRROR_GROUP_MODES = [:group_base, :group_owned]
     
     def acts_as_mirrored_offline(mode, opts = {})
-      raise "You can only call acts_as_mirrored_offline once per model" if acts_as_mirrored_offline?
-      raise "You must specify a mode, one of " + OFFLINE_MIRROR_VALID_MODES.map(&:inspect).join("/") unless OFFLINE_MIRROR_VALID_MODES.include?(mode)
+      raise ModelError.new("You can only call acts_as_mirrored_offline once per model") if acts_as_mirrored_offline?
+      raise ModelError.new("You must specify a mode, one of " + OFFLINE_MIRROR_VALID_MODES.map(&:inspect).join("/")) unless OFFLINE_MIRROR_VALID_MODES.include?(mode)
       
       set_internal_cattr :offline_mirror_mode, mode
-      
-      set_internal_cattr :offline_mirror_permission_checkers, {}
-      [:create_permitted?, :update_permitted?, :delete_permitted?].each do |o|
-        if opts[o]
-          raise ModelError.new("Can't specify #{o.inspect} for non-group models") unless offline_mirror_group_data?
-          # TODO: Use these when loading mirror data
-          offline_mirror_permission_checkers[o] = opts.delete(o)
-        end
-      end
       
       case mode
       when :group_owned then
@@ -205,15 +196,15 @@ module OfflineMirror
       
       def owning_group
         case offline_mirror_mode
-          when :group_owned then OfflineMirror::group_base_model.find_by_id(owning_group_id)
-          when :group_base then self
+          when :group_owned then return OfflineMirror::group_base_model.find_by_id(owning_group_id)
+          when :group_base then return self
         end
       end
       
       def owning_group_id
         case offline_mirror_mode
-          when :group_owned then self.send offline_mirror_group_key
-          when :group_base then new_record? ? nil : self.id
+          when :group_owned then return self.send offline_mirror_group_key
+          when :group_base then return new_record? ? nil : self.id
         end
       end
       

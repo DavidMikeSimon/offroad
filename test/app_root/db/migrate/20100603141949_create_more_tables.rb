@@ -21,6 +21,10 @@ class CreateMoreTables < ActiveRecord::Migration
       t.string :content
       t.float :some_float
     end
+    
+    create_table :broken_records do |t|
+      t.integer :group_id
+    end
   end
   
   def self.down

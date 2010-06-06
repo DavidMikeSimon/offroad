@@ -214,6 +214,14 @@ class GroupDataTest < ActiveSupport::TestCase
     assert Group.acts_as_mirrored_offline?
     assert GroupOwnedRecord.acts_as_mirrored_offline?
   end
+  
+  online_test "cannot save :group_owned data with an invalid group id" do
+    flunk
+  end
+  
+  online_test "cannot move :group_owned data from one group to another" do
+    flunk
+  end
 end
 
 run_test_class GroupDataTest
