@@ -23,7 +23,7 @@ def run_tests(desc, filename_substring = nil)
   end
   
   # The regular rake testtask way had magic that didn't work properly for me
-  Dir.glob('test/{unit}/*_test.rb').each do |fn|
+  Dir.glob('test/{unit}/*_test.rb').sort.each do |fn|
     next if !filename_substring.nil? && !fn.include?(filename_substring)
     if $rcov_enabled
       analyzer.run_hooked do

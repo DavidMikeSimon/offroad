@@ -1,8 +1,9 @@
 require 'zlib'
 require 'digest/md5'
+require 'exceptions'
 
 module OfflineMirror
-  class CargoStreamerDataError < RuntimeError
+  class CargoStreamerDataError < DataError
   end
   
   private
@@ -123,7 +124,7 @@ module OfflineMirror
       raise "MD5 check failure" unless Digest::MD5::hexdigest(deflated_data) == digest
       return ActiveSupport::JSON.decode(Zlib::Inflate::inflate(deflated_data))
     rescue StandardError => e
-      raise CargoStreamerDataError.new("Corrupted data (section name '" + name + "') : " + e.class.to_s + " : " + e.to_s)
+      raise CargoStreamerDataError.new("Corrupted data : #{e.class.to_s} : #{e.to_s}")
     end
     
     CARGO_BEGIN = "<!-- CARGO SEGMENT"

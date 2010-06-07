@@ -44,6 +44,26 @@ class CargoStreamerTest < ActiveSupport::TestCase
   common_test "can encode and retrieve an empty hash" do
     assert_round_trip_equality
   end
+  
+  common_test "uses an md5 fingerprint to detect corruption" do
+    test_hash = {"foo bar narf bork" => [1]}
+    str = generate_cargo_string test_hash
+    
+    md5sum = nil
+    if str =~ /\b([0-9a-f]{32})\b/
+      md5sum = $1
+    end
+    assert md5sum, "generated string includes something that looks like an md5 fingerprint"
+    assert_equal test_hash, retrieve_cargo_from_string(str), "works with unmodified fingerprint"
+    assert_raise OfflineMirror::CargoStreamerDataError, "changing fingerprint causes exception to be raised" do
+      retrieve_cargo_from_string(str.gsub md5sum, "a"*md5sum.size)
+    end
+    
+    assert_raise OfflineMirror::CargoStreamerDataError, "changing base64 content causes exception to be raised" do
+      # This is somewhat of an implementation-dependent test; I checked manually that the data has this string in it
+      retrieve_cargo_from_string(str.sub "BAAAM", "BAAAm")
+    end
+  end
 end
 
 run_test_class CargoStreamerTest
