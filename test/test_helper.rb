@@ -69,7 +69,11 @@ def run_test_class(cls)
   end
   
   if lines.last.include? ", 0 failures, 0 errors"
-    puts "%-25s %s" % [cls.name + ":", lines.last.chomp]
+    result_line = lines.last
+    if result_line =~ /^(.+?)(\d+) tests, (\d+) assertions, (\d+) failures, (\d+) errors(.+)$/
+      result_line = "%s%4u tests, %4u assertions, %4u failures, %4u errors%s" % [$1, $2, $3, $4, $5, $6]
+    end
+    puts "%-24s %s" % [cls.name + ":", result_line]
   elsif lines.size == 0:
     raise "No output when running test #{cls.name}"
   else
