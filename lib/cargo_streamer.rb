@@ -2,10 +2,7 @@ require 'zlib'
 require 'digest/md5'
 
 module OfflineMirror
-  class CargoStreamerCorruptionError < RuntimeError
-    def initialize(msg)
-      super(msg)
-    end
+  class CargoStreamerDataError < RuntimeError
   end
   
   private
@@ -70,18 +67,18 @@ module OfflineMirror
         @ioh.seek(seek_location)
         digest = ""
         encoded_data = ""
-        ioh.each_line do |line|
+        @ioh.each_line do |line|
           line.chomp!
           if line == CARGO_END
             break
           elsif digest == ""
             digest = line
           else
-            data += line
+            encoded_data += line
           end
         end
         
-        yield verify_and_decode_data(digest, encoded_data)
+        yield verify_and_decode_cargo(digest, encoded_data)
       end
     end
     
@@ -102,7 +99,7 @@ module OfflineMirror
           else
             unless found_name
               @cargo_locations[line] ||= []
-              @cargo_locations[line] << ioh.tell
+              @cargo_locations[line] << @ioh.tell
               found_name = true
             end
           end
@@ -112,7 +109,7 @@ module OfflineMirror
           end
         end
       end
-      raise CargoStreamerCorruptionError.new("Input contained un-terminated cargo section") unless in_cargo == false
+      raise CargoStreamerDataError.new("Input contained un-terminated cargo section") unless in_cargo == false
       
       @ioh.rewind
     end
@@ -126,7 +123,7 @@ module OfflineMirror
       raise "MD5 check failure" unless Digest::MD5::hexdigest(deflated_data) == digest
       return ActiveSupport::JSON.decode(Zlib::Inflate::inflate(deflated_data))
     rescue StandardError => e
-      raise CargoStreamerCorruptionError.new("Corrupted data (section name '" + name + "') : " + e.class.to_s + " : " + e.to_s)
+      raise CargoStreamerDataError.new("Corrupted data (section name '" + name + "') : " + e.class.to_s + " : " + e.to_s)
     end
     
     CARGO_BEGIN = "<!-- CARGO SEGMENT"
