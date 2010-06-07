@@ -25,9 +25,6 @@ def run_tests(desc, filename_substring = nil)
   # The regular rake testtask way had magic that didn't work properly for me
   Dir.glob('test/{unit}/*_test.rb').each do |fn|
     next if !filename_substring.nil? && !fn.include?(filename_substring)
-    puts ""
-    puts ""
-    puts "#"*20 + " " + fn
     if $rcov_enabled
       analyzer.run_hooked do
         load fn
@@ -81,9 +78,10 @@ task :test, :filename_substring do |t, args|
     else
       # Child process; run the rake task then end process
       puts ""
-      puts "!"*80
-      puts "!!!! BEGINNING FORKED TEST %s" % desc.to_s
-      puts "!"*80
+      puts "#"*80
+      puts "### BEGINNING FORKED TEST %s" % desc.to_s
+      puts "#"*80
+      puts ""
       
       case desc
       when "OFFLINE"

@@ -57,7 +57,31 @@ ActiveRecord::Migrator.migrate("#{File.dirname(__FILE__)}/../lib/migrate/") # Pl
 
 # Runs a given test class immediately; this should be at the end of each test file
 def run_test_class(cls)
-  TestRunner.run(cls)
+  lines = []
+  saved_stdout = $stdout.clone
+  begin
+    $stdout = StringIO.new
+    TestRunner.run(cls)
+    $stdout.close
+    lines = $stdout.string.split("\n")
+  ensure
+    $stdout = saved_stdout
+  end
+  
+  if lines.last.include? ", 0 failures, 0 errors"
+    puts "%-25s %s" % [cls.name + ":", lines.last.chomp]
+  elsif lines.size == 0:
+    raise "No output when running test #{cls.name}"
+  else
+    puts ""
+    puts "!"*50
+    puts "!!!!!! #{cls.name}"
+    lines.each do |line|
+      puts "!!! " + line.chomp
+    end
+    puts "!"*50
+    puts ""
+  end
 end
 
 # Test data setup methods (I don't like fixtures, for many reasons)
@@ -74,6 +98,8 @@ class Test::Unit::TestCase
     @offline_group = Group.new(:name => "An Offline Group")
     @offline_group.bypass_offline_mirror_readonly_checks
     @offline_group.save!
+    raise "Test id mismatch" unless @offline_group.id == OfflineMirror::SystemState::current_mirror_version
+    
     @offline_group_data = GroupOwnedRecord.create(:description => "Some Offline Data", :group => @offline_group)
     
     if OfflineMirror::app_online?
@@ -84,17 +110,11 @@ class Test::Unit::TestCase
       
       @editable_group = @online_group
       @editable_group_data = @online_group_data
-    else
-      raise "Test id mismatch" unless @offline_group.id == OfflineMirror::SystemState::current_mirror_version
-      
+    else  
       @editable_group = @offline_group
       @editable_group_data = @offline_group_data
     end
   end
-end
-
-def clean_test_name_string(s)
-  
 end
 
 # Convenience methods to create tests that apply to particular environments
