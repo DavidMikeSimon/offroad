@@ -10,10 +10,10 @@ class UnmirroredDataTest < ActiveSupport::TestCase
   end
   
   common_test "cannot call offline_mirror_*_data? on unmirrored data models" do
-    assert_raise OfflineMirror::ModelError do
+    assert_raise OfflineMirror::ModelError, "Expect exception on check for *group* data" do
       UnmirroredRecord.offline_mirror_group_data?
     end
-    assert_raise OfflineMirror::ModelError do
+    assert_raise OfflineMirror::ModelError, "Expect exception for check on *global* data" do
       UnmirroredRecord.offline_mirror_global_data?
     end
   end

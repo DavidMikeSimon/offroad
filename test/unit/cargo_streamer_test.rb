@@ -53,14 +53,15 @@ class CargoStreamerTest < ActiveSupport::TestCase
     if str =~ /\b([0-9a-f]{32})\b/
       md5sum = $1
     end
-    assert md5sum, "generated string includes something that looks like an md5 fingerprint"
-    assert_equal test_hash, retrieve_cargo_from_string(str), "works with unmodified fingerprint"
-    assert_raise OfflineMirror::CargoStreamerDataError, "changing fingerprint causes exception to be raised" do
+    assert md5sum, "Generated string includes something that looks like an md5 fingerprint"
+    assert_equal test_hash, retrieve_cargo_from_string(str), "Works with unmodified fingerprint"
+    assert_raise OfflineMirror::CargoStreamerDataError, "Changing fingerprint causes exception to be raised" do
       retrieve_cargo_from_string(str.gsub md5sum, "a"*md5sum.size)
     end
     
-    assert_raise OfflineMirror::CargoStreamerDataError, "changing base64 content causes exception to be raised" do
-      # This is somewhat of an implementation-dependent test; I checked manually that the data has this string in it
+    assert_raise OfflineMirror::CargoStreamerDataError, "Changing base64 content causes exception to be raised" do
+      # This is somewhat of an implementation-dependent test; I checked manually that the data has this string in it.
+      # It's safe, though, as changing the implementation-generated string should cause false neg, not false pos.
       retrieve_cargo_from_string(str.sub "BAAAM", "BAAAm")
     end
   end

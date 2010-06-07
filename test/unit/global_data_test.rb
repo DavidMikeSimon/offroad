@@ -36,12 +36,12 @@ class GlobalDataTest < ActiveSupport::TestCase
   end
   
   offline_test "global data is not writable or destroyable" do
-    assert_raise ActiveRecord::ReadOnlyRecord do
+    assert_raise ActiveRecord::ReadOnlyRecord, "expect exception on title change" do
       @global_record.title = "Something else"
       @global_record.save!
     end
     
-    assert_raise ActiveRecord::ReadOnlyRecord do
+    assert_raise ActiveRecord::ReadOnlyRecord, "expect exception on destroy" do
       @global_record.destroy
     end
   end

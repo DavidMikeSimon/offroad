@@ -37,13 +37,13 @@ class GroupDataTest < ActiveSupport::TestCase
   end
   
   common_test "group base reports being owned by itself" do
-    assert_equal @offline_group.id, @offline_group.owning_group.id
-    assert_equal @offline_group.id, @offline_group.owning_group_id
+    assert_equal @offline_group.id, @offline_group.owning_group.id, "Can get offline group id thru owning_group dot id"
+    assert_equal @offline_group.id, @offline_group.owning_group_id, "Can get offline group id thru owning_group_id"
   end
   
   common_test "group-owned data reports proper ownership" do
-    assert_equal @offline_group.id, @offline_group_data.owning_group.id
-    assert_equal @offline_group.id, @offline_group_data.owning_group_id
+    assert_equal @offline_group.id, @offline_group_data.owning_group.id, "Can get owner id thru owning_group dot id"
+    assert_equal @offline_group.id, @offline_group_data.owning_group_id, "Can get owner id thru owning_group_id"
   end
   
   online_test "only offline groups locked and unsaveable" do
@@ -156,11 +156,11 @@ class GroupDataTest < ActiveSupport::TestCase
     # This is an online test because the concept of "another group" doesn't fly in offline mode
     @another_group = Group.create(:name => "Another Group")
     @another_group_data = GroupOwnedRecord.create(:description => "Another Piece of Data", :group => @another_group)
-    assert_raise OfflineMirror::DataError do
+    assert_raise OfflineMirror::DataError, "Expect exception when putting bad foreign key in group base data" do
       @online_group.favorite = @another_group_data
       @online_group.save!
     end
-    assert_raise OfflineMirror::DataError do
+    assert_raise OfflineMirror::DataError, "Expect exception when putting bad foreign key in group owned data" do
       @online_group_data.parent = @another_group_data
       @online_group_data.save!
     end
@@ -177,11 +177,11 @@ class GroupDataTest < ActiveSupport::TestCase
   online_test "group data can hold a foreign key to global data" do
     # This is an online test because an offline app cannot create global records
     global_data = GlobalRecord.create(:title => "Some Global Data")
-    assert_nothing_raised do
+    assert_nothing_raised "No exception when putting global data key in group base data" do
       @editable_group.global_record = global_data
       @editable_group.save!
     end
-    assert_nothing_raised do
+    assert_nothing_raised "No exception when putting global data key in group owned data" do
       @editable_group_data.global_record = global_data
       @editable_group_data.save!
     end
@@ -189,11 +189,11 @@ class GroupDataTest < ActiveSupport::TestCase
   
   common_test "group data cannot hold a foreign key to unmirrored data" do
     unmirrored_data = UnmirroredRecord.create(:content => "Some Unmirrored Data")
-    assert_raise OfflineMirror::DataError do
+    assert_raise OfflineMirror::DataError, "Expect exception when putting bad foreign key in group base data" do
       @editable_group.unmirrored_record = unmirrored_data
       @editable_group.save!
     end
-    assert_raise OfflineMirror::DataError do
+    assert_raise OfflineMirror::DataError, "Expect exception when putting bad foreign key in group owned data" do
       @editable_group_data.unmirrored_record = unmirrored_data
       @editable_group_data.save!
     end
@@ -211,8 +211,8 @@ class GroupDataTest < ActiveSupport::TestCase
   end
   
   common_test "group data models return true to acts_as_mirrored_offline?" do
-    assert Group.acts_as_mirrored_offline?
-    assert GroupOwnedRecord.acts_as_mirrored_offline?
+    assert Group.acts_as_mirrored_offline?, "Group reports mirrored offline"
+    assert GroupOwnedRecord.acts_as_mirrored_offline?, "GroupOwnedRecord reports mirrored offline"
   end
   
   online_test "cannot save :group_owned data with an invalid group id" do

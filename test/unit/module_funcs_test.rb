@@ -6,13 +6,13 @@ class ModuleFuncsTest < ActiveSupport::TestCase
   end
   
   online_test "app reports being offline" do
-    assert OfflineMirror::app_online?
-    assert_equal false, OfflineMirror::app_offline?
+    assert OfflineMirror::app_online?, "App is online"
+    assert_equal false, OfflineMirror::app_offline?, "App is not offline"
   end
   
   offline_test "app reports being offline" do
-    assert OfflineMirror::app_offline?
-    assert_equal false, OfflineMirror::app_online?
+    assert OfflineMirror::app_offline?, "App is offline"
+    assert_equal false, OfflineMirror::app_online?, "App is not online"
   end
   
   common_test "app reports correct version" do
