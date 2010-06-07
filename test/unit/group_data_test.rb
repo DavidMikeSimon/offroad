@@ -7,11 +7,11 @@ class GroupDataTest < ActiveSupport::TestCase
   
   online_test "a new group is online by default" do
     g = Group.create(:name => "This Should Be Online")
-    assert g.group_online?, "Newly created group should be online"
+    assert g.group_online?
   end
   
   offline_test "group is offline by default" do
-    assert @offline_group.group_offline?, "Newly created group should be offline"
+    assert @offline_group.group_offline?
   end
   
   online_test "online group data has expected offline status" do
