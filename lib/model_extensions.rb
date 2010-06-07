@@ -74,7 +74,8 @@ module OfflineMirror
         @offline_mirror_readonly_bypassed = true
       end
       
-      #:nodoc#
+      private
+      
       def checks_bypassed?
         if @offline_mirror_readonly_bypassed
           @offline_mirror_readonly_bypassed = false
@@ -83,31 +84,28 @@ module OfflineMirror
         return false
       end
       
-      #:nodoc#
-      def verify_changed_id_columns
+      def validate_changed_id_columns
         changed.each do |colname|
           raise DataError.new("Cannot change id of offline-mirror tracked records") if colname == "id"
+          
+          if !new_record? and offline_mirror_mode == :group_owned and colname == offline_mirror_group_key.to_s
+            raise DataError.new("Ownership of group-owned data cannot be transferred between groups")
+          end
           
           next unless colname.end_with? "_id"
           accessor_name = colname[0, colname.size-3]
           next unless respond_to? accessor_name
           obj = send(accessor_name)
           
+          raise DataError.new("Mirrored data cannot hold a foreign key to unmirrored data") unless obj.class.acts_as_mirrored_offline?
+          
           if self.class.offline_mirror_group_data?
-            if obj.class.acts_as_mirrored_offline?
-              if obj.class.offline_mirror_group_data? && obj.owning_group.id != owning_group.id
-                raise DataError.new("Invalid #{colname}: Group data cannot hold a foreign key to data owned by another group")
-              end
-            else
-              raise DataError.new("Invalid #{colname}: Group data cannot hold a foreign key to unmirrored data")
+            if obj.class.offline_mirror_group_data? && obj.owning_group.id != owning_group.id
+              raise DataError.new("Invalid #{colname}: Group data cannot hold a foreign key to data owned by another group")
             end
           elsif self.class.offline_mirror_global_data?
-            if obj.class.acts_as_mirrored_offline?
-              unless obj.class.offline_mirror_global_data?
-                raise DataError.new("Invalid #{colname}: Global mirrored data cannot hold a foreign key to group data")
-              end
-            else
-              raise DataError.new("Invalid #{colname}: Global mirrored data cannot hold a foreign key to unmirrored data")
+            unless obj.class.offline_mirror_global_data?
+              raise DataError.new("Invalid #{colname}: Global mirrored data cannot hold a foreign key to group data")
             end
           end
         end
@@ -136,7 +134,7 @@ module OfflineMirror
       def before_mirrored_data_save
         return true if checks_bypassed?
         ensure_online
-        verify_changed_id_columns
+        validate_changed_id_columns
         return true
       end
       
@@ -238,16 +236,20 @@ module OfflineMirror
       #:nodoc#
       def before_mirrored_data_save
         return true if checks_bypassed?
+        
+        raise DataError.new("Invalid owning group") if owning_group == nil
         raise ActiveRecord::ReadOnlyRecord if locked_by_offline_mirror?
+        
         if OfflineMirror::app_offline?
           case offline_mirror_mode
           when :group_base
             raise DataError.new("Cannot create groups in offline mode") if new_record?
           when :group_owned
-            raise DataError.new("Invalid owning group") if owning_group_id != OfflineMirror::SystemState::offline_group_id
+            raise DataError.new("Owning group must be the offline group") if owning_group_id != OfflineMirror::SystemState::offline_group_id
           end
         end
-        verify_changed_id_columns
+        
+        validate_changed_id_columns
         return true
       end
       

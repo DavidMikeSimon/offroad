@@ -93,6 +93,10 @@ class Test::Unit::TestCase
   end
 end
 
+def clean_test_name_string(s)
+  
+end
+
 # Convenience methods to create tests that apply to particular environments
 
 def online_test(name, &block)
@@ -104,5 +108,5 @@ def offline_test(name, &block)
 end
 
 def common_test(name, &block)
-  define_method ("test_" + name.to_s.gsub(" ", "_")).to_sym, &block
+  define_method ("test_" + name.to_s.gsub(/[^\w ]/, '').gsub(' ', '_')).to_sym, &block
 end

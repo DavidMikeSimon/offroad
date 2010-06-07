@@ -216,11 +216,17 @@ class GroupDataTest < ActiveSupport::TestCase
   end
   
   online_test "cannot save :group_owned data with an invalid group id" do
-    flunk
+    assert_raise OfflineMirror::DataError do
+      @offline_group_data.group_id = Group.maximum(:id)+1
+      @offline_group_data.save!
+    end
   end
   
   online_test "cannot move :group_owned data from one group to another" do
-    flunk
+    assert_raise OfflineMirror::DataError do
+      @offline_group_data.group = @online_group
+      @offline_group_data.save!
+    end
   end
 end
 
