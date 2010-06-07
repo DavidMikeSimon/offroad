@@ -38,15 +38,45 @@ class CargoStreamerTest < ActiveSupport::TestCase
   end
   
   common_test "can encode and retrieve a simple hash" do
-    assert_round_trip_equality "a" => [1], "b" => [2]
+    assert_round_trip_equality "a" => [[1]], "b" => [[2]]
   end
   
   common_test "can encode and retrieve an empty hash" do
     assert_round_trip_equality
   end
   
+  common_test "cannot directly encode a value that's not in an array" do
+    assert_raise OfflineMirror::CargoStreamerDataError do
+      generate_cargo_string "foo" => [1]
+    end
+  end
+  
+  common_test "cannot encode self-referential structure" do
+    arr_a = [1,2,3]
+    arr_b = [4,5,6]
+    arr_a << arr_b
+    assert_nothing_raised do
+      generate_cargo_string "blah" => [arr_a]
+    end
+    
+    arr_b << arr_a
+    assert_raise OfflineMirror::CargoStreamerDataError do
+      generate_cargo_string "blah" => [arr_a]
+    end
+  end
+  
+  common_test "cannot encode a structure that's deeper than 4 levels" do
+    a = [[[[["foo"]]]]]
+    assert_nothing_raised do
+      generate_cargo_string "blah" => [a]
+    end
+    assert_raise OfflineMirror::CargoStreamerDataError do
+      generate_cargo_string "blah" => [[a]]
+    end
+  end
+  
   common_test "uses an md5 fingerprint to detect corruption" do
-    test_hash = {"foo bar narf bork" => [1]}
+    test_hash = {"foo bar narf bork" => [[1]]}
     str = generate_cargo_string test_hash
     
     md5sum = nil
@@ -62,7 +92,57 @@ class CargoStreamerTest < ActiveSupport::TestCase
     assert_raise OfflineMirror::CargoStreamerDataError, "Changing base64 content causes exception to be raised" do
       # This is somewhat of an implementation-dependent test; I checked manually that the data has this string in it.
       # It's safe, though, as changing the implementation-generated string should cause false neg, not false pos.
-      retrieve_cargo_from_string(str.sub "BAAAM", "BAAAm")
+      retrieve_cargo_from_string(str.sub "owFAAH", "owFAAh")
+    end
+  end
+  
+  common_test "modes r and w work, other modes do not" do
+    assert_nothing_raised "Mode r works" do
+      OfflineMirror::CargoStreamer.new(StringIO.new(), "r")
+    end
+    
+    assert_nothing_raised "Mode w works" do
+      OfflineMirror::CargoStreamer.new(StringIO.new(), "w")
+    end
+    
+    assert_raise OfflineMirror::CargoStreamerDataError, "Mode a doesn't work" do
+      OfflineMirror::CargoStreamer.new(StringIO.new(), "a")
+    end
+  end
+  
+  common_test "cannot write cargo in read mode" do
+    assert_raise OfflineMirror::CargoStreamerDataError do
+      cs = OfflineMirror::CargoStreamer.new(StringIO.new, "r")
+      cs.write_cargo_section("test", "test")
+    end
+  end
+  
+  common_test "cannot use invalid cargo section names" do
+    cs = OfflineMirror::CargoStreamer.new(StringIO.new, "w")
+    
+    assert_raise OfflineMirror::CargoStreamerDataError, "Expect exception for symbol cargo name" do
+      cs.write_cargo_section(:test, "test")
+    end
+    
+    assert_raise OfflineMirror::CargoStreamerDataError, "Expect exception for cargo name that's bad in HTML comments" do
+      cs.write_cargo_section("whatever--foobar", "test")
+    end
+    
+    assert_raise OfflineMirror::CargoStreamerDataError, "Expect exception for cargo name that's multiline" do
+      cs.write_cargo_section("whatever\nfoobar", "test")
+    end
+  end
+  
+  common_test "cannot directly encode a model instance" do
+    rec = UnmirroredRecord.new(:content => "Test")
+    assert_raise OfflineMirror::CargoStreamerDataError, "Should reject model at top layer" do
+      generate_cargo_string "blah" => [rec]
+    end
+    assert_raise OfflineMirror::CargoStreamerDataError, "Should reject model even if it is deeply nested" do
+      generate_cargo_string "blah" => [[[rec]]]
+    end
+    assert_nothing_raised "Should accept a hash of the model's data" do
+      generate_cargo_string "blah" => [rec.attributes]
     end
   end
 end

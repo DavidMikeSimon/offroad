@@ -132,5 +132,5 @@ def offline_test(name, &block)
 end
 
 def common_test(name, &block)
-  define_method ("test_" + name.to_s.gsub(/[^\w ]/, '').gsub(' ', '_')).to_sym, &block
+  define_method ("test_" + name.to_s.gsub(/[^\w ]/, '_').gsub(' ', '_')).to_sym, &block
 end

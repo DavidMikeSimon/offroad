@@ -1,5 +1,7 @@
 require 'zlib'
 require 'digest/md5'
+require 'set'
+
 require 'exceptions'
 
 module OfflineMirror
@@ -12,23 +14,56 @@ module OfflineMirror
   # Each such section has a name, an md5sum for verification, and some base64-encoded zlib-compressed json data.
   # Multiple cargo sections can have the same name; when the cargo is later read, requests for that name will be yielded each section in turn.
   class CargoStreamer
+    # We want to use only types which JSON::parse(JSON::dump(obj)) gives us back obj, or close enough for Float
+    # Besides this, we also accept Arrays and Hashes, as long as all of their contents are also acceptable
+    ENCODABLE_TYPES = [String, Bignum, Fixnum, Float, NilClass, TrueClass, FalseClass]
+    
     # Creates a new CargoStreamer on the given stream, which will be used in the given mode (must be "w" or "r").
     # If the mode is "r", the file is immediately scanned to determine what cargo it contains.
     def initialize(ioh, mode)
-      raise "Invalid mode: must be 'w' or 'r'" unless ["w", "r"].include?(mode)
+      raise CargoStreamerDataError.new("Invalid mode: must be 'w' or 'r'") unless ["w", "r"].include?(mode)
       @ioh = ioh
       @mode = mode
       scan_for_cargo if @mode == "r"
     end
     
+    def encodable?(value, known_ids = Set.new, depth = 0)
+      # Not using is_a? because any derivative-ness would be sliced off by JSONification
+      # Depth check is because we require that the top type be an Array or Hash
+      return true if depth > 0 && ENCODABLE_TYPES.include?(value.class)
+      
+      if value.class == Array || value.class == Hash
+        return false if known_ids.include?(value.object_id) # Protect against recursive loops
+        return false if depth > 4 # Protect against deep structures
+        
+        known_ids.add value.object_id
+        if value.class == Array
+          value.each do |val|
+            return false unless encodable?(val, known_ids, depth + 1)
+          end
+        else
+          value.each do |key, val|
+            return false unless key.class == String # JSON only supports string keys
+            return false unless encodable?(val, known_ids, depth + 1)
+          end
+        end
+        known_ids.delete value.object_id
+        
+        return true
+      end
+      
+      return false
+    end
+    
     # Writes a cargo section with the given name and value to the IO stream.
     # Options:
-    # * :human_readable => true - Before writing the cargo section, writes a human-readable comment with the value. The value must be Hash-like for this.
+    # * :human_readable => true - Before writing the cargo section, writes a human-readable comment with the value.
+    #   The value must be Hash-like for this.
     def write_cargo_section(name, value, options = {})
-      raise "Mode must be 'w' to write cargo data" unless @mode == "w"
-      raise "CargoStreamer section names must be strings" unless name.is_a? String
-      raise "Invalid cargo name '" + name + "'" unless name == clean_for_html_comment(name)
-      raise "CargoStreamer values must be jsonifiable" unless value.respond_to? :to_json
+      raise CargoStreamerDataError.new("Mode must be 'w' to write cargo data") unless @mode == "w"
+      raise CargoStreamerDataError.new("CargoStreamer section names must be strings") unless name.is_a? String
+      raise CargoStreamerDataError.new("Invalid cargo name '" + name + "'") unless name == clean_for_html_comment(name)
+      raise CargoStreamerDataError.new("Unacceptable value type") unless encodable? value 
       
       if options[:human_readable]
         @ioh.write "<!--\n"
@@ -39,7 +74,7 @@ module OfflineMirror
       end
       
       name = name.chomp
-      deflated_data = Zlib::Deflate::deflate(value.to_json)
+      deflated_data = Zlib::Deflate::deflate(JSON::fast_generate(value))
       b64_data = Base64.encode64(deflated_data).chomp
       digest = Digest::MD5::hexdigest(deflated_data).chomp
       
@@ -122,7 +157,7 @@ module OfflineMirror
     def verify_and_decode_cargo(digest, b64_data)
       deflated_data = Base64.decode64(b64_data)
       raise "MD5 check failure" unless Digest::MD5::hexdigest(deflated_data) == digest
-      return ActiveSupport::JSON.decode(Zlib::Inflate::inflate(deflated_data))
+      return JSON::parse(Zlib::Inflate::inflate(deflated_data))
     rescue StandardError => e
       raise CargoStreamerDataError.new("Corrupted data : #{e.class.to_s} : #{e.to_s}")
     end
