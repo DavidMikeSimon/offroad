@@ -34,8 +34,18 @@ class PathologicalModelTest < ActiveSupport::TestCase
     end
   end
   
-  common_test "can specify :group_key either with or without _id prefix" do
-    assert_nothing_raised do
+  common_test "can specify :group_key without the _id prefix" do
+    class BrokenRecord < ActiveRecord::Base
+      acts_as_mirrored_offline :group_owned, :group_key => :group
+    end
+    assert_equal "group_id", BrokenRecord.offline_mirror_group_key.to_s
+  end
+  
+  common_test "cannot give acts_as_mirrored_offline unknown options" do
+    assert_raise OfflineMirror::ModelError do
+      class BrokenRecord < ActiveRecord::Base
+        acts_as_mirrored_offline :gruop_base, :foo_bar_bork_narf => 1234
+      end
     end
   end
 end
