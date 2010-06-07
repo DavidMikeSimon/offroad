@@ -29,7 +29,7 @@ module OfflineMirror
   # Returns the record of the group base model that this app is in charge of
   # This is only applicable if the app is offline
   def self.offline_group
-    raise "'Offline group' is only meaningful if the app is offline" unless app_offline?
+    raise PluginError.new("'Offline group' is only meaningful if the app is offline") unless app_offline?
     @@group_base_model.find(OfflineMirror::SystemState::offline_group_id)
   end
   

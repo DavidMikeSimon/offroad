@@ -4,4 +4,7 @@ module OfflineMirror
   
   class ModelError < RuntimeError
   end
+  
+  class PluginError < RuntimeError
+  end
 end
