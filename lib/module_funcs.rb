@@ -35,10 +35,6 @@ module OfflineMirror
   
   private
   
-  def self.offline_group_state
-    OfflineMirror::GroupState::find_or_create_by_group(offline_group)
-  end
-  
   def self.online_url
     @@config[:online_url] or raise "No online url specified in offline mirror config"
   end
