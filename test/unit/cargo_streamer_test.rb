@@ -63,6 +63,27 @@ class CargoStreamerTest < ActiveSupport::TestCase
     end
   end
   
+  common_test "can create and retrieve multiple cargo sections with the same name" do
+    test_data = [[1, 2], [3, 4], ["a", "b"]]
+    str = StringIO.open do |sio|
+      cs = OfflineMirror::CargoStreamer.new(sio, "w")
+      test_data.each do |dat|
+        cs.write_cargo_section("xyz", dat)
+      end
+      sio.string
+    end
+    
+    result_data = []
+    StringIO.open(str) do |sio|
+      cs = OfflineMirror::CargoStreamer.new(sio, "r")
+      cs.each_cargo_section "xyz" do |dat|
+        result_data << dat
+      end
+    end
+    
+    assert_equal test_data, result_data
+  end
+  
   common_test "can use :human_readable to include an unecoded version of a hash" do
     test_string = "Mares eat oats and does eat oats and little lambs eat ivy."
     result = StringIO.open do |sio|
