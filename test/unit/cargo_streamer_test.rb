@@ -52,6 +52,17 @@ class CargoStreamerTest < ActiveSupport::TestCase
     assert_equal test_hash, retrieve_cargo_from_string(str)
   end
   
+  common_test "can correctly identify the names of the cargo sections" do
+    test_hash = {"abc" => [[1]], "xyz" => [[2]]}
+    str = generate_cargo_string test_hash
+    StringIO.open(str) do |sio|
+      cs = OfflineMirror::CargoStreamer.new(sio, "r")
+      assert_equal test_hash.keys, cs.cargo_section_names
+      assert cs.has_cargo_named?("abc")
+      assert_equal false, cs.has_cargo_named?("foobar")
+    end
+  end
+  
   common_test "can use :human_readable to include an unecoded version of a hash" do
     test_string = "Mares eat oats and does eat oats and little lambs eat ivy."
     result = StringIO.open do |sio|
