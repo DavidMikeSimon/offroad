@@ -17,6 +17,7 @@ class CargoStreamerTest < ActiveSupport::TestCase
   def retrieve_cargo_from_string(str)
     return StringIO.open(str) do |sio|
       hash = {}
+      
       reader = OfflineMirror::CargoStreamer.new(sio, "r")
       reader.cargo_section_names.each do |key|
         hash[key] = []
@@ -37,12 +38,35 @@ class CargoStreamerTest < ActiveSupport::TestCase
     assert_equal hash, round_trip(hash)
   end
   
-  common_test "can encode and retrieve a simple hash" do
+  common_test "can encode and retrieve simple data" do
     assert_round_trip_equality "a" => [[1]], "b" => [[2]]
   end
   
   common_test "can encode and retrieve an empty hash" do
-    assert_round_trip_equality
+    assert_round_trip_equality "a" => [{}]
+  end
+  
+  common_test "can decode cargo data even if there is other stuff around it" do
+    test_hash = {"foo bar narf bork" => [[1]]}
+    str = "BLAH BLAH BLAH" + generate_cargo_string(test_hash) + "BAR BAR BAR"
+    assert_equal test_hash, retrieve_cargo_from_string(str)
+  end
+  
+  common_test "can use :human_readable to include an unecoded version of a hash" do
+    test_string = "Mares eat oats and does eat oats and little lambs eat ivy."
+    result = StringIO.open do |sio|
+      cs = OfflineMirror::CargoStreamer.new(sio, "w")
+      cs.write_cargo_section("test", {"foo" => test_string}, :human_readable => true)
+      sio.string
+    end
+    assert result.include? test_string
+  end
+  
+  common_test "cannot use :human_readable on non-hashes" do
+    assert_raise OfflineMirror::CargoStreamerDataError do
+      cs = OfflineMirror::CargoStreamer.new(StringIO.new, "w")
+      cs.write_cargo_section("test", "test", :human_readable => true)
+    end
   end
   
   common_test "cannot directly encode a value that's not in an array" do

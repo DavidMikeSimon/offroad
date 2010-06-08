@@ -65,12 +65,16 @@ module OfflineMirror
       raise CargoStreamerDataError.new("Invalid cargo name '" + name + "'") unless name == clean_for_html_comment(name)
       raise CargoStreamerDataError.new("Unacceptable value type") unless encodable? value 
       
-      if options[:human_readable]
-        @ioh.write "<!--\n"
-        value.map{ |k,v| [k.to_s, v] }.sort.each do |k, v|
-          @ioh.write clean_for_html_comment(k.titleize) + ": " + clean_for_html_comment(v) + "\n"
+      begin
+        if options[:human_readable]
+          @ioh.write "<!--\n"
+          value.map{ |k,v| [k.to_s, v] }.sort.each do |k, v|
+            @ioh.write clean_for_html_comment(k.titleize) + ": " + clean_for_html_comment(v.to_s) + "\n"
+          end
+          @ioh.write "-->\n"
         end
-        @ioh.write "-->\n"
+      rescue StandardError => e
+        raise CargoStreamerDataError.new("Unable to make human-readable comment : #{e.class.to_s} : #{e.to_s}")
       end
       
       name = name.chomp
@@ -129,7 +133,7 @@ module OfflineMirror
       @ioh.each_line do |line|
         line.chomp!
         if in_cargo
-          if line == CARGO_END
+          if line.include? CARGO_END
             in_cargo = false
             found_name = false
           else
@@ -140,7 +144,7 @@ module OfflineMirror
             end
           end
         else
-          if line == CARGO_BEGIN
+          if line.include? CARGO_BEGIN
             in_cargo = true
           end
         end
