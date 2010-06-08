@@ -96,8 +96,10 @@ class CargoStreamerTest < ActiveSupport::TestCase
   
   common_test "cannot use :human_readable on non-hashes" do
     assert_raise OfflineMirror::CargoStreamerDataError do
-      cs = OfflineMirror::CargoStreamer.new(StringIO.new, "w")
-      cs.write_cargo_section("test", "test", :human_readable => true)
+      StringIO.open do |sio|
+        cs = OfflineMirror::CargoStreamer.new(sio, "w")
+        cs.write_cargo_section("test", ["test"], :human_readable => true)
+      end
     end
   end
   

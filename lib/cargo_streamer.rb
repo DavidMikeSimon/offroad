@@ -67,6 +67,7 @@ module OfflineMirror
       
       begin
         if options[:human_readable]
+          raise "Human readable data must be a hash" unless value.is_a? Hash
           @ioh.write "<!--\n"
           value.map{ |k,v| [k.to_s, v] }.sort.each do |k, v|
             @ioh.write clean_for_html_comment(k.titleize) + ": " + clean_for_html_comment(v.to_s) + "\n"
