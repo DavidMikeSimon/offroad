@@ -79,7 +79,7 @@ task :test, :filename_substring do |t, args|
       # Child process; run the rake task then end process
       puts ""
       puts "#"*80
-      puts "### BEGINNING FORKED TEST %s" % desc.to_s
+      puts "### BEGINNING %s TEST" % desc.to_s
       puts "#"*80
       puts ""
       
