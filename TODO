@@ -10,7 +10,7 @@
 - Versioning the app : how to do this?
 - When we import first down mirror w/ group data, set current_mirror_version to up_mirror_version + 1. SystemState::get tries to do this; test.
 - At offline app: When an up-mirror of a given version is confirmed, increment current_mirror_version. Complain if confirmation is not on current version.
-- At online app: When a down-mirror of a given version is confirmed, delete all sendable_records entries for deletions older than min(down_version)
+- At online app: When a down-mirror of a given version is confirmed, delete all sendable record state entries for deletions older than min(down_version)
 - Make sure the filters catch typical ActiveRecord class methods: create, update, delete, etc.
 - Split the offline environment into 'offline-production' and 'offline-test'
 - Only update current_mirror_version after a confirmed transfer; that way, if 1st mirror file generated is lost, no big deal
@@ -26,6 +26,8 @@
 - When transforming primary keys, also transform foreign key columns
 - Change mime-type of mirror files to something that doesn't allow it to be accidentally viewed in-browser
 - Use md5sum on the entire output instead of just each individual part, to protect against corruption outside the actual data segments
+- To use existing app validations but avoid slowdowns, consider using a dummy database connection just to see if save succeeds
+  - Or alternately, just check valid? without saving
 
 - Scenario to deal with: offline app applies an initial down mirror, then makes local changes, then attempts to reapply _another_ initial down mirror
  - To deal with this, just ignore all non-global records in the second initial down mirror, since they should be identical

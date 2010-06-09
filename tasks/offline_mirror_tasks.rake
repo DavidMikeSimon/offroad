@@ -22,7 +22,7 @@ namespace :offline_mirror do
   
   def setup_mirroring_for_model_data(model)
     model.find_each do |rec|
-      OfflineMirror::SendableRecord::note_record_created_or_updated(model, rec.id)
+      OfflineMirror::SendableRecordState::note_record_created_or_updated(model, rec.id)
     end
   end
   

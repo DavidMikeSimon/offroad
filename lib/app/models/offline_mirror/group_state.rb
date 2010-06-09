@@ -8,6 +8,10 @@ module OfflineMirror
     
     validates_presence_of :app_group_id
     
+    def self.exists_by_app_group_id?(local_id)
+      exists?(:app_group_id => local_id)
+    end
+    
     def self.find_by_group(obj, opts = {})
       ensure_group_base_model(obj)
       find_by_app_group_id(obj.id, opts)

@@ -88,16 +88,12 @@ def run_test_class(cls)
   end
 end
 
-# Test data setup methods (I don't like fixtures, for many reasons)
+# Test data setup (I don't like fixtures, for several reasons)
 class Test::Unit::TestCase
   def create_testing_system_state_and_groups
-    if OfflineMirror::app_offline?
-      opts = {
-        :offline_group_id => 1,
-        :current_mirror_version => 1
-      }
-      OfflineMirror::SystemState::create(opts) or raise "Unable to create offline-mode testing SystemState"
-    end
+    opts = { :current_mirror_version => 1 }
+    opts[:offline_group_id] = 1 if OfflineMirror::app_offline?
+    OfflineMirror::SystemState::create(opts) or raise "Unable to create testing SystemState"
     
     @offline_group = Group.new(:name => "An Offline Group")
     @offline_group.bypass_offline_mirror_readonly_checks
