@@ -27,34 +27,6 @@ module OfflineMirror
       scan_for_cargo if @mode == "r"
     end
     
-    def encodable?(value, known_ids = Set.new, depth = 0)
-      # Not using is_a? because any derivative-ness would be sliced off by JSONification
-      # Depth check is because we require that the top type be an Array or Hash
-      return true if depth > 0 && ENCODABLE_TYPES.include?(value.class)
-      
-      if value.class == Array || value.class == Hash
-        return false if known_ids.include?(value.object_id) # Protect against recursive loops
-        return false if depth > 4 # Protect against deep structures
-        
-        known_ids.add value.object_id
-        if value.class == Array
-          value.each do |val|
-            return false unless encodable?(val, known_ids, depth + 1)
-          end
-        else
-          value.each do |key, val|
-            return false unless key.class == String # JSON only supports string keys
-            return false unless encodable?(val, known_ids, depth + 1)
-          end
-        end
-        known_ids.delete value.object_id
-        
-        return true
-      end
-      
-      return false
-    end
-    
     # Writes a cargo section with the given name and value to the IO stream.
     # Options:
     # * :human_readable => true - Before writing the cargo section, writes a human-readable comment with the value.
@@ -100,6 +72,13 @@ module OfflineMirror
       return @cargo_locations.has_key? name
     end
     
+    # Reads, verifies, decodes, and returns the first cargo section with a given name
+    def first_cargo_section(name)
+      each_cargo_section(name) do |data|
+        return data
+      end
+    end
+    
     # Reads, verifies, and decodes each cargo section with a given name, passing each section's decoded data to the block
     def each_cargo_section(name)
       raise CargoStreamerError.new("Mode must be 'r' to read cargo data") unless @mode == "r"
@@ -124,6 +103,34 @@ module OfflineMirror
     end
     
     private
+    
+    def encodable?(value, known_ids = Set.new, depth = 0)
+      # Not using is_a? because any derivative-ness would be sliced off by JSONification
+      # Depth check is because we require that the top type be an Array or Hash
+      return true if depth > 0 && ENCODABLE_TYPES.include?(value.class)
+      
+      if value.class == Array || value.class == Hash
+        return false if known_ids.include?(value.object_id) # Protect against recursive loops
+        return false if depth > 4 # Protect against deep structures
+        
+        known_ids.add value.object_id
+        if value.class == Array
+          value.each do |val|
+            return false unless encodable?(val, known_ids, depth + 1)
+          end
+        else
+          value.each do |key, val|
+            return false unless key.class == String # JSON only supports string keys
+            return false unless encodable?(val, known_ids, depth + 1)
+          end
+        end
+        known_ids.delete value.object_id
+        
+        return true
+      end
+      
+      return false
+    end
     
     def scan_for_cargo
       @cargo_locations = {} # Key is cargo section name as String, value is array of seek locations to the start of the digest for that section

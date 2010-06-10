@@ -63,7 +63,7 @@ class CargoStreamerTest < ActiveSupport::TestCase
     end
   end
   
-  common_test "can create and retrieve multiple cargo sections with the same name" do
+  common_test "can create and retrieve multiple ordered cargo sections with the same name" do
     test_data = [[1, 2], [3, 4], ["a", "b"]]
     str = StringIO.open do |sio|
       cs = OfflineMirror::CargoStreamer.new(sio, "w")
@@ -84,6 +84,21 @@ class CargoStreamerTest < ActiveSupport::TestCase
     assert_equal test_data, result_data
   end
   
+  common_test "can use first_cargo_section to get only the first section with a given name" do
+    result = StringIO.open do |sio|
+      cs = OfflineMirror::CargoStreamer.new(sio, "w")
+      for i in 1..3 do
+        cs.write_cargo_section("testing", ["item number #{i}"])
+      end
+      sio.string
+    end
+    
+    StringIO.open(result) do |sio|
+      cs = OfflineMirror::CargoStreamer.new(sio, "r")
+      assert cs.first_cargo_section("testing") == ["item number 1"]
+    end
+  end
+  
   common_test "can use :human_readable to include an unecoded version of a hash" do
     test_string = "Mares eat oats and does eat oats and little lambs eat ivy."
     result = StringIO.open do |sio|
@@ -95,7 +110,7 @@ class CargoStreamerTest < ActiveSupport::TestCase
   end
   
   common_test "cannot use :human_readable on non-hashes" do
-    assert_raise OfflineMirror::CargoStreamerDataError do
+    assert_raise OfflineMirror::CargoStreamerError do
       StringIO.open do |sio|
         cs = OfflineMirror::CargoStreamer.new(sio, "w")
         cs.write_cargo_section("test", ["test"], :human_readable => true)
@@ -104,7 +119,7 @@ class CargoStreamerTest < ActiveSupport::TestCase
   end
   
   common_test "cannot directly encode a value that's not in an array" do
-    assert_raise OfflineMirror::CargoStreamerDataError do
+    assert_raise OfflineMirror::CargoStreamerError do
       generate_cargo_string "foo" => [1]
     end
   end
@@ -118,7 +133,7 @@ class CargoStreamerTest < ActiveSupport::TestCase
     end
     
     arr_b << arr_a
-    assert_raise OfflineMirror::CargoStreamerDataError do
+    assert_raise OfflineMirror::CargoStreamerError do
       generate_cargo_string "blah" => [arr_a]
     end
   end
@@ -128,7 +143,7 @@ class CargoStreamerTest < ActiveSupport::TestCase
     assert_nothing_raised do
       generate_cargo_string "blah" => [a]
     end
-    assert_raise OfflineMirror::CargoStreamerDataError do
+    assert_raise OfflineMirror::CargoStreamerError do
       generate_cargo_string "blah" => [[a]]
     end
   end
@@ -143,11 +158,11 @@ class CargoStreamerTest < ActiveSupport::TestCase
     end
     assert md5sum, "Generated string includes something that looks like an md5 fingerprint"
     assert_equal test_hash, retrieve_cargo_from_string(str), "Works with unmodified fingerprint"
-    assert_raise OfflineMirror::CargoStreamerDataError, "Changing fingerprint causes exception to be raised" do
+    assert_raise OfflineMirror::CargoStreamerError, "Changing fingerprint causes exception to be raised" do
       retrieve_cargo_from_string(str.gsub md5sum, "a"*md5sum.size)
     end
     
-    assert_raise OfflineMirror::CargoStreamerDataError, "Changing base64 content causes exception to be raised" do
+    assert_raise OfflineMirror::CargoStreamerError, "Changing base64 content causes exception to be raised" do
       # This is somewhat of an implementation-dependent test; I checked manually that the data has this string in it.
       # It's safe, though, as changing the implementation-generated string should cause false neg, not false pos.
       retrieve_cargo_from_string(str.sub "owFAAH", "owFAAh")
@@ -163,13 +178,13 @@ class CargoStreamerTest < ActiveSupport::TestCase
       OfflineMirror::CargoStreamer.new(StringIO.new(), "w")
     end
     
-    assert_raise OfflineMirror::CargoStreamerDataError, "Mode a doesn't work" do
+    assert_raise OfflineMirror::CargoStreamerError, "Mode a doesn't work" do
       OfflineMirror::CargoStreamer.new(StringIO.new(), "a")
     end
   end
   
   common_test "cannot write cargo in read mode" do
-    assert_raise OfflineMirror::CargoStreamerDataError do
+    assert_raise OfflineMirror::CargoStreamerError do
       cs = OfflineMirror::CargoStreamer.new(StringIO.new, "r")
       cs.write_cargo_section("test", "test")
     end
@@ -178,25 +193,25 @@ class CargoStreamerTest < ActiveSupport::TestCase
   common_test "cannot use invalid cargo section names" do
     cs = OfflineMirror::CargoStreamer.new(StringIO.new, "w")
     
-    assert_raise OfflineMirror::CargoStreamerDataError, "Expect exception for symbol cargo name" do
+    assert_raise OfflineMirror::CargoStreamerError, "Expect exception for symbol cargo name" do
       cs.write_cargo_section(:test, "test")
     end
     
-    assert_raise OfflineMirror::CargoStreamerDataError, "Expect exception for cargo name that's bad in HTML comments" do
+    assert_raise OfflineMirror::CargoStreamerError, "Expect exception for cargo name that's bad in HTML comments" do
       cs.write_cargo_section("whatever--foobar", "test")
     end
     
-    assert_raise OfflineMirror::CargoStreamerDataError, "Expect exception for cargo name that's multiline" do
+    assert_raise OfflineMirror::CargoStreamerError, "Expect exception for cargo name that's multiline" do
       cs.write_cargo_section("whatever\nfoobar", "test")
     end
   end
   
   common_test "cannot directly encode a model instance" do
     rec = UnmirroredRecord.new(:content => "Test")
-    assert_raise OfflineMirror::CargoStreamerDataError, "Should reject model at top layer" do
+    assert_raise OfflineMirror::CargoStreamerError, "Should reject model at top layer" do
       generate_cargo_string "blah" => [rec]
     end
-    assert_raise OfflineMirror::CargoStreamerDataError, "Should reject model even if it is deeply nested" do
+    assert_raise OfflineMirror::CargoStreamerError, "Should reject model even if it is deeply nested" do
       generate_cargo_string "blah" => [[[rec]]]
     end
     assert_nothing_raised "Should accept a hash of the model's data" do
