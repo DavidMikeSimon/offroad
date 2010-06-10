@@ -1,6 +1,5 @@
 require 'zlib'
 require 'digest/md5'
-require 'set'
 
 require 'exceptions'
 
@@ -104,27 +103,24 @@ module OfflineMirror
     
     private
     
-    def encodable?(value, known_ids = Set.new, depth = 0)
+    def encodable?(value, depth = 0)
       # Not using is_a? because any derivative-ness would be sliced off by JSONification
       # Depth check is because we require that the top type be an Array or Hash
       return true if depth > 0 && ENCODABLE_TYPES.include?(value.class)
       
       if value.class == Array || value.class == Hash
-        return false if known_ids.include?(value.object_id) # Protect against recursive loops
         return false if depth > 4 # Protect against excessively deep structures
         
-        known_ids.add value.object_id
         if value.class == Array
           value.each do |val|
-            return false unless encodable?(val, known_ids, depth + 1)
+            return false unless encodable?(val, depth + 1)
           end
         else
           value.each do |key, val|
             return false unless key.class == String # JSON only supports string keys
-            return false unless encodable?(val, known_ids, depth + 1)
+            return false unless encodable?(val, depth + 1)
           end
         end
-        known_ids.delete value.object_id
         
         return true
       end
