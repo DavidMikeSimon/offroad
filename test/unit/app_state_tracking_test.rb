@@ -132,6 +132,33 @@ class AppStateTrackingTest < ActiveSupport::TestCase
     end
   end
   
+  common_test "can only find record state of records whose models act_as_mirrored_offline" do
+    assert_nothing_raised do
+      OfflineMirror::SendableRecordState::find_by_record(@editable_group)
+    end
+    
+    unmirrored_rec = UnmirroredRecord.new(:content => "Test")
+    assert_raise OfflineMirror::ModelError do
+      OfflineMirror::SendableRecordState::find_by_record(unmirrored_rec)
+    end
+  end
+  
+  offline_test "cannot auto-generate system settings" do
+    OfflineMirror::SystemState.instance_record.destroy
+    
+    assert_raise OfflineMirror::DataError do
+      OfflineMirror::SystemState.instance_record
+    end
+  end
+  
+  online_test "can auto-generate system settings" do
+    OfflineMirror::SystemState.instance_record.destroy
+    
+    assert_nothing_raised do
+      OfflineMirror::SystemState.instance_record
+    end
+  end
+  
 end
 
 run_test_class AppStateTrackingTest

@@ -23,7 +23,9 @@ module OfflineMirror
       if sys_state
         return sys_state
       else
-        raise "Cannot auto-generate system settings on offline app" if OfflineMirror::app_offline?
+        if OfflineMirror::app_offline?
+          raise OfflineMirror::DataError.new("Cannot auto-generate system settings on offline app")
+        end
         return create(:current_mirror_version => 1, :offline_group_id => 0)
       end
     end
