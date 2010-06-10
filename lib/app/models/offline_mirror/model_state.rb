@@ -8,11 +8,6 @@ module OfflineMirror
     
     validates_presence_of :app_model_name
     
-    def self.find_by_model(cls, opts = {})
-      ensure_mirrored_model(cls)
-      find_by_app_model_name(cls.to_s, opts)
-    end
-    
     def self.find_or_create_by_model(cls, opts = {})
       ensure_mirrored_model(cls)
       find_or_create_by_app_model_name(cls.to_s, opts)

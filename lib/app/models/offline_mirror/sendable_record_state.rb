@@ -36,12 +36,6 @@ module OfflineMirror
       )
     end
     
-    def self.find_by_record(rec)
-      model_state = OfflineMirror::ModelState::find_by_model(rec.class)
-      return nil unless model_state
-      return find_by_model_state_id_and_local_record_id(model_state.id, rec.id)
-    end
-    
     private
     
     def self.mark_record_changes(record)

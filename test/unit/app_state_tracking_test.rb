@@ -5,6 +5,11 @@ class AppStateTrackingTest < ActiveSupport::TestCase
     create_testing_system_state_and_groups
   end
   
+  def find_record_state_from_record(rec)
+    model_state = OfflineMirror::ModelState::find_by_app_model_name(rec.class.name)
+    return OfflineMirror::SendableRecordState::find_by_model_state_id_and_local_record_id(model_state.id, rec.id)
+  end
+  
   common_test "can increment current mirror version" do
     original_version = OfflineMirror::SystemState::current_mirror_version
     OfflineMirror::SystemState::increment_mirror_version
@@ -23,11 +28,11 @@ class AppStateTrackingTest < ActiveSupport::TestCase
     prior_group_state_count = OfflineMirror::GroupState::count
     rec = Group.create(:name => "Foo Bar")
     
-    rec_state = OfflineMirror::SendableRecordState::find_by_record(rec)
+    rec_state = find_record_state_from_record(rec)
     assert_equal "Group", rec_state.model_state.app_model_name, "ModelState has correct model name"
     assert_newly_created_record_matches_state(rec, rec_state)
     
-    group_state = OfflineMirror::GroupState::find_by_group(rec)
+    group_state = OfflineMirror::GroupState::find_by_app_group_id(rec.id)
     assert_equal prior_group_state_count+1, OfflineMirror::GroupState::count, "GroupState was created on demand"
     assert_equal rec.id, group_state.app_group_id, "GroupState has correct app group id"
     assert_equal 0, group_state.up_mirror_version, "As-yet un-mirrored group has an up mirror version of 0"
@@ -37,7 +42,7 @@ class AppStateTrackingTest < ActiveSupport::TestCase
   common_test "creating group owned record causes creation of valid state data" do
     rec = GroupOwnedRecord.create(:description => "Foo Bar", :group => @editable_group)
     
-    rec_state = OfflineMirror::SendableRecordState::find_by_record(rec)
+    rec_state = find_record_state_from_record(rec)
     assert_equal "GroupOwnedRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
     assert_newly_created_record_matches_state(rec, rec_state)
   end
@@ -52,14 +57,14 @@ class AppStateTrackingTest < ActiveSupport::TestCase
     
     rec = GlobalRecord.create(:title => "Foo Bar")
     
-    rec_state = OfflineMirror::SendableRecordState::find_by_record(rec)
+    rec_state = find_record_state_from_record(rec)
     assert rec_state, "SendableRecordState was created when record was created"
     assert_equal "GlobalRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
     assert_newly_created_record_matches_state(rec, rec_state)
   end
   
   def assert_only_changing_attribute_causes_version_change(model, attribute, rec)
-    rec_state = OfflineMirror::SendableRecordState::find_by_record(rec)
+    rec_state = find_record_state_from_record(rec)
     original_version = OfflineMirror::SystemState::current_mirror_version
     OfflineMirror::SystemState::increment_mirror_version
     
@@ -87,7 +92,7 @@ class AppStateTrackingTest < ActiveSupport::TestCase
   end
   
   def assert_deleting_record_correctly_updated_record_state(rec)
-    rec_state = OfflineMirror::SendableRecordState::find_by_record(rec)
+    rec_state = find_record_state_from_record(rec)
     original_version = OfflineMirror::SystemState::current_mirror_version
     OfflineMirror::SystemState::increment_mirror_version
     
@@ -112,34 +117,34 @@ class AppStateTrackingTest < ActiveSupport::TestCase
     assert_deleting_record_correctly_updated_record_state(@editable_group_data)
   end
   
-  common_test "can only find group state of models that are :group_base" do
+  common_test "can only find_or_create group state of models that are :group_base" do
     assert_nothing_raised do
-      OfflineMirror::GroupState::find_by_group(@editable_group)
+      OfflineMirror::GroupState::find_or_create_by_group(@editable_group)
     end
     
     assert_raise OfflineMirror::ModelError do
-      OfflineMirror::GroupState::find_by_group(@editable_group_data)
+      OfflineMirror::GroupState::find_or_create_by_group(@editable_group_data)
     end
   end
   
-  common_test "can only find model state of models that act_as_mirrored_offline" do
+  common_test "can only find_or_create model state of models that act_as_mirrored_offline" do
     assert_nothing_raised do
-      OfflineMirror::ModelState::find_by_model(Group)
+      OfflineMirror::ModelState::find_or_create_by_model(GlobalRecord)
     end
     
     assert_raise OfflineMirror::ModelError do
-      OfflineMirror::ModelState::find_by_model(UnmirroredRecord)
+      OfflineMirror::ModelState::find_or_create_by_model(UnmirroredRecord)
     end
   end
   
-  common_test "can only find record state of records whose models act_as_mirrored_offline" do
+  common_test "can only find_or_initialize record state of records whose models act_as_mirrored_offline" do
     assert_nothing_raised do
-      OfflineMirror::SendableRecordState::find_by_record(@editable_group)
+      OfflineMirror::SendableRecordState::find_or_initialize_by_record(@editable_group)
     end
     
     unmirrored_rec = UnmirroredRecord.new(:content => "Test")
     assert_raise OfflineMirror::ModelError do
-      OfflineMirror::SendableRecordState::find_by_record(unmirrored_rec)
+      OfflineMirror::SendableRecordState::find_or_initialize_by_record(unmirrored_rec)
     end
   end
   
@@ -158,7 +163,6 @@ class AppStateTrackingTest < ActiveSupport::TestCase
       OfflineMirror::SystemState.instance_record
     end
   end
-  
 end
 
 run_test_class AppStateTrackingTest
