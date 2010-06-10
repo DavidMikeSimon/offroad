@@ -19,18 +19,18 @@ module OfflineMirror
     
     def self.find_or_initialize_by_record(rec)
       if rec.new_record?
-        raise OfflineMirror::DataError.new("Cannot build record state for unsaved records")
+        raise DataError.new("Cannot build record state for unsaved record")
       end
       
       unless rec.class.acts_as_mirrored_offline?
-        raise OfflineMirror::ModelError
+        raise ModelError.new("Cannot build record state for unmirrored record")
       end
       
-      model_state_id = OfflineMirror::ModelState::find_or_create_by_model(rec.class).id
+      model_state_id = ModelState::find_or_create_by_model(rec.class).id
       
       # If this record is itself a group record, then create its GroupState entry if it doesn't already exist
-      if rec.class.offline_mirror_mode == :group_base && !OfflineMirror::GroupState::exists_by_app_group_id?(rec.id)
-        OfflineMirror::GroupState::find_or_create_by_group rec
+      if rec.class.offline_mirror_mode == :group_base && !GroupState::exists_by_app_group_id?(rec.id)
+        GroupState::find_or_create_by_group rec
       end
       
       return find_or_initialize_by_model_state_id_and_local_record_id(
@@ -44,18 +44,18 @@ module OfflineMirror
     
     def self.mark_record_changes(record)
       if record.new_record?
-        raise OfflineMirror::DataError.new("Unable to mark changes to unsaved record")
+        raise DataError.new("Unable to mark changes to unsaved record")
       end
       
       unless record.class.acts_as_mirrored_offline?
-        raise OfflineMirror::ModelError.new("Unable to mark changes to unmirrored record")
+        raise ModelError.new("Unable to mark changes to unmirrored record")
       end
       
       transaction do
         rec_state = find_or_initialize_by_record(record)
         rec_state.lock!
         yield(rec_state) if block_given?
-        rec_state.mirror_version = OfflineMirror::SystemState::current_mirror_version
+        rec_state.mirror_version = SystemState::current_mirror_version
         rec_state.save!
       end
     end

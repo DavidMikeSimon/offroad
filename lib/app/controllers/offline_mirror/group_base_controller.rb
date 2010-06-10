@@ -3,14 +3,14 @@ module OfflineMirror
     protected
     
     def render_up_mirror_file(group, filename, render_args = {})
-      raise "Cannot generate up-mirror file when app in online mode" if OfflineMirror::app_online?
+      raise PluginError.new("Cannot generate up-mirror file when app in online mode") if OfflineMirror::app_online?
       render_appending_cargo_data(group, filename, render_args) do |cargo_streamer|
         write_group_specific_cargo(group, cargo_streamer)
       end
     end
     
     def render_down_mirror_file(group, filename, render_args = {})
-      raise "Cannot generate down-mirror file when app in offline mode" if OfflineMirror::app_offline?
+      raise PluginError.new("Cannot generate down-mirror file when app in offline mode") if OfflineMirror::app_offline?
       render_appending_cargo_data(group, filename, render_args) do |cargo_streamer|
         # FIXME: Include an updated version of the app here, if one is available
         write_global_cargo(group, cargo_streamer)

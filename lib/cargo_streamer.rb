@@ -5,7 +5,7 @@ require 'set'
 require 'exceptions'
 
 module OfflineMirror
-  class CargoStreamerDataError < DataError
+  class CargoStreamerError < DataError
   end
   
   private
@@ -21,7 +21,7 @@ module OfflineMirror
     # Creates a new CargoStreamer on the given stream, which will be used in the given mode (must be "w" or "r").
     # If the mode is "r", the file is immediately scanned to determine what cargo it contains.
     def initialize(ioh, mode)
-      raise CargoStreamerDataError.new("Invalid mode: must be 'w' or 'r'") unless ["w", "r"].include?(mode)
+      raise CargoStreamerError.new("Invalid mode: must be 'w' or 'r'") unless ["w", "r"].include?(mode)
       @ioh = ioh
       @mode = mode
       scan_for_cargo if @mode == "r"
@@ -60,14 +60,14 @@ module OfflineMirror
     # * :human_readable => true - Before writing the cargo section, writes a human-readable comment with the value.
     #   The value must be Hash-like for this.
     def write_cargo_section(name, value, options = {})
-      raise CargoStreamerDataError.new("Mode must be 'w' to write cargo data") unless @mode == "w"
-      raise CargoStreamerDataError.new("CargoStreamer section names must be strings") unless name.is_a? String
-      raise CargoStreamerDataError.new("Invalid cargo name '" + name + "'") unless name == clean_for_html_comment(name)
-      raise CargoStreamerDataError.new("Unacceptable value type") unless encodable? value 
+      raise CargoStreamerError.new("Mode must be 'w' to write cargo data") unless @mode == "w"
+      raise CargoStreamerError.new("CargoStreamer section names must be strings") unless name.is_a? String
+      raise CargoStreamerError.new("Invalid cargo name '" + name + "'") unless name == clean_for_html_comment(name)
+      raise CargoStreamerError.new("Unacceptable value type") unless encodable? value 
       
       begin
         if options[:human_readable]
-          raise "Human readable data must be a hash" unless value.is_a? Hash
+          raise CargoStreamerError.new("Human readable data must be a hash") unless value.is_a? Hash
           @ioh.write "<!--\n"
           value.map{ |k,v| [k.to_s, v] }.sort.each do |k, v|
             @ioh.write clean_for_html_comment(k.titleize) + ": " + clean_for_html_comment(v.to_s) + "\n"
@@ -75,7 +75,7 @@ module OfflineMirror
           @ioh.write "-->\n"
         end
       rescue StandardError => e
-        raise CargoStreamerDataError.new("Unable to make human-readable comment : #{e.class.to_s} : #{e.to_s}")
+        raise CargoStreamerError.new("Unable to make human-readable comment : #{e.class.to_s} : #{e.to_s}")
       end
       
       name = name.chomp
@@ -102,8 +102,8 @@ module OfflineMirror
     
     # Reads, verifies, and decodes each cargo section with a given name, passing each section's decoded data to the block
     def each_cargo_section(name)
-      raise "Mode must be 'r' to read cargo data" unless @mode == "r"
-      locations = @cargo_locations[name] or raise "No section with that name"
+      raise CargoStreamerError.new("Mode must be 'r' to read cargo data") unless @mode == "r"
+      locations = @cargo_locations[name] or raise CargoStreamerError.new("No section with that name")
       locations.each do |seek_location|
         @ioh.seek(seek_location)
         digest = ""
@@ -150,7 +150,7 @@ module OfflineMirror
           end
         end
       end
-      raise CargoStreamerDataError.new("Input contained un-terminated cargo section") unless in_cargo == false
+      raise CargoStreamerError.new("Input contained un-terminated cargo section") unless in_cargo == false
       
       @ioh.rewind
     end
@@ -164,7 +164,7 @@ module OfflineMirror
       raise "MD5 check failure" unless Digest::MD5::hexdigest(deflated_data) == digest
       return JSON::parse(Zlib::Inflate::inflate(deflated_data))
     rescue StandardError => e
-      raise CargoStreamerDataError.new("Corrupted data : #{e.class.to_s} : #{e.to_s}")
+      raise CargoStreamerError.new("Corrupted data : #{e.class.to_s} : #{e.to_s}")
     end
     
     CARGO_BEGIN = "<!-- CARGO SEGMENT"

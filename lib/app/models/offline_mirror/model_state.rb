@@ -17,7 +17,7 @@ module OfflineMirror
     
     def self.ensure_mirrored_model(cls)
       unless cls.acts_as_mirrored_offline?
-        raise OfflineMirror::ModelError.new("Passed class doesn't specify acts_as_mirrored_offline")
+        raise ModelError.new("Passed class doesn't specify acts_as_mirrored_offline")
       end
     end
   end

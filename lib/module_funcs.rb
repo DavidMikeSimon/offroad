@@ -36,11 +36,11 @@ module OfflineMirror
   private
   
   def self.online_url
-    @@config[:online_url] or raise "No online url specified in offline mirror config"
+    @@config[:online_url] or raise PluginError.new("No online url specified in offline mirror config")
   end
   
   def self.app_name
-    @@config[:app_name] or raise "No app name specified in offline mirror config"
+    @@config[:app_name] or raise PluginError.new("No app name specified in offline mirror config")
   end
   
   def self.note_global_data_model(cls)
@@ -53,12 +53,14 @@ module OfflineMirror
   end
   
   def self.note_group_base_model(cls)
-    raise "You can only define one group base model" if defined?(@@group_base_model) and @@group_base_model.to_s != cls.to_s
+    if defined?(@@group_base_model) and @@group_base_model.to_s != cls.to_s
+      raise ModelError.new("You can only define one group base model")
+    end
     @@group_base_model = cls
   end
   
   def self.group_base_model
-    raise "No group base model was specified" unless defined?(@@group_base_model)
+    raise ModelError.new("No group base model was specified") unless defined?(@@group_base_model)
     @@group_base_model
   end
   
