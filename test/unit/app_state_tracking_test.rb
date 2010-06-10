@@ -74,9 +74,41 @@ class AppStateTrackingTest < ActiveSupport::TestCase
   end
   
   common_test "saving group base data updates mirror version only on changed records" do
+    rec_state = OfflineMirror::SendableRecordState::find_by_record(@editable_group)
+    
+    original_version = OfflineMirror::SystemState::current_mirror_version
+    OfflineMirror::SystemState::increment_mirror_version
+    
+    rec_state.reload
+    assert_equal original_version, rec_state.mirror_version, "Updating system's mirror version did not affect record version"
+    
+    @editable_group.save!
+    rec_state.reload
+    assert_equal original_version, rec_state.mirror_version, "Save without changes did not affect record version"
+    
+    @editable_group.name = "Narf Bork"
+    @editable_group.save!
+    rec_state.reload
+    assert_equal original_version+1, rec_state.mirror_version, "Save with changes updated record's version"
   end
   
   common_test "saving group owned data updates mirror version only on changed records" do
+    rec_state = OfflineMirror::SendableRecordState::find_by_record(@editable_group_data)
+    
+    original_version = OfflineMirror::SystemState::current_mirror_version
+    OfflineMirror::SystemState::increment_mirror_version
+    
+    rec_state.reload
+    assert_equal original_version, rec_state.mirror_version, "Updating system's mirror version did not affect record version"
+    
+    @editable_group_data.save!
+    rec_state.reload
+    assert_equal original_version, rec_state.mirror_version, "Save without changes did not affect record version"
+    
+    @editable_group_data.description = "Narf Bork"
+    @editable_group_data.save!
+    rec_state.reload
+    assert_equal original_version+1, rec_state.mirror_version, "Save with changes updated record's version"
   end
   
   common_test "can only find group state of models that are :group_base" do
