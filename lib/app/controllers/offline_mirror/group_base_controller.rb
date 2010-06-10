@@ -42,22 +42,12 @@ module OfflineMirror
       end
     end
     
-    def record_to_hash(record)
-      h = record.attributes
-      h.each_pair do |key, value|
-        if value.class == Time
-          h[key] = value.to_i
-        end
-      end
-      return h
-    end
-    
     def write_model_cargo(cargo_streamer, model, find_options = {})
       # FIXME: Also include id transformation by joining with the mirrored_records table
       # FIXME: Include entries for deleted records
       # FIXME: Check against mirror version
       model.find_in_batches(find_options.merge({:batch_size => 100})) do |batch|
-        cargo_streamer.write_cargo_section("data_#{model.name}", batch.map {|r| record_to_hash(r)} )
+        cargo_streamer.write_cargo_section("data_#{model.name}", batch.map(&:simplified_attributes))
       end
     end
     

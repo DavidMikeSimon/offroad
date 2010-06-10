@@ -31,10 +31,11 @@ class GroupControllerTest < ActionController::TestCase
     assert_single_cargo_sections_named cs, [data_name]
     data = cs.first_cargo_section(data_name)
     assert_equal 1, data.size
-    assert_equal record.attributes, data[0]
+    assert_equal record.simplified_attributes, data[0]
   end
   
-  online_test "can retrieve a valid-seeming initial down mirror file for the offline group" do
+  # We know this will be an initial down mirror because the setup method sets the group's version attributes to 0
+  online_test "can retrieve a valid initial down mirror file for the offline group" do
     global_record = GlobalRecord.create(:title => "Foo Bar")
     
     get :download_down_mirror, {"id" => @offline_group.id}
