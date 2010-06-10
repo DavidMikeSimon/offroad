@@ -82,7 +82,7 @@ module OfflineMirror
     # Reads, verifies, and decodes each cargo section with a given name, passing each section's decoded data to the block
     def each_cargo_section(name)
       raise CargoStreamerError.new("Mode must be 'r' to read cargo data") unless @mode == "r"
-      locations = @cargo_locations[name] or raise CargoStreamerError.new("No section with that name")
+      locations = @cargo_locations[name] or return nil
       locations.each do |seek_location|
         @ioh.seek(seek_location)
         digest = ""

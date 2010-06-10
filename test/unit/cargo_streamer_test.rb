@@ -95,7 +95,8 @@ class CargoStreamerTest < ActiveSupport::TestCase
     
     StringIO.open(result) do |sio|
       cs = OfflineMirror::CargoStreamer.new(sio, "r")
-      assert cs.first_cargo_section("testing") == ["item number 1"]
+      assert_equal ["item number 1"], cs.first_cargo_section("testing")
+      assert_equal nil, cs.first_cargo_section("no-such-section")
     end
   end
   
