@@ -117,13 +117,18 @@ class AppStateTrackingTest < ActiveSupport::TestCase
     assert_deleting_record_correctly_updated_record_state(@editable_group_data)
   end
   
-  common_test "can only find_or_create group state of models that are :group_base" do
-    assert_nothing_raised do
-      OfflineMirror::GroupState::find_or_create_by_group(@editable_group)
-    end
-    
+  online_test "can only find_or_create group state of saved group records that are :group_base" do
     assert_raise OfflineMirror::ModelError do
       OfflineMirror::GroupState::find_or_create_by_group(@editable_group_data)
+    end
+    
+    new_group = Group.new(:name => "Test")
+    assert_raise OfflineMirror::DataError do
+      OfflineMirror::GroupState::find_or_create_by_group(new_group)
+    end
+    new_group.save!
+    assert_nothing_raised do
+      OfflineMirror::GroupState::find_or_create_by_group(new_group)
     end
   end
   
@@ -137,15 +142,33 @@ class AppStateTrackingTest < ActiveSupport::TestCase
     end
   end
   
-  common_test "can only find_or_initialize record state of records whose models act_as_mirrored_offline" do
-    assert_nothing_raised do
-      OfflineMirror::SendableRecordState::find_or_initialize_by_record(@editable_group)
+  def assert_record_state_method_only_works_on_saved_mirrored_records(name)
+    unmirrored_rec = UnmirroredRecord.create(:content => "Test")
+    assert_raise OfflineMirror::ModelError do
+      OfflineMirror::SendableRecordState.send(name, unmirrored_rec)
     end
     
-    unmirrored_rec = UnmirroredRecord.new(:content => "Test")
-    assert_raise OfflineMirror::ModelError do
-      OfflineMirror::SendableRecordState::find_or_initialize_by_record(unmirrored_rec)
+    group_rec = GroupOwnedRecord.new(:description => "Test", :group => @editable_group)
+    assert_raise OfflineMirror::DataError do
+      OfflineMirror::SendableRecordState.send(name, group_rec)
     end
+    
+    group_rec.save!
+    assert_nothing_raised do
+      OfflineMirror::SendableRecordState.send(name, group_rec)
+    end
+  end
+  
+  common_test "can only find_or_initialize record state of records whose models act_as_mirrored_offline" do
+    assert_record_state_method_only_works_on_saved_mirrored_records :find_or_initialize_by_record
+  end
+  
+  common_test "can note create/update on saved records whose models act_as_mirrored_offline" do
+    assert_record_state_method_only_works_on_saved_mirrored_records :note_record_created_or_updated
+  end
+  
+  common_test "can only note deletion on saved records whose models act_as_mirrored_offline" do
+    assert_record_state_method_only_works_on_saved_mirrored_records :note_record_destroyed
   end
   
   offline_test "cannot auto-generate system settings" do

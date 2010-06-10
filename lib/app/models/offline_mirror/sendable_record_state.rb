@@ -18,6 +18,10 @@ module OfflineMirror
     end
     
     def self.find_or_initialize_by_record(rec)
+      if rec.new_record?
+        raise OfflineMirror::DataError.new("Cannot build record state for unsaved records")
+      end
+      
       unless rec.class.acts_as_mirrored_offline?
         raise OfflineMirror::ModelError
       end
@@ -39,8 +43,12 @@ module OfflineMirror
     private
     
     def self.mark_record_changes(record)
+      if record.new_record?
+        raise OfflineMirror::DataError.new("Unable to mark changes to unsaved record")
+      end
+      
       unless record.class.acts_as_mirrored_offline?
-        raise OfflineMirror::ModelError("Unable to mark changes to unmirrored record")
+        raise OfflineMirror::ModelError.new("Unable to mark changes to unmirrored record")
       end
       
       transaction do

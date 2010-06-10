@@ -13,10 +13,14 @@ module OfflineMirror
     end
     
     def self.find_or_create_by_group(obj, opts = {})
-      unless obj.id
-        raise "Cannot perform OfflineMirror operations on unsaved group records"
+      if obj.new_record?
+        raise OfflineMirror::DataError.new("Cannot build group state for unsaved group records")
       end
-      ensure_group_base_model(obj)
+      
+      unless obj.class.offline_mirror_mode == :group_base
+        raise OfflineMirror::ModelError.new("Passed object is not of a group_base_model")
+      end
+      
       rec = find_or_initialize_by_app_group_id(obj.id, opts)
       if OfflineMirror::app_offline?
         # FIXME : Fill in last_installation_at, launcher_version, app_version
@@ -29,14 +33,6 @@ module OfflineMirror
     
     def online?
       not offline?
-    end
-    
-    private
-    
-    def self.ensure_group_base_model(obj)
-      unless !(obj.class === Class) and obj.offline_mirror_mode == :group_base
-        raise OfflineMirror::ModelError.new("Passed object is not of a group_base_model") 
-      end
     end
   end
 end
