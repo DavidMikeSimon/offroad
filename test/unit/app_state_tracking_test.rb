@@ -63,9 +63,6 @@ class AppStateTrackingTest < ActiveSupport::TestCase
     original_version = OfflineMirror::SystemState::current_mirror_version
     OfflineMirror::SystemState::increment_mirror_version
     
-    rec_state.reload
-    assert_equal original_version, rec_state.mirror_version, "Updating system's mirror version did not affect record version"
-    
     rec.save!
     rec_state.reload
     assert_equal original_version, rec_state.mirror_version, "Save without changes did not affect record version"
@@ -89,13 +86,30 @@ class AppStateTrackingTest < ActiveSupport::TestCase
     assert_only_changing_attribute_causes_version_change(GroupOwnedRecord, :description, @editable_group_data)
   end
   
+  def assert_deleting_record_correctly_updated_record_state(rec)
+    rec_state = OfflineMirror::SendableRecordState::find_by_record(rec)
+    original_version = OfflineMirror::SystemState::current_mirror_version
+    OfflineMirror::SystemState::increment_mirror_version
+    
+    rec.destroy
+    rec_state.reload
+    assert_equal original_version+1, rec_state.mirror_version, "Deleting record updated version"
+    assert_equal 0, rec_state.local_record_id, "Deleting record set local id to 0"
+    # TODO If a record was never part of any mirror file, just destroy the record state as well on its destruction
+    # This implies that we need a test here that involves creating a fake mirror file
+  end
+  
   online_test "deleting global record updates mirror version" do
+    rec = GlobalRecord.create(:title => "Foo Bar")
+    assert_deleting_record_correctly_updated_record_state(rec)
   end
   
   online_test "deleting group base record updates mirror version" do
+    assert_deleting_record_correctly_updated_record_state(@editable_group)
   end
   
   common_test "deleting group owned record updates mirror version" do
+    assert_deleting_record_correctly_updated_record_state(@editable_group_data)
   end
   
   common_test "can only find group state of models that are :group_base" do
