@@ -28,30 +28,36 @@ module OfflineMirror
       # FIXME: Make sure that when this is being called by the online app, it doesn't accidentally fill mirrored_records with group-specific junk
       # FIXME: Also allow for a full-sync mode (includes all records)
       OfflineMirror::group_owned_models.each do |name, cls|
-        write_model_cargo(cargo_streamer, "group_model", cls, :conditions => { cls.offline_mirror_group_key.to_sym => group })
+        write_model_cargo(cargo_streamer, cls, :conditions => { cls.offline_mirror_group_key.to_sym => group })
       end
       
-      # Have to include the schema so all tables are available to pre-import migrations, even if we don't send any changes to this table
-      cargo_streamer.write_cargo_section("group_model_schema_#{OfflineMirror::group_base_model.name}", OfflineMirror::group_base_model.columns)
-      # FIXME: Check against mirror version; don't include if there are no changes
-      cargo_streamer.write_cargo_section("group_model_data_#{OfflineMirror::group_base_model.name}", group.attributes)
+      write_model_cargo(cargo_streamer, OfflineMirror::group_base_model, :conditions => { :id => group.id })
     end
     
     def write_global_cargo(group, cargo_streamer)
       # FIXME: Indicate what down-mirror version this is
       # FIXME: Also allow for a full-sync mode (includes all records)
       OfflineMirror::global_data_models.each do |name, cls|
-        write_model_cargo(cargo_streamer, "global_model", cls)
+        write_model_cargo(cargo_streamer, cls)
       end
     end
     
-    def write_model_cargo(cargo_streamer, prefix, model, find_options = {})
+    def record_to_hash(record)
+      h = record.attributes
+      h.each_pair do |key, value|
+        if value.class == Time
+          h[key] = value.to_i
+        end
+      end
+      return h
+    end
+    
+    def write_model_cargo(cargo_streamer, model, find_options = {})
       # FIXME: Also include id transformation by joining with the mirrored_records table
       # FIXME: Include entries for deleted records
       # FIXME: Check against mirror version
-      cargo_streamer.write_cargo_section("#{prefix}_schema_#{model.name}", model.columns)
       model.find_in_batches(find_options.merge({:batch_size => 100})) do |batch|
-        cargo_streamer.write_cargo_section("#{prefix}_data_#{model.name}", batch.map(&:attributes))
+        cargo_streamer.write_cargo_section("data_#{model.name}", batch.map {|r| record_to_hash(r)} )
       end
     end
     
@@ -68,7 +74,7 @@ module OfflineMirror
         
         # These lines append standard information that should be included in every mirror file
         file_info = {
-          "created_at" => Time.now,
+          "created_at" => Time.now.to_s,
           "online_site" => OfflineMirror::online_url,
           "app" => OfflineMirror::app_name,
           "app_mode" => OfflineMirror::app_online? ? "Online" : ("Offline for Group " + OfflineMirror::offline_group_id),

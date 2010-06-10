@@ -15,7 +15,7 @@ module OfflineMirror
   # Multiple cargo sections can have the same name; when the cargo is later read, requests for that name will be yielded each section in turn.
   class CargoStreamer
     # We want to use only types which JSON::parse(JSON::dump(obj)) gives us back obj, or close enough for Float
-    # Besides this, we also accept Arrays and Hashes, as long as all of their contents are also acceptable
+    # Besides this, we also accept Arrays and Hashes, as long as each of their elements are also encodable
     ENCODABLE_TYPES = [String, Bignum, Fixnum, Float, NilClass, TrueClass, FalseClass]
     
     # Creates a new CargoStreamer on the given stream, which will be used in the given mode (must be "w" or "r").
@@ -111,7 +111,7 @@ module OfflineMirror
       
       if value.class == Array || value.class == Hash
         return false if known_ids.include?(value.object_id) # Protect against recursive loops
-        return false if depth > 4 # Protect against deep structures
+        return false if depth > 4 # Protect against excessively deep structures
         
         known_ids.add value.object_id
         if value.class == Array
