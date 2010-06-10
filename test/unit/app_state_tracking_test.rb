@@ -1,5 +1,7 @@
 require File.dirname(__FILE__) + '/../test_helper'
 
+# This is a unit test for all the OfflineMirror internal models whose names end with "State"
+
 class AppStateTrackingTest < ActiveSupport::TestCase
   def setup
     create_testing_system_state_and_groups
