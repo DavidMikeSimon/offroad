@@ -49,7 +49,7 @@ def coverage_report
   
   puts "Writing coverage analysis..."
   formatter = Rcov::HTMLCoverage.new(
-    :ignore => [/\Wruby\W/, /\Wgems\W/, /^test\W/],
+    :ignore => [/\Wruby\W/, /\Wgems\W/, /^test\W/, /\Wmigrate\W/],
     :destdir => "coverage"
   )
   fh = File.open($rcov_data_filename)

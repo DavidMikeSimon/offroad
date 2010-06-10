@@ -42,6 +42,8 @@ module Test::Unit::Util::BacktraceFilter
         element[common_prefix.size, element.size]
       elsif element.start_with? "./"
         element[2, element.size]
+      elsif element.start_with?(Dir.getwd)
+        element[Dir.getwd.size+1, element.size]
       else
         element
       end
