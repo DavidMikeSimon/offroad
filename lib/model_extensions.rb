@@ -74,6 +74,30 @@ module OfflineMirror
         @offline_mirror_readonly_bypassed = true
       end
       
+      # Similar to the attributes method, but with values converted to simpler
+      # formats as necessary to make them easier to encode (i.e. converts
+      # a Time to an integer timestamp).
+      def simplified_attributes
+        h = attributes
+        h.each_key do |key|
+          if h[key].is_a? Time
+            h[key] = h[key].to_i
+          end
+        end
+        return h
+      end
+      
+      def load_from_simplified_attributes(h)
+        self.class.columns.each do |col|
+          next unless h.has_key?(col.name)
+          val = h[col.name]
+          if col.type == :datetime
+            val = Time.at(val)
+          end
+          send((col.name + "=").to_sym, val)
+        end
+      end
+      
       private
       
       def checks_bypassed?
