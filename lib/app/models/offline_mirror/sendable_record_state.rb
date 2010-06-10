@@ -5,6 +5,7 @@ module OfflineMirror
     set_table_name "offline_mirror_sendable_record_states"
     
     belongs_to :model_state
+    validates_presence_of :model_state
     
     def self.note_record_destroyed(model, local_id)
       mark_record_changes(model, local_id) do |rec|
@@ -29,6 +30,20 @@ module OfflineMirror
         :local_record_id => local_id,
         :remote_record_id => 0
       )
+    end
+    
+    def self.find_by_model_and_id(model, local_id)
+      model_state = OfflineMirror::ModelState::find_by_model(model)
+      return nil unless model_state
+      return find_by_model_state_id_and_local_record_id(model_state.id, local_id)
+    end
+    
+    def self.find_or_initialize_by_record(rec)
+      find_or_initialize_by_model_and_id(rec.class, rec.id)
+    end
+    
+    def self.find_by_record(rec)
+      find_by_model_and_id(rec.class, rec.id)
     end
     
     private

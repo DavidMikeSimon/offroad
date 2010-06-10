@@ -24,14 +24,14 @@ module OfflineMirror
         return sys_state
       else
         raise "Cannot auto-generate system settings on offline app" if OfflineMirror::app_offline?
-        return create(:current_mirror_version => 1)
+        return create(:current_mirror_version => 1, :offline_group_id => 0)
       end
     end
     
     # Increment current_mirror_version by 1
     # This should be done whenever a mirror file is created
     def self.increment_mirror_version
-      SystemState.transaction do
+      transaction do
         r = instance_record
         r.increment :current_mirror_version
         r.save!
