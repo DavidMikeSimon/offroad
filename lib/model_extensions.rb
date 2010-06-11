@@ -77,8 +77,8 @@ module OfflineMirror
       
       # Generated XML needs to include the precise type of the ActiveRecord so that
       # arbitrary records can be recreated on deserialization.
-      def to_xml_with_type_inclusion
-        to_xml_without_type_inclusion do |xml|
+      def to_xml_with_type_inclusion(*args)
+        to_xml_without_type_inclusion(*args) do |xml|
           xml.offline_mirror_type self.class.name
         end
       end

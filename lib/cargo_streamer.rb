@@ -12,6 +12,7 @@ module OfflineMirror
   # Class for encoding data to, and extracting data from, specially-formatted HTML comments which are called "cargo sections".
   # Each such section has a name, an md5sum for verification, and some base64-encoded zlib-compressed json data.
   # Multiple cargo sections can have the same name; when the cargo is later read, requests for that name will be yielded each section in turn.
+  # The data must always be in the form of arrays of ActiveRecord
   class CargoStreamer
     # Creates a new CargoStreamer on the given stream, which will be used in the given mode (must be "w" or "r").
     # If the mode is "r", the file is immediately scanned to determine what cargo it contains.
@@ -30,23 +31,22 @@ module OfflineMirror
       raise CargoStreamerError.new("Mode must be 'w' to write cargo data") unless @mode == "w"
       raise CargoStreamerError.new("CargoStreamer section names must be strings") unless name.is_a? String
       raise CargoStreamerError.new("Invalid cargo name '" + name + "'") unless name == clean_for_html_comment(name)
-      raise CargoStreamerError.new("Unacceptable value type") unless encodable? value 
+      raise CargoStreamerError.new("Value must be an array") unless value.is_a? Array
+      raise CargoStreamerError.new("All elements must be ActiveRecords") unless value.all? { |e| e.is_a? ActiveRecord::Base }
       
-      begin
-        if options[:human_readable]
-          raise CargoStreamerError.new("Human readable data must be a hash") unless value.is_a? Hash
-          @ioh.write "<!--\n"
-          value.map{ |k,v| [k.to_s, v] }.sort.each do |k, v|
-            @ioh.write clean_for_html_comment(k.titleize) + ": " + clean_for_html_comment(v.to_s) + "\n"
-          end
-          @ioh.write "-->\n"
-        end
-      rescue StandardError => e
-        raise CargoStreamerError.new("Unable to make human-readable comment : #{e.class.to_s} : #{e.to_s}")
+      if options[:human_readable]
+        @ioh.write "<!--\n"
+        @ioh.write name.titleize + "\n"
+        @ioh.write "\n"
+        @ioh.write clean_for_html_comment(value.join("\n---\n")) + "\n"
+        @ioh.write "-->\n"
       end
       
       name = name.chomp
-      deflated_data = Zlib::Deflate::deflate(value.to_xml)
+      
+      xml = Builder::XmlMarkup.new
+      xml_data = value.to_xml(:skip_instruct => true, :skip_types => true, :root => "records", :indent => 0)
+      deflated_data = Zlib::Deflate::deflate(xml_data)
       b64_data = Base64.encode64(deflated_data).chomp
       digest = Digest::MD5::hexdigest(deflated_data).chomp
       
@@ -77,7 +77,7 @@ module OfflineMirror
     # Reads, verifies, and decodes each cargo section with a given name, passing each section's decoded data to the block
     def each_cargo_section(name)
       raise CargoStreamerError.new("Mode must be 'r' to read cargo data") unless @mode == "r"
-      locations = @cargo_locations[name] or return nil
+      locations = @cargo_locations[name] or return
       locations.each do |seek_location|
         @ioh.seek(seek_location)
         digest = ""
@@ -98,27 +98,6 @@ module OfflineMirror
     end
     
     private
-    
-    def encodable?(value, depth = 0)
-      return false unless value.respond_to?(:to_xml)
-      return false if depth > 4 # Protect against excessively deep structures
-      
-      # Attempt to descend into the object to make sure all its children are also xmlifiable
-      if value.respond_to?(:each)
-        value.each do |val|
-          return false unless encodable?(val, depth + 1)
-        end
-      elsif value.respond_to(:each_pair)
-        value.each do |key, val|
-          return false unless key.class == String # XML only supports string keys, since they'll become tags
-          return false unless encodable?(val, depth + 1)
-        end
-      elsif value.respond_to(:attributes) # For ActiveRecord instances
-        return false unless encodable?(val.attributes, depth + 1)
-      end
-      
-      return true
-    end
     
     def scan_for_cargo
       # Key is cargo section name as String, value is array of seek locations to digests for that section
@@ -158,7 +137,22 @@ module OfflineMirror
     def verify_and_decode_cargo(digest, b64_data)
       deflated_data = Base64.decode64(b64_data)
       raise "MD5 check failure" unless Digest::MD5::hexdigest(deflated_data) == digest
-      return JSON::parse(Zlib::Inflate::inflate(deflated_data))
+      
+      # Even though we encoded an Array with Array#to_xml, there is no Array#from_xml
+      # So, we have to use Hash#from_xml
+      records = Hash.from_xml(Zlib::Inflate::inflate(deflated_data))["records"]["record"]
+      raise "Decode failure, unable to find records key" unless records != nil
+      records = [records] unless records.is_a?(Array)
+      return records.map do |attrs_hash|
+        raise "Unable to find record type" unless attrs_hash.has_key?("offline_mirror_type")
+        class_name = attrs_hash.delete("offline_mirror_type")
+        model_class = class_name.constantize # This is safe; it uses const_get, not eval
+        raise "Class is not a model type" unless model_class.respond_to? :acts_as_mirrored_offline?
+        raise "Class is not mirrored" unless model_class.acts_as_mirrored_offline?
+        c = model_class.new
+        c.send(:attributes=, attrs_hash, false) # No attr_accessible check like this, so all attributes can be set
+        c
+      end
     rescue StandardError => e
       raise CargoStreamerError.new("Corrupted data : #{e.class.to_s} : #{e.to_s}")
     end

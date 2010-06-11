@@ -6,4 +6,8 @@ class GroupOwnedRecord < ActiveRecord::Base
   belongs_to :global_record
   has_many :children, :class_name => "GroupOwnedRecord"
   validates_presence_of :description, :group
+  
+  def to_s
+    description
+  end
 end

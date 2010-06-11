@@ -7,6 +7,7 @@ class CreateMoreTables < ActiveRecord::Migration
       t.integer :parent_id
       t.integer :unmirrored_record_id
       t.integer :global_record_id
+      t.timestamps
     end
     
     create_table :global_records do |t|
@@ -15,11 +16,13 @@ class CreateMoreTables < ActiveRecord::Migration
       t.integer :unmirrored_record_id
       t.integer :friend_id
       t.integer :some_group_id
+      t.timestamps
     end
     
     create_table :unmirrored_records do |t|
       t.string :content
       t.float :some_float
+      t.timestamps
     end
     
     create_table :broken_records do |t|
