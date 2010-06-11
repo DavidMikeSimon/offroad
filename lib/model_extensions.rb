@@ -37,6 +37,7 @@ module OfflineMirror
         include GlobalDataInstanceMethods
       end
       include CommonInstanceMethods
+      alias_method_chain :to_xml, :type_inclusion
       before_destroy :before_mirrored_data_destroy
       after_destroy :after_mirrored_data_destroy
       before_save :before_mirrored_data_save
@@ -72,6 +73,14 @@ module OfflineMirror
       # necessary.
       def bypass_offline_mirror_readonly_checks
         @offline_mirror_readonly_bypassed = true
+      end
+      
+      # Generated XML needs to include the precise type of the ActiveRecord so that
+      # arbitrary records can be recreated on deserialization.
+      def to_xml_with_type_inclusion
+        to_xml_without_type_inclusion do |xml|
+          xml.offline_mirror_type self.class.name
+        end
       end
       
       private
