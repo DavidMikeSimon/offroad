@@ -4,7 +4,6 @@ require File.dirname(__FILE__) + '/../test_helper'
 
 class TimeXMLExtensionTest < ActiveSupport::TestCase
   online_test "time serialized to xml includes milliseconds" do
-    $stderr.puts Time.now.xmlschema
     assert Time.now.xmlschema =~ /\d+:\d+\.\d+/
   end
   
