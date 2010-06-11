@@ -176,9 +176,9 @@ class CargoStreamerTest < ActiveSupport::TestCase
     end
     
     assert_raise OfflineMirror::CargoStreamerError, "Changing base64 content causes exception to be raised" do
-      # This is somewhat of an implementation-dependent test; I checked manually that the data has this string in it.
+      # This is somewhat of an implementation-dependent test; I checked manually that the data has these strings.
       # It's safe, though, as changing the implementation should cause false neg, not false pos.
-      retrieve_cargo_from_string(str.sub "WEGCJb", "WEGCJB")
+      retrieve_cargo_from_string(str.sub("X", "x"))
     end
   end
   
