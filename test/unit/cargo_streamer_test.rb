@@ -46,6 +46,11 @@ class CargoStreamerTest < ActiveSupport::TestCase
     assert_round_trip_equality "a" => [{}]
   end
   
+  common_test "can encode and retrieve a model instance" do
+    rec = UnmirroredRecord.new(:content => "Test")
+    assert_round_trip_equality "test" => [rec]
+  end
+  
   common_test "can decode cargo data even if there is other stuff around it" do
     test_hash = {"foo bar narf bork" => [[1]]}
     str = "BLAH BLAH BLAH" + generate_cargo_string(test_hash) + "BAR BAR BAR"
@@ -116,12 +121,6 @@ class CargoStreamerTest < ActiveSupport::TestCase
         cs = OfflineMirror::CargoStreamer.new(sio, "w")
         cs.write_cargo_section("test", ["test"], :human_readable => true)
       end
-    end
-  end
-  
-  common_test "cannot directly encode a value that's not in an array" do
-    assert_raise OfflineMirror::CargoStreamerError do
-      generate_cargo_string "foo" => [1]
     end
   end
   
@@ -204,19 +203,6 @@ class CargoStreamerTest < ActiveSupport::TestCase
     
     assert_raise OfflineMirror::CargoStreamerError, "Expect exception for cargo name that's multiline" do
       cs.write_cargo_section("whatever\nfoobar", "test")
-    end
-  end
-  
-  common_test "cannot directly encode a model instance" do
-    rec = UnmirroredRecord.new(:content => "Test")
-    assert_raise OfflineMirror::CargoStreamerError, "Should reject model at top layer" do
-      generate_cargo_string "blah" => [rec]
-    end
-    assert_raise OfflineMirror::CargoStreamerError, "Should reject model even if it is deeply nested" do
-      generate_cargo_string "blah" => [[[rec]]]
-    end
-    assert_nothing_raised "Should accept a hash of the model's data" do
-      generate_cargo_string "blah" => [rec.attributes]
     end
   end
 end

@@ -13,10 +13,6 @@ module OfflineMirror
   # Each such section has a name, an md5sum for verification, and some base64-encoded zlib-compressed json data.
   # Multiple cargo sections can have the same name; when the cargo is later read, requests for that name will be yielded each section in turn.
   class CargoStreamer
-    # We want to use only types which JSON::parse(JSON::dump(obj)) gives us back obj, or close enough for Float
-    # Besides this, we also accept Arrays and Hashes, as long as each of their elements are also encodable
-    ENCODABLE_TYPES = [String, Bignum, Fixnum, Float, NilClass, TrueClass, FalseClass]
-    
     # Creates a new CargoStreamer on the given stream, which will be used in the given mode (must be "w" or "r").
     # If the mode is "r", the file is immediately scanned to determine what cargo it contains.
     def initialize(ioh, mode)
@@ -50,7 +46,7 @@ module OfflineMirror
       end
       
       name = name.chomp
-      deflated_data = Zlib::Deflate::deflate(JSON::fast_generate(value))
+      deflated_data = Zlib::Deflate::deflate(value.to_xml)
       b64_data = Base64.encode64(deflated_data).chomp
       digest = Digest::MD5::hexdigest(deflated_data).chomp
       
@@ -104,32 +100,29 @@ module OfflineMirror
     private
     
     def encodable?(value, depth = 0)
-      # Not using is_a? because any derivative-ness would be sliced off by JSONification
-      # Depth check is because we require that the top type be an Array or Hash
-      return true if depth > 0 && ENCODABLE_TYPES.include?(value.class)
+      return false unless value.respond_to?(:to_xml)
+      return false if depth > 4 # Protect against excessively deep structures
       
-      if value.class == Array || value.class == Hash
-        return false if depth > 4 # Protect against excessively deep structures
-        
-        if value.class == Array
-          value.each do |val|
-            return false unless encodable?(val, depth + 1)
-          end
-        else
-          value.each do |key, val|
-            return false unless key.class == String # JSON only supports string keys
-            return false unless encodable?(val, depth + 1)
-          end
+      # Attempt to descend into the object to make sure all its children are also xmlifiable
+      if value.respond_to?(:each)
+        value.each do |val|
+          return false unless encodable?(val, depth + 1)
         end
-        
-        return true
+      elsif value.respond_to(:each_pair)
+        value.each do |key, val|
+          return false unless key.class == String # XML only supports string keys, since they'll become tags
+          return false unless encodable?(val, depth + 1)
+        end
+      elsif value.respond_to(:attributes) # For ActiveRecord instances
+        return false unless encodable?(val.attributes, depth + 1)
       end
       
-      return false
+      return true
     end
     
     def scan_for_cargo
-      @cargo_locations = {} # Key is cargo section name as String, value is array of seek locations to the start of the digest for that section
+      # Key is cargo section name as String, value is array of seek locations to digests for that section
+      @cargo_locations = {}
       @ioh.rewind
       
       in_cargo = false
