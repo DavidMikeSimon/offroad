@@ -5,7 +5,7 @@ require File.dirname(__FILE__) + '/../test_helper'
 class PathologicalModelTest < ActiveSupport::TestCase
   common_test "cannot specify acts_as_mirrored_offline multiple times" do
     assert_raise OfflineMirror::ModelError do
-      class BrokenRecord < ActiveRecord::Base
+      class MultipleTimesBrokenRecord < ActiveRecord::Base
         acts_as_mirrored_offline :global
         acts_as_mirrored_offline :global
       end
@@ -14,7 +14,7 @@ class PathologicalModelTest < ActiveSupport::TestCase
   
   common_test "cannot specify invalid mirror mode" do
     assert_raise OfflineMirror::ModelError do
-      class BrokenRecord < ActiveRecord::Base
+      class InvalidModeBrokenRecord < ActiveRecord::Base
         acts_as_mirrored_offline :this_mode_does_not_exist
       end
     end
@@ -22,7 +22,7 @@ class PathologicalModelTest < ActiveSupport::TestCase
   
   common_test "cannot specify :group_owned mode without :group_key" do
     assert_raise OfflineMirror::ModelError do
-      class BrokenRecord < ActiveRecord::Base
+      class NoGroupKeyBrokenRecord < ActiveRecord::Base
         acts_as_mirrored_offline :group_owned # No :group_key
       end
     end
@@ -30,23 +30,32 @@ class PathologicalModelTest < ActiveSupport::TestCase
   
   common_test "cannot specify :group_owned with a :group_key to a non-existing column" do
     assert_raise OfflineMirror::ModelError do
-      class BrokenRecord < ActiveRecord::Base
+      class InvalidColumnBrokenRecord < ActiveRecord::Base
         acts_as_mirrored_offline :group_owned, :group_key => :no_such_column
       end
     end
   end
   
   common_test "can specify :group_key without the _id prefix" do
-    class BrokenRecord < ActiveRecord::Base
+    class GroupWithoutIdBrokenRecord < ActiveRecord::Base
       acts_as_mirrored_offline :group_owned, :group_key => :group
     end
-    assert_equal "group_id", BrokenRecord.offline_mirror_group_key.to_s
+    assert_equal "group_id", GroupWithoutIdBrokenRecord.offline_mirror_group_key.to_s
   end
   
   common_test "cannot give acts_as_mirrored_offline unknown options" do
     assert_raise OfflineMirror::ModelError do
-      class BrokenRecord < ActiveRecord::Base
-        acts_as_mirrored_offline :gruop_base, :foo_bar_bork_narf => 1234
+      class UnknownOptionsBrokenRecord < ActiveRecord::Base
+        acts_as_mirrored_offline :global, :foo_bar_bork_narf => 1234
+      end
+    end
+  end
+  
+  common_test "cannot specify more than one group base" do
+    # The Group model has already declare itself as :group base
+    assert_raise OfflineMirror::ModelError do
+      class DoubleGroupBaseBrokenRecord < ActiveRecord::Base
+        acts_as_mirrored_offline :group_base
       end
     end
   end
