@@ -97,18 +97,24 @@ class Test::Unit::TestCase
     opts[:offline_group_id] = 1 if OfflineMirror::app_offline?
     OfflineMirror::SystemState::create(opts) or raise "Unable to create testing SystemState"
     
+    # All the reloads below are to remove time precision that isn't stored in the database
+    
     @offline_group = Group.new(:name => "An Offline Group")
     @offline_group.bypass_offline_mirror_readonly_checks
     @offline_group.save!
+    @offline_group.reload
     raise "Test id mismatch" unless @offline_group.id == OfflineMirror::SystemState::current_mirror_version
     
     @offline_group_data = GroupOwnedRecord.create(:description => "Some Offline Data", :group => @offline_group)
+    @offline_group_data.reload
     
     if OfflineMirror::app_online?
       @offline_group.group_offline = true
       
       @online_group = Group.create(:name => "An Online Group") # Will be online by default (tested below)
+      @online_group.reload
       @online_group_data = GroupOwnedRecord.create(:description => "Some Online Data", :group => @online_group)
+      @online_group_data.reload
       
       @editable_group = @online_group
       @editable_group_data = @online_group_data

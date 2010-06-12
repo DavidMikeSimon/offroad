@@ -47,21 +47,19 @@ module OfflineMirror
       # FIXME: Include entries for deleted records
       # FIXME: Check against mirror version
       model.find_in_batches(find_options.merge({:batch_size => 100})) do |batch|
-        cargo_streamer.write_cargo_section("data_#{model.name}", batch.map(&:simplified_attributes))
+        cargo_streamer.write_cargo_section("data_#{model.name}", batch)
       end
     end
     
     def render_appending_cargo_data(group, filename, render_args)
       # Encourage browser to download this to disk instead of displaying it
       headers['Content-Disposition'] = "attachment; filename=\"#{filename}\""
-      
       orig_html = render_to_string render_args
-      render :text => Proc.new { |response, output|
+      
+      render_proc = Proc.new do |response, output|
         output.write(orig_html)
         cargo_streamer = CargoStreamer.new(output, "w")
-        
         # FIXME: Is there some way to make sure this entire process occurs in a kind of read transaction?
-        
         # These lines append standard information that should be included in every mirror file
         file_info = {
           "created_at" => Time.now.to_s,
@@ -73,13 +71,15 @@ module OfflineMirror
           "for_group" => group.id,
           "plugin" => "Offline Mirror " + OfflineMirror::VERSION_MAJOR.to_s + "." + OfflineMirror::VERSION_MINOR.to_s
         }
-        cargo_streamer.write_cargo_section("file_info", file_info, :human_readable => true)
-        cargo_streamer.write_cargo_section("group_state", group.group_state.attributes)
-        schema_migrations = OfflineMirror::group_base_model.connection.select_all("SELECT * FROM schema_migrations")
-        cargo_streamer.write_cargo_section("schema_migrations", schema_migrations)
+        #cargo_streamer.write_cargo_section("file_info", file_info, :human_readable => true)
+        #cargo_streamer.write_cargo_section("group_state", group.group_state.attributes)
+        #schema_migrations = OfflineMirror::group_base_model.connection.select_all("SELECT * FROM schema_migrations")
+        #cargo_streamer.write_cargo_section("schema_migrations", schema_migrations)
         
-        yield cargo_streamer
-      }
+        yield cargo_streamer # Yields to the block provided to render_appending_cargo_data
+      end
+      
+      render :text => render_proc
     end
   end
 end
