@@ -3,7 +3,6 @@
 require 'module_funcs'
 require 'cargo_streamer'
 require 'exceptions'
-require 'time_extensions'
 
 %w{ models controllers }.each do |dir|
   path = File.join(File.dirname(__FILE__), 'app', dir)

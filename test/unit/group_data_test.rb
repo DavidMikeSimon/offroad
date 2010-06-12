@@ -220,7 +220,7 @@ class GroupDataTest < ActiveSupport::TestCase
   online_test "cannot save :group_owned data with an invalid group id" do
     assert_raise OfflineMirror::DataError do
       @offline_group_data.group_id = Group.maximum(:id)+1
-      @offline_group_data.save!
+      @offline_group_data.save(false) # Have to disable validations or it'll catch this error first
     end
   end
   
