@@ -12,14 +12,6 @@ module OfflineMirror
       case mode
       when :group_owned then
         raise ModelError.new("For :group_owned models, need to specify :group_key, an attribute name for this model's owning group") unless opts[:group_key]
-        begin
-          raise ModelError.new("The :group_key is invalid, there's no column with that name") unless columns.include?(opts[:group_key].to_s)
-        rescue
-          unless opts[:group_key].to_s.end_with?("_id")
-            opts[:group_key] = opts[:group_key].to_s + "_id"
-            retry
-          end
-        end
         set_internal_cattr :offline_mirror_group_key, opts.delete(:group_key).to_sym
         OfflineMirror::note_group_owned_model(self)
       when :group_base then
@@ -202,16 +194,20 @@ module OfflineMirror
       end
       
       def owning_group
-        case offline_mirror_mode
-          when :group_owned then return OfflineMirror::group_base_model.find_by_id(owning_group_id)
-          when :group_base then return self
+        return case offline_mirror_mode
+          when :group_owned then OfflineMirror::group_base_model.find_by_id(owning_group_id)
+          when :group_base then self
         end
       end
       
       def owning_group_id
-        case offline_mirror_mode
-          when :group_owned then return self.send offline_mirror_group_key
-          when :group_base then return new_record? ? nil : self.id
+        if offline_mirror_mode == :group_owned
+           raise ModelError.new("No such group key column #{offline_mirror_group_key}") unless has_attribute?(offline_mirror_group_key)
+        end
+        
+        return case offline_mirror_mode
+          when :group_owned then self.send(offline_mirror_group_key)
+          when :group_base then new_record? ? nil : self.id
         end
       end
       
