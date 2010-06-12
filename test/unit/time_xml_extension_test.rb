@@ -22,6 +22,14 @@ class TimeXMLExtensionTest < ActiveSupport::TestCase
       assert_equal orig_time, new_time, "encoding change check for #{cls.name}"
     end
   end
+  
+  online_test "time attributes of a model unchanged by going thru xml and back" do
+    orig_rec = UnmirroredRecord.create(:content => "Test")
+    assert orig_rec.updated_at
+    new_rec = UnmirroredRecord.new
+    new_rec.from_xml(orig_rec.to_xml)
+    assert_equal orig_rec.updated_at, new_rec.updated_at 
+  end
 end
 
 run_test_class TimeXMLExtensionTest
