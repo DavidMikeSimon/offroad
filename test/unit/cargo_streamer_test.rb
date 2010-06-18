@@ -145,7 +145,8 @@ class CargoStreamerTest < ActiveSupport::TestCase
   end
   
   common_test "can use :human_readable to include a string version of a record" do
-    rec = test_rec("ABCD") # Note that GroupOwnedRecord overloads to_s
+    test_str = "ABCD"
+    rec = test_rec(test_str) # Test requires that GroupOwnedRecord overloads to_s
     
     result = StringIO.open do |sio|
       cs = OfflineMirror::CargoStreamer.new(sio, "w")
@@ -159,7 +160,7 @@ class CargoStreamerTest < ActiveSupport::TestCase
       cs.write_cargo_section("test", [rec], :human_readable => true)
       sio.string
     end
-    assert result.include?(rec.to_s)
+    assert result.include?(test_str)
   end
   
   common_test "uses an md5 fingerprint to detect corruption" do
