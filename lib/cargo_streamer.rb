@@ -32,13 +32,16 @@ module OfflineMirror
       raise CargoStreamerError.new("CargoStreamer section names must be strings") unless name.is_a? String
       raise CargoStreamerError.new("Invalid cargo name '" + name + "'") unless name == clean_for_html_comment(name)
       raise CargoStreamerError.new("Value must be an array") unless value.is_a? Array
-      [:to_xml, :attributes=].each do |message|
+      [:to_xml, :attributes=, :valid?].each do |message|
         unless value.all? { |e| e.respond_to? message }
           raise CargoStreamerError.new("All elements must respond to #{message}") 
         end
       end
       unless value.all? { |e| e.class.respond_to?(:acts_as_mirrored_offline?) && e.class.acts_as_mirrored_offline? }
         raise CargoStreamerError.new("All element classes must be models which act_as_mirrored_offline")
+      end
+      unless value.all? { |e| e.valid? }
+        raise CargoStreamerError.new("All elements must be valid")
       end
       
       if options[:human_readable]

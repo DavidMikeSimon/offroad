@@ -38,7 +38,7 @@ class CargoStreamerTest < ActiveSupport::TestCase
     retrieve_cargo_from_string(generate_cargo_string(hash))
   end
   
-  # Asserts content equality between two hashes of arrays of arrays of records.
+  # Asserts content equality between two hashes of arrays of arrays of records ("haar"s)
   # Cannot just do new_hash == hash, because ActiveRecord#== always false when comparing two unsaved records.
   def assert_haar_equality(first_hash, second_hash)
     assert_nothing_raised do
@@ -217,6 +217,14 @@ class CargoStreamerTest < ActiveSupport::TestCase
     
     assert_raise OfflineMirror::CargoStreamerError, "Expect exception for cargo name that's multiline" do
       cs.write_cargo_section("whatever\nfoobar", [test_rec("test")])
+    end
+  end
+  
+  common_test "cannot encode invalid records" do
+    rec = GroupOwnedRecord.new
+    assert_equal false, rec.valid?
+    assert_raise OfflineMirror::CargoStreamerError do
+      generate_cargo_string "foo" => [[rec]]
     end
   end
   
