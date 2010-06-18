@@ -220,11 +220,34 @@ class CargoStreamerTest < ActiveSupport::TestCase
     end
   end
   
-  common_test "cannot trick cargo streamer into decoding a non-OfflineMirror model class" do
-    rec = UnmirroredRecord.new(:content => "Stuff")
-    str = generate_cargo_string "test" => [[rec]]
+  common_test "cannot trick cargo streamer into encoding a non-OfflineMirror model class" do
     assert_raise OfflineMirror::CargoStreamerError do
-      retrieve_cargo_from_string(str)
+      str = generate_cargo_string "test" => [[UnmirroredRecord.new(:content => "Test")]]
+    end
+  end
+  
+  common_test "cannot trick cargo streamer into decoding a non-OfflineMirror model class" do
+    # Poor man's stub
+    class UnmirroredRecord < ActiveRecord::Base
+      class << self
+        def acts_as_mirrored_offline?
+          true
+        end
+      end
+    end
+    
+    begin
+      rec = UnmirroredRecord.new(:content => "Stuff")
+      str = generate_cargo_string "test" => [[rec]]
+      assert_raise OfflineMirror::CargoStreamerError do
+        retrieve_cargo_from_string(str)
+      end
+    ensure
+      class UnmirroredRecord < ActiveRecord::Base
+        class << self
+          undef acts_as_mirrored_offline?
+        end
+      end
     end
   end
 end

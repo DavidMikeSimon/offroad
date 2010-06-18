@@ -12,7 +12,7 @@ module OfflineMirror
   # Class for encoding data to, and extracting data from, specially-formatted HTML comments which are called "cargo sections".
   # Each such section has a name, an md5sum for verification, and some base64-encoded zlib-compressed json data.
   # Multiple cargo sections can have the same name; when the cargo is later read, requests for that name will be yielded each section in turn.
-  # The data must always be in the form of arrays of ActiveRecord
+  # The data must always be in the form of arrays of ActiveRecord, or things that walk sufficiently like ActiveRecord
   class CargoStreamer
     # Creates a new CargoStreamer on the given stream, which will be used in the given mode (must be "w" or "r").
     # If the mode is "r", the file is immediately scanned to determine what cargo it contains.
@@ -32,7 +32,14 @@ module OfflineMirror
       raise CargoStreamerError.new("CargoStreamer section names must be strings") unless name.is_a? String
       raise CargoStreamerError.new("Invalid cargo name '" + name + "'") unless name == clean_for_html_comment(name)
       raise CargoStreamerError.new("Value must be an array") unless value.is_a? Array
-      raise CargoStreamerError.new("All elements must be ActiveRecords") unless value.all? { |e| e.is_a? ActiveRecord::Base }
+      [:to_xml, :attributes=].each do |message|
+        unless value.all? { |e| e.respond_to? message }
+          raise CargoStreamerError.new("All elements must respond to #{message}") 
+        end
+      end
+      unless value.all? { |e| e.class.respond_to?(:acts_as_mirrored_offline?) && e.class.acts_as_mirrored_offline? }
+        raise CargoStreamerError.new("All element classes must be models which act_as_mirrored_offline")
+      end
       
       if options[:human_readable]
         @ioh.write "<!--\n"
