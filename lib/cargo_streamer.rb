@@ -37,8 +37,8 @@ module OfflineMirror
           raise CargoStreamerError.new("All elements must respond to #{message}") 
         end
       end
-      unless value.all? { |e| e.class.respond_to?(:acts_as_mirrored_offline?) && e.class.acts_as_mirrored_offline? }
-        raise CargoStreamerError.new("All element classes must be models which act_as_mirrored_offline")
+      unless value.all? { |e| e.class.respond_to?(:safe_to_load_from_cargo_stream?) && e.class.safe_to_load_from_cargo_stream? }
+        raise CargoStreamerError.new("All element classes must be models which are safe_to_load_from_cargo_stream")
       end
       unless value.all? { |e| e.valid? }
         raise CargoStreamerError.new("All elements must be valid")

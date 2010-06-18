@@ -40,6 +40,10 @@ module OfflineMirror
       respond_to? :offline_mirror_mode
     end
     
+    def safe_to_load_from_cargo_stream?
+      acts_as_mirrored_offline?
+    end
+    
     def offline_mirror_group_data?
       raise ModelError.new("You must call acts_as_offline_mirror for this model") unless acts_as_mirrored_offline?
       OFFLINE_MIRROR_GROUP_MODES.include?(offline_mirror_mode)
@@ -55,6 +59,10 @@ module OfflineMirror
     def set_internal_cattr(name, value)
       write_inheritable_attribute name, value
       class_inheritable_reader name
+    end
+    
+    def safe_to_load_from_offline_mirror?
+      true
     end
     
     module CommonInstanceMethods

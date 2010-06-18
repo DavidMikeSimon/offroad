@@ -8,6 +8,10 @@ module OfflineMirror
     
     validates_presence_of :app_group_id
     
+    def self.safe_to_load_from_cargo_stream?
+      true
+    end
+    
     def self.exists_by_app_group_id?(local_id)
       exists?(:app_group_id => local_id)
     end

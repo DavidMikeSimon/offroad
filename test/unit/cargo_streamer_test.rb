@@ -228,7 +228,7 @@ class CargoStreamerTest < ActiveSupport::TestCase
     end
   end
   
-  common_test "cannot trick cargo streamer into encoding a non-OfflineMirror model class" do
+  common_test "cannot encode a non-OfflineMirror model class" do
     assert_raise OfflineMirror::CargoStreamerError do
       str = generate_cargo_string "test" => [[UnmirroredRecord.new(:content => "Test")]]
     end
