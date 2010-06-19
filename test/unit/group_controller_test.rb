@@ -86,6 +86,9 @@ class GroupControllerTest < ActionController::TestCase
   end
   
   offline_test "cannot retrieve down mirror files in offline mode" do
+    assert_raise OfflineMirror::PluginError do
+      get :download_down_mirror, {"id" => @offline_group.id}
+    end
   end
   
   offline_test "can retrieve a valid up mirror file for the offline group" do
@@ -111,6 +114,15 @@ class GroupControllerTest < ActionController::TestCase
   end
   
   online_test "cannot retrieve up mirror files in online mode" do
+    assert_raise OfflineMirror::PluginError do
+      get :download_up_mirror, {"id" => @offline_group.id}
+    end
+  end
+  
+  online_test "cannot retrieve down mirror files for online groups" do
+    assert_raise OfflineMirror::PluginError do
+      get :download_down_mirror, {"id" => @online_group.id}
+    end
   end
 end
 

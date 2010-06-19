@@ -3,6 +3,7 @@ module OfflineMirror
     protected
     
     def render_up_mirror_file(group, filename, render_args = {})
+      ensure_group_offline(group)
       raise PluginError.new("Cannot generate up-mirror file when app in online mode") if OfflineMirror::app_online?
       render_appending_cargo_data(group, filename, render_args) do |cargo_streamer|
         write_group_specific_cargo(group, cargo_streamer)
@@ -10,6 +11,7 @@ module OfflineMirror
     end
     
     def render_down_mirror_file(group, filename, render_args = {})
+      ensure_group_offline(group)
       raise PluginError.new("Cannot generate down-mirror file when app in offline mode") if OfflineMirror::app_offline?
       render_appending_cargo_data(group, filename, render_args) do |cargo_streamer|
         # FIXME: Include an updated version of the app here, if one is available
@@ -23,6 +25,10 @@ module OfflineMirror
     end
     
     private
+    
+    def ensure_group_offline(group)
+      raise PluginError.new("Cannot generate mirror file for online group") unless group.group_offline?
+    end
     
     def write_group_specific_cargo(group, cargo_streamer)
       # FIXME: Make sure that when this is being called by the online app, it doesn't accidentally fill mirrored_records with group-specific junk
