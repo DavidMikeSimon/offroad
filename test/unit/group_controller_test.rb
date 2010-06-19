@@ -17,6 +17,14 @@ class GroupControllerTest < ActionController::TestCase
     assert_equal 1, count
   end
   
+  def assert_no_cargo_sections_named(cs, name)
+    assert_nothing_raised do
+      cs.each_cargo_section(name) do |data|
+        raise "There shouldn't be any cargo sections with that name"
+      end
+    end
+  end
+  
   def assert_common_mirror_elements_appear_valid(cs, mode)
     assert_single_cargo_section_named cs, "mirror_info"
     
@@ -43,6 +51,17 @@ class GroupControllerTest < ActionController::TestCase
     assert_equal record.attributes, data[0].attributes
   end
   
+  def assert_record_not_present(cs, record)
+    data_name = "data_#{record.class.name}"
+    assert_nothing_raised do
+      cs.each_cargo_section(data_name) do |batch|
+        batch.each do |cargo_record|
+          raise "Undesired record found" if record.attributes == cargo_record.attributes
+        end
+      end
+    end
+  end
+  
   # We know this will be an initial down mirror because the setup method sets the group's version attributes to 0
   online_test "can retrieve a valid initial down mirror file for the offline group" do
     global_record = GlobalRecord.create(:title => "Foo Bar")
@@ -51,14 +70,47 @@ class GroupControllerTest < ActionController::TestCase
     get :download_down_mirror, {"id" => @offline_group.id}
     assert_response :success
     assert @response.headers["Content-Disposition"].include?("attachment")
+    content = @response.binary_content
+    assert content.include?("downloaded from the Test App online system")
     
-    StringIO.open(@response.binary_content) do |sio|
+    StringIO.open(content) do |sio|
       cs = OfflineMirror::CargoStreamer.new(sio, "r")
       assert_common_mirror_elements_appear_valid cs, "online"
       assert_single_model_cargo_entry_matches cs, global_record
       assert_single_model_cargo_entry_matches cs, @offline_group
       assert_single_model_cargo_entry_matches cs, @offline_group_data
     end
+  end
+  
+  online_test "down mirror files do not include irrelevant records" do
+  end
+  
+  offline_test "cannot retrieve down mirror files in offline mode" do
+  end
+  
+  offline_test "can retrieve a valid up mirror file for the offline group" do
+    get :download_up_mirror, {"id" => @offline_group.id}
+    assert_response :success
+    assert @response.headers["Content-Disposition"].include?("attachment")
+    content = @response.binary_content
+    assert content.include?("to the Test App online system")
+    
+    # This tests ViewHelper::link_to_online_app
+    assert content.include?(">" + OfflineMirror::online_url + "</a>")
+    assert content.include?("href=\"" + OfflineMirror::online_url + "\"")
+    
+    StringIO.open(content) do |sio|
+      cs = OfflineMirror::CargoStreamer.new(sio, "r")
+      assert_common_mirror_elements_appear_valid cs, "offline"
+      assert_single_model_cargo_entry_matches cs, @offline_group
+      assert_single_model_cargo_entry_matches cs, @offline_group_data
+    end
+  end
+  
+  offline_test "up mirror files do not include irrelevant records" do
+  end
+  
+  online_test "cannot retrieve up mirror files in online mode" do
   end
 end
 
