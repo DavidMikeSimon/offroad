@@ -62,10 +62,6 @@ module OfflineMirror
       class_inheritable_reader name
     end
     
-    def safe_to_load_from_offline_mirror?
-      true
-    end
-    
     module CommonInstanceMethods
       # This method allows a record to be saved or destroyed *once*, even when
       # this would otherwise not be allowed due to i.e. trying to edit an
