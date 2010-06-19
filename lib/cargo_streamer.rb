@@ -14,10 +14,11 @@ module OfflineMirror
   # Multiple cargo sections can have the same name; when the cargo is later read, requests for that name will be yielded each section in turn.
   # The data must always be in the form of arrays of ActiveRecord, or things that walk sufficiently like ActiveRecord
   class CargoStreamer
+    
     # Patch that, when included into a model, adds a method to save class name with generated XML.
     # Generated XML needs to include the type so that objects can be recreated by CargoStreamer.
     # Such classes also need to include a method called safe_to_load_from_cargo_stream? that returns true.
-    module TypeSavingXMLMonkeyPatch
+    module CargoStreamableXML
       def self.included(base)
         base.alias_method_chain :to_xml, :type_inclusion
       end
