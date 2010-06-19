@@ -23,7 +23,7 @@ module OfflineMirror
       # We should have deleted all the options from the hash by this point
       raise ModelError.new("Unknown or inapplicable option(s) specified") unless opts.size == 0
       
-      include OfflineMirror::TypeSavingXMLMonkeyPatch
+      include CargoStreamer::TypeSavingXMLMonkeyPatch
       
       if offline_mirror_group_data?
         include GroupDataInstanceMethods
