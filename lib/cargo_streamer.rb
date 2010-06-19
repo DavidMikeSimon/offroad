@@ -7,6 +7,21 @@ module OfflineMirror
   class CargoStreamerError < DataError
   end
   
+  # Patch that, when included into a model, adds a method to save class name with generated XML.
+  # Generated XML needs to include the type so that objects can be recreated by CargoStreamer.
+  # Such classes also need to include a method called safe_to_load_from_cargo_stream? that returns true.
+  module TypeSavingXMLMonkeyPatch
+    def self.included(base)
+      base.alias_method_chain :to_xml, :type_inclusion
+    end
+    
+    def to_xml_with_type_inclusion(*args)
+      to_xml_without_type_inclusion(*args) do |xml|
+        xml.offline_mirror_type self.class.name
+      end
+    end
+  end
+  
   private
   
   # Class for encoding data to, and extracting data from, specially-formatted HTML comments which are called "cargo sections".
