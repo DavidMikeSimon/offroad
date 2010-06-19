@@ -145,7 +145,7 @@ class CargoStreamerTest < ActiveSupport::TestCase
   end
   
   common_test "can use :human_readable to include a string version of a record" do
-    test_str = "ABCD"
+    test_str = "ABCD\n123"
     rec = test_rec(test_str) # Test requires that GroupOwnedRecord overloads to_s
     
     result = StringIO.open do |sio|

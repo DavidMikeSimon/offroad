@@ -47,6 +47,7 @@ module OfflineMirror
       raise CargoStreamerError.new("Mode must be 'w' to write cargo data") unless @mode == "w"
       raise CargoStreamerError.new("CargoStreamer section names must be strings") unless name.is_a? String
       raise CargoStreamerError.new("Invalid cargo name '" + name + "'") unless name == clean_for_html_comment(name)
+      raise CargoStreamerError.new("Cargo name cannot include newlines") if name.include?("\n")
       raise CargoStreamerError.new("Value must be an array") unless value.is_a? Array
       [:to_xml, :attributes=, :valid?].each do |message|
         unless value.all? { |e| e.respond_to? message }
@@ -64,7 +65,7 @@ module OfflineMirror
         @ioh.write "<!--\n"
         @ioh.write name.titleize + "\n"
         @ioh.write "\n"
-        @ioh.write clean_for_html_comment(value.join("\n---\n")) + "\n"
+        @ioh.write clean_for_html_comment(value.to_s) + "\n"
         @ioh.write "-->\n"
       end
       
@@ -157,7 +158,7 @@ module OfflineMirror
     end
     
     def clean_for_html_comment(s)
-      s.to_s.gsub("--", "__").gsub("<", "[").gsub(">", "]").gsub("\n", "")
+      s.to_s.gsub("--", "__").gsub("<", "[").gsub(">", "]")
     end
     
     def verify_and_decode_cargo(digest, b64_data)
@@ -173,8 +174,8 @@ module OfflineMirror
         raise "Unable to find record type" unless attrs_hash.has_key?("offline_mirror_type")
         class_name = attrs_hash.delete("offline_mirror_type")
         model_class = class_name.constantize # This is safe; it uses const_get, not eval
-        raise "Class is not a model type" unless model_class.respond_to? :acts_as_mirrored_offline?
-        raise "Class is not mirrored" unless model_class.acts_as_mirrored_offline?
+        raise "Class does not have cargo safety method" unless model_class.respond_to? :safe_to_load_from_cargo_stream?
+        raise "Class is not safe_to_load_from_cargo_stream" unless model_class.safe_to_load_from_cargo_stream?
         c = model_class.new
         c.send(:attributes=, attrs_hash, false) # No attr_accessible check like this, so all attributes can be set
         c

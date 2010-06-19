@@ -57,25 +57,12 @@ module OfflineMirror
       orig_html = render_to_string render_args
       
       render_proc = Proc.new do |response, output|
-        output.write(orig_html)
-        cargo_streamer = CargoStreamer.new(output, "w")
         # FIXME: Is there some way to make sure this entire process occurs in a kind of read transaction?
-        # These lines append standard information that should be included in every mirror file
-        file_info = {
-          "created_at" => Time.now.to_s,
-          "online_site" => OfflineMirror::online_url,
-          "app" => OfflineMirror::app_name,
-          "app_mode" => OfflineMirror::app_online? ? "Online" : ("Offline for Group " + OfflineMirror::offline_group_id),
-          "app_version" => OfflineMirror::app_version,
-          "operating_system" => RUBY_PLATFORM,
-          "for_group" => group.id,
-          "plugin" => "Offline Mirror " + OfflineMirror::VERSION_MAJOR.to_s + "." + OfflineMirror::VERSION_MINOR.to_s
-        }
-        #cargo_streamer.write_cargo_section("file_info", file_info, :human_readable => true)
-        #cargo_streamer.write_cargo_section("group_state", group.group_state.attributes)
-        #schema_migrations = OfflineMirror::group_base_model.connection.select_all("SELECT * FROM schema_migrations")
-        #cargo_streamer.write_cargo_section("schema_migrations", schema_migrations)
+        output.write(orig_html)
         
+        cargo_streamer = CargoStreamer.new(output, "w")
+        cargo_streamer.write_cargo_section("mirror_info", [MirrorInfo.new_from_group(group)], :human_readable => true)
+        cargo_streamer.write_cargo_section("group_state", [group.group_state], :human_readable => true)
         yield cargo_streamer # Yields to the block provided to render_appending_cargo_data
       end
       
