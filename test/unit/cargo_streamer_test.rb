@@ -1,8 +1,34 @@
 require File.dirname(__FILE__) + '/../test_helper'
 
 class CargoStreamerTest < ActiveSupport::TestCase
-  def setup
-    create_testing_system_state_and_groups
+  # Based on the pattern found here: http://stackoverflow.com/questions/315850/rails-model-without-database
+  class TestModel < ActiveRecord::Base
+    include OfflineMirror::CargoStreamer::CargoStreamable
+    
+    self.abstract_class = true
+    
+    def self.columns
+      @columns ||= []
+    end
+    
+    columns << ActiveRecord::ConnectionAdapters::Column.new("id", nil, "integer", true)
+    columns << ActiveRecord::ConnectionAdapters::Column.new("data", "", "string", false)
+    
+    validates_presence_of :data
+    
+    @@safety_switch = true
+    
+    def self.safe_to_load_from_cargo_stream?
+      @@safety_switch
+    end
+    
+    def self.set_safe
+      @@safety_switch = true
+    end
+    
+    def self.set_unsafe
+      @@safety_switch = false
+    end
   end
   
   def generate_cargo_string(hash)
@@ -62,7 +88,13 @@ class CargoStreamerTest < ActiveSupport::TestCase
   end
   
   def test_rec(str)
-    GroupOwnedRecord.new(:description => str, :group => @editable_group)
+    TestModel.new(:data => str)
+  end
+  
+  common_test "CargoStreamable extensions cause model serialized to xml to include type name" do
+    rec = test_rec("123")
+    assert_equal false, rec.to_xml_without_type_inclusion.include?("TestModel")
+    assert rec.to_xml.include?("TestModel")
   end
   
   common_test "can encode and retrieve a model instances in an array" do
@@ -146,7 +178,7 @@ class CargoStreamerTest < ActiveSupport::TestCase
   
   common_test "can use :human_readable to include a string version of a record" do
     test_str = "ABCD\n123"
-    rec = test_rec(test_str) # Test requires that GroupOwnedRecord overloads to_s
+    rec = test_rec(test_str)
     
     result = StringIO.open do |sio|
       cs = OfflineMirror::CargoStreamer.new(sio, "w")
@@ -221,41 +253,46 @@ class CargoStreamerTest < ActiveSupport::TestCase
   end
   
   common_test "cannot encode invalid records" do
-    rec = GroupOwnedRecord.new
+    rec = TestModel.new() # Nothing set to the required "data" field
     assert_equal false, rec.valid?
     assert_raise OfflineMirror::CargoStreamerError do
       generate_cargo_string "foo" => [[rec]]
     end
-  end
-  
-  common_test "cannot encode a non-OfflineMirror model class" do
-    assert_raise OfflineMirror::CargoStreamerError do
-      str = generate_cargo_string "test" => [[UnmirroredRecord.new(:content => "Test")]]
+    rec.data = "Something"
+    assert_nothing_raised do
+      generate_cargo_string "foo" => [[rec]]
     end
   end
   
-  common_test "cannot trick cargo streamer into decoding a non-OfflineMirror model class" do
-    # Poor man's stub
-    class UnmirroredRecord < ActiveRecord::Base
-      class << self
-        def acts_as_mirrored_offline?
-          true
-        end
-      end
-    end
-    
+  common_test "cannot encode a non-safe model class" do
     begin
-      rec = UnmirroredRecord.new(:content => "Stuff")
-      str = generate_cargo_string "test" => [[rec]]
+      TestModel.set_safe
+      assert_nothing_raised do
+        str = generate_cargo_string "test" => [[test_rec("ABC")]]
+      end
+      TestModel.set_unsafe
+      assert_raise OfflineMirror::CargoStreamerError do
+        str = generate_cargo_string "test" => [[test_rec("ABC")]]
+      end
+    ensure
+      TestModel.set_safe
+    end
+  end
+  
+  common_test "cannot trick cargo streamer into decoding a non-safe model class" do
+    begin
+      TestModel.set_safe
+      str = generate_cargo_string "test" => [[test_rec("Stuff")]]
+      
+      assert_nothing_raised do
+        retrieve_cargo_from_string(str)
+      end
+      TestModel.set_unsafe
       assert_raise OfflineMirror::CargoStreamerError do
         retrieve_cargo_from_string(str)
       end
     ensure
-      class UnmirroredRecord < ActiveRecord::Base
-        class << self
-          undef acts_as_mirrored_offline?
-        end
-      end
+      TestModel.set_safe
     end
   end
 end

@@ -17,8 +17,9 @@ module OfflineMirror
     
     # Patch that, when included into a model, adds a method to save class name with generated XML.
     # Generated XML needs to include the type so that objects can be recreated by CargoStreamer.
+    # This patch also includes a usefl to_s method for ActiveRecords, which can be overridden.
     # Such classes also need to include a method called safe_to_load_from_cargo_stream? that returns true.
-    module CargoStreamableXML
+    module CargoStreamable
       def self.included(base)
         base.alias_method_chain :to_xml, :type_inclusion
       end
@@ -27,6 +28,10 @@ module OfflineMirror
         to_xml_without_type_inclusion(*args) do |xml|
           xml.offline_mirror_type self.class.name
         end
+      end
+      
+      def to_s
+        attributes.map{ |key, value| "#{key.to_s.titleize}: #{value.to_s}" }.join("\n")
       end
     end
     

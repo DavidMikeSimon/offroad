@@ -8,7 +8,7 @@ module OfflineMirror
     
     validates_presence_of :app_group_id
     
-    include CargoStreamer::CargoStreamableXML
+    include CargoStreamer::CargoStreamable
     
     def self.safe_to_load_from_cargo_stream?
       true
@@ -39,10 +39,6 @@ module OfflineMirror
     
     def online?
       not offline?
-    end
-    
-    def to_s
-      attributes.map{ |key, value| "#{key.to_s.titleize}: #{value.to_s}" }.join("\n")
     end
   end
 end

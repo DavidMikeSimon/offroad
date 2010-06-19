@@ -2,10 +2,9 @@ module OfflineMirror
   private
   
   # Non-database model representing general information attached to any mirror file
-  # Includes a copy of the attributes of the relevant GroupState record
   # Based on the pattern found here: http://stackoverflow.com/questions/315850/rails-model-without-database
   class MirrorInfo < ActiveRecord::Base
-    include CargoStreamer::CargoStreamableXML
+    include CargoStreamer::CargoStreamable
     
     self.abstract_class = true
     
@@ -48,10 +47,6 @@ module OfflineMirror
     
     def save
       raise "Cannot save MirrorInfo records"
-    end
-    
-    def to_s
-      attributes.map{ |key, value| "#{key.to_s.titleize}: #{value.to_s}" }.join("\n")
     end
     
   end

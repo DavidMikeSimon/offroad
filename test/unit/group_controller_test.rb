@@ -52,8 +52,6 @@ class GroupControllerTest < ActionController::TestCase
     assert_response :success
     assert @response.headers["Content-Disposition"].include?("attachment")
     
-    $stderr.puts(@response.binary_content)
-    
     StringIO.open(@response.binary_content) do |sio|
       cs = OfflineMirror::CargoStreamer.new(sio, "r")
       assert_common_mirror_elements_appear_valid cs, "online"
