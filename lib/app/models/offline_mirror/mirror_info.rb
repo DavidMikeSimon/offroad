@@ -37,7 +37,7 @@ module OfflineMirror
         :created_at => Time.now.to_s,
         :online_site => OfflineMirror::online_url,
         :app => OfflineMirror::app_name,
-        :app_mode => OfflineMirror::app_online? ? "Online" : ("Offline for Group " + OfflineMirror::offline_group_id),
+        :app_mode => OfflineMirror::app_online? ? "Online" : "Offline for Group #{OfflineMirror::offline_group.id}",
         :app_version => OfflineMirror::app_version,
         :operating_system => RUBY_PLATFORM,
         :generator => "Offline Mirror " + OfflineMirror::VERSION_MAJOR.to_s + "." + OfflineMirror::VERSION_MINOR.to_s,
