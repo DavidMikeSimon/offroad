@@ -83,6 +83,21 @@ class GroupControllerTest < ActionController::TestCase
   end
   
   online_test "down mirror files do not include irrelevant records" do
+    another_offline_group = Group.create(:name => "Another Group")
+    another_offline_group.group_offline = true
+    another_offline_group.reload
+    another_group_data = GroupOwnedRecord.create(:description => "Another Data", :group => another_offline_group)
+    another_group_data.reload
+    
+    get :download_down_mirror, {"id" => @offline_group.id}
+    assert_response :success
+    StringIO.open(@response.binary_content) do |sio|
+      cs = OfflineMirror::CargoStreamer.new(sio, "r")
+      assert_record_not_present cs, @another_offline_group
+      assert_record_not_present cs, @another_group_data
+      assert_single_model_cargo_entry_matches cs, @offline_group
+      assert_single_model_cargo_entry_matches cs, @offline_group_data
+    end
   end
   
   offline_test "cannot retrieve down mirror files in offline mode" do
@@ -111,6 +126,31 @@ class GroupControllerTest < ActionController::TestCase
   end
   
   offline_test "up mirror files do not include irrelevant records" do
+    fake_offline_group = Group.new(:name => "Another Group")
+    fake_offline_group.bypass_offline_mirror_readonly_checks
+    fake_offline_group.save!
+    fake_offline_group.reload
+    
+    fake_group_data = GroupOwnedRecord.new(:description => "Another Data", :group => fake_offline_group)
+    fake_group_data.bypass_offline_mirror_readonly_checks
+    fake_group_data.save!
+    fake_group_data.reload
+    
+    fake_global_data = GlobalRecord.new(:title => "Fake Stuff")
+    fake_global_data.bypass_offline_mirror_readonly_checks
+    fake_global_data.save!
+    fake_global_data.reload
+    
+    get :download_up_mirror, {"id" => @offline_group.id}
+    assert_response :success
+    StringIO.open(@response.binary_content) do |sio|
+      cs = OfflineMirror::CargoStreamer.new(sio, "r")
+      assert_record_not_present cs, fake_offline_group
+      assert_record_not_present cs, fake_group_data
+      assert_record_not_present cs, fake_global_data
+      assert_single_model_cargo_entry_matches cs, @offline_group
+      assert_single_model_cargo_entry_matches cs, @offline_group_data
+    end
   end
   
   online_test "cannot retrieve up mirror files in online mode" do
