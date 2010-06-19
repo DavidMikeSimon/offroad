@@ -1,8 +1,7 @@
 require File.dirname(__FILE__) + '/../test_helper'
 
-# This is a unit test for the functionality group controllers derive from GroupBaseController.
-# It's small because testing the actual mirroring capability requires multiple environments.
-# Look in the integration tests for that.
+# This is a unit test for the basic functionality group controllers derive from GroupBaseController.
+# Look in the integration tests for more thorough testing of data mirroring.
 
 class GroupControllerTest < ActionController::TestCase
   def setup
@@ -100,7 +99,7 @@ class GroupControllerTest < ActionController::TestCase
     end
   end
   
-  offline_test "cannot retrieve down mirror files in offline mode" do
+  offline_test "cannot retrieve down mirror files" do
     assert_raise OfflineMirror::PluginError do
       get :download_down_mirror, {"id" => @offline_group.id}
     end
@@ -153,7 +152,7 @@ class GroupControllerTest < ActionController::TestCase
     end
   end
   
-  online_test "cannot retrieve up mirror files in online mode" do
+  online_test "cannot retrieve up mirror files" do
     assert_raise OfflineMirror::PluginError do
       get :download_up_mirror, {"id" => @offline_group.id}
     end
@@ -163,6 +162,68 @@ class GroupControllerTest < ActionController::TestCase
     assert_raise OfflineMirror::PluginError do
       get :download_down_mirror, {"id" => @online_group.id}
     end
+  end
+  
+  offline_test "cannot upload up mirror files" do
+    assert_raise OfflineMirror::PluginError do
+      get :upload_up_mirror, {"file" => ""}
+    end
+  end
+  
+  offline_test "cannot upload an invalid down mirror file" do
+    assert_raise OfflineMirror::DataError do
+      get :upload_down_mirror, {"file" => "FOO BAR NONSENSE"}
+    end
+  end
+  
+  online_test "cannot upload down mirror files" do
+    assert_raise OfflineMirror::PluginError do
+      get :upload_down_mirror, {"file" => ""}
+    end
+  end
+  
+  online_test "cannot upload an invalid up mirror file" do
+    assert_raise OfflineMirror::DataError do
+      get :upload_up_mirror, {"file" => "FOO BAR NONSENSE"}
+    end
+  end
+  
+  online_test "can insert and update group data using an up mirror file" do
+    mirror_file = StringIO.open do |sio|
+      cs = OfflineMirror::CargoStreamer.new(sio, "w")
+      # TODO - Make some changes, use GBC backend to send to cs, then revert changes
+      sio.string
+    end
+    
+    assert @offline_group.name != "TEST 123"
+    assert @offline_group_data.description != "TEST XYZ"
+    assert_equal nil, GroupOwnedRecord.find_by_description("TEST ABC")
+    
+    # TODO - Apply the cargo file through the group controller
+    
+    assert @offline_group.name == "TEST 123"
+    assert @offline_group_data.description == "TEST XYZ"
+    assert GroupOwnedRecord.find_by_description("TEST ABC")
+  end
+  
+  online_test "can delete group data using an up mirror file" do
+    # TODO Implement
+    flunk
+  end
+  
+  offline_test "can insert and update global records using a down mirror file" do
+    # TODO Implement
+    flunk
+  end
+  
+  offline_test "can delete global records using a down mirror file" do
+    # TODO Implement
+    flunk
+  end
+  
+  offline_test "can insert group records using an initial down mirror file" do
+    # TODO Implement
+    flunk
   end
 end
 
