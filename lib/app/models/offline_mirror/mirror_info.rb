@@ -30,7 +30,7 @@ module OfflineMirror
       true
     end
     
-    def self.new_from_group(group, mode)
+    def self.new_from_group(group, mode = OfflineMirror::app_online? ? "online" : "offline")
       raise PluginError.new("Invalid mode") unless ["offline", "online"].include?(mode)
       migration_query = "SELECT version FROM schema_migrations ORDER BY version"
       migrations = OfflineMirror::group_base_model.connection.select_all(migration_query).map{ |r| r["version"] }
