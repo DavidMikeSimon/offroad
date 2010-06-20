@@ -14,7 +14,7 @@ class MirrorInfoTest < ActiveSupport::TestCase
   end
   
   common_test "can use new_from_group to create a MirrorInfo instance for a particular group" do
-    rec = OfflineMirror::MirrorInfo::new_from_group(@editable_group)
+    rec = OfflineMirror::MirrorInfo::new_from_group(@editable_group, OfflineMirror::app_online? ? "online" : "offline")
     assert rec.valid?
     assert Time.now - rec.created_at < 30
     assert_equal OfflineMirror::online_url, rec.online_site
@@ -25,8 +25,14 @@ class MirrorInfoTest < ActiveSupport::TestCase
     assert rec.generator.downcase.include?("offline mirror")
   end
   
+  common_test "cannot generate a MirrorInfo instance with an invalid mode" do
+    assert_raise OfflineMirror::PluginError do
+      OfflineMirror::MirrorInfo::new_from_group(@editable_group, "foobar")
+    end
+  end
+  
   common_test "cannot save a MirrorInfo instance" do
-    rec = OfflineMirror::MirrorInfo::new_from_group(@editable_group)
+    rec = OfflineMirror::MirrorInfo::new_from_group(@editable_group,  OfflineMirror::app_online? ? "online" : "offline")
     assert rec.valid?
     assert_raise RuntimeError do
       rec.save
