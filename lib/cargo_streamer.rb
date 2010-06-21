@@ -106,6 +106,12 @@ module OfflineMirror
       end
     end
     
+    # Returns the first element from the return value of first_cargo_section
+    def first_cargo_element(name)
+      arr = first_cargo_section(name)
+      return (arr && arr.size > 0) ? arr[0] : nil
+    end
+    
     # Reads, verifies, and decodes each cargo section with a given name, passing each section's decoded data to the block
     def each_cargo_section(name)
       raise CargoStreamerError.new("Mode must be 'r' to read cargo data") unless @mode == "r"

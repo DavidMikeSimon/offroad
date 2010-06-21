@@ -176,6 +176,22 @@ class CargoStreamerTest < ActiveSupport::TestCase
     end
   end
   
+  common_test "can use first_cargo_element to get the first element of the first section with a given name" do
+    result = StringIO.open do |sio|
+      cs = OfflineMirror::CargoStreamer.new(sio, "w")
+      [10, 20, 30].each do |i|
+        cs.write_cargo_section("testing", [test_rec("item number #{i}"), test_rec("item number #{i+1}")])
+      end
+      sio.string
+    end
+    
+    StringIO.open(result) do |sio|
+      cs = OfflineMirror::CargoStreamer.new(sio, "r")
+      assert_equal test_rec("item number 10").attributes, cs.first_cargo_element("testing").attributes
+      assert_equal nil, cs.first_cargo_element("no-such-section")
+    end
+  end
+  
   common_test "can use :human_readable to include a string version of a record" do
     test_str = "ABCD\n123"
     rec = test_rec(test_str)
