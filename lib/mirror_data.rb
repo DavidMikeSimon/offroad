@@ -42,6 +42,7 @@ module OfflineMirror
     
     def load_downwards_data
       read_data("online") do
+        import_global_cargo
       end
     end
     
@@ -75,7 +76,6 @@ module OfflineMirror
     
     def add_group_specific_cargo
       # FIXME: Test that when this is called by the online app, it doesn't put group-specific junk in sendable_records
-      # FIXME: Also allow for a full-sync mode (includes all records)
       OfflineMirror::group_owned_models.each do |name, cls|
         add_model_cargo(cls, :conditions => { cls.offline_mirror_group_key.to_sym => @group })
       end
@@ -83,8 +83,6 @@ module OfflineMirror
     end
     
     def add_global_cargo
-      # FIXME: Indicate what down-mirror version this is
-      # FIXME: Also allow for a full-sync mode (includes all records)
       OfflineMirror::global_data_models.each do |name, cls|
         add_model_cargo(cls)
       end
@@ -92,7 +90,6 @@ module OfflineMirror
     
     def add_model_cargo(model, find_options = {})
       # FIXME: Also include id transformation by joining with the mirrored_records table
-      # FIXME: Include entries for deleted records
       # FIXME: Check against mirror version
       model.find_in_batches(find_options.merge({:batch_size => 100})) do |batch|
         @cs.write_cargo_section(data_cargo_name_for_model(model), batch)
@@ -104,6 +101,12 @@ module OfflineMirror
         import_model_cargo(cls)
       end
       import_model_cargo(OfflineMirror::group_base_model)
+    end
+    
+    def import_global_cargo
+      OfflineMirror::global_data_models.each do |name, cls|
+        import_model_cargo(cls)
+      end
     end
     
     def import_model_cargo(model, options = {})

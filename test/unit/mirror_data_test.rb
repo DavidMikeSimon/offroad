@@ -147,7 +147,6 @@ class MirrorDataTest < ActiveSupport::TestCase
     @offline_group_data.description = "PRIOR"
     force_save_and_reload(@offline_group, @offline_group_data)
     force_destroy(another_group_data)
-    
     assert_equal nil, Group.find_by_name("TEST 123")
     assert_equal nil, GroupOwnedRecord.find_by_description("TEST XYZ")
     assert_equal nil, GroupOwnedRecord.find_by_description("TEST ABC")
@@ -166,7 +165,27 @@ class MirrorDataTest < ActiveSupport::TestCase
   end
   
   offline_test "can insert and update global records using a down mirror file" do
-    # TODO Implement
+    global_data_a = GlobalRecord.new(:title => "ABC")
+    global_data_b = GlobalRecord.new(:title => "123")
+    force_save_and_reload(global_data_a, global_data_b)
+    
+    content = StringIO.new
+    writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"], "online")
+    writer.write_downwards_data
+    
+    force_destroy(global_data_a)
+    global_data_b.title = "789"
+    force_save_and_reload(global_data_b)
+    
+    assert_equal nil, GlobalRecord.find_by_title("ABC")
+    assert_equal nil, GlobalRecord.find_by_title("123")
+    
+    content.rewind
+    reader = OfflineMirror::MirrorData.new(@offline_group, [content, "r"])
+    reader.load_downwards_data
+    
+    assert_equal global_data_b.id, GlobalRecord.find_by_title("123").id
+    assert GlobalRecord.find_by_title("ABC")
   end
   
   offline_test "can delete global records using a down mirror file" do
