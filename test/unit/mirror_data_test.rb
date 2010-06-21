@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/../test_helper'
 
-class OfflineMirror::MirrorDataTest < ActiveSupport::TestCase
+class MirrorDataTest < ActiveSupport::TestCase
   def setup
     create_testing_system_state_and_groups
   end
@@ -24,7 +24,7 @@ class OfflineMirror::MirrorDataTest < ActiveSupport::TestCase
   def assert_common_mirror_elements_appear_valid(cs, mode)
     assert_single_cargo_section_named cs, "mirror_info"
     
-    mirror_info = cs.first_cargo_section("mirror_info")[0]
+    mirror_info = cs.first_cargo_element("mirror_info")
     assert_instance_of OfflineMirror::MirrorInfo, mirror_info
     migration_query = "SELECT version FROM schema_migrations ORDER BY version"
     migrations = Group.connection.select_all(migration_query).map{ |r| r["version"] }
@@ -34,7 +34,7 @@ class OfflineMirror::MirrorDataTest < ActiveSupport::TestCase
     assert mirror_info.app_mode.downcase.include?(mode.downcase)
     
     assert_single_cargo_section_named cs, "group_state"
-    group_state = cs.first_cargo_section("group_state")[0]
+    group_state = cs.first_cargo_element("group_state")
     assert_instance_of OfflineMirror::GroupState, group_state
     assert_equal @offline_group.id, group_state.app_group_id
   end
@@ -42,9 +42,7 @@ class OfflineMirror::MirrorDataTest < ActiveSupport::TestCase
   def assert_single_model_cargo_entry_matches(cs, record)
     data_name = "data_#{record.class.name}"
     assert_single_cargo_section_named cs, data_name
-    data = cs.first_cargo_section(data_name)
-    assert_equal 1, data.size
-    assert_equal record.attributes, data[0].attributes
+    assert_equal record.attributes, cs.first_cargo_element(data_name).attributes
   end
   
   def assert_record_not_present(cs, record)
@@ -166,22 +164,22 @@ class OfflineMirror::MirrorDataTest < ActiveSupport::TestCase
   
   online_test "can delete group data using an up mirror file" do
     # TODO Implement
-    flunk
   end
   
   offline_test "can insert and update global records using a down mirror file" do
     # TODO Implement
-    flunk
   end
   
   offline_test "can delete global records using a down mirror file" do
     # TODO Implement
-    flunk
   end
   
   offline_test "can insert group records using an initial down mirror file" do
     # TODO Implement
-    flunk
+  end
+  
+  offline_test "cannot insert group records using a non-initial down mirror file" do
+    # TODO Implement
   end
   
   online_test "cannot pass a down mirror file to load_upwards_data" do
@@ -207,6 +205,14 @@ class OfflineMirror::MirrorDataTest < ActiveSupport::TestCase
       reader.load_downwards_data
     end
   end
+  
+  online_test "cannot use an up mirror file to affect records not owned by the given group" do
+    # TODO Implement
+  end
+  
+  common_test "cannot pass in a cargo file containing extraneous sections" do
+    # TODO Implement
+  end
 end
 
-run_test_class OfflineMirror::MirrorDataTest
+run_test_class MirrorDataTest

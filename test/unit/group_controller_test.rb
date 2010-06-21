@@ -25,7 +25,7 @@ class GroupControllerTest < ActionController::TestCase
     
     StringIO.open(content) do |sio|
       cs = OfflineMirror::CargoStreamer.new(sio, "r")
-      assert cs.first_cargo_section("mirror_info")[0].app_mode.downcase.include?("online")
+      assert cs.first_cargo_element("mirror_info").app_mode.downcase.include?("online")
     end
   end
   
@@ -42,7 +42,7 @@ class GroupControllerTest < ActionController::TestCase
     
     StringIO.open(content) do |sio|
       cs = OfflineMirror::CargoStreamer.new(sio, "r")
-      assert cs.first_cargo_section("mirror_info")[0].app_mode.downcase.include?("offline")
+      assert cs.first_cargo_element("mirror_info").app_mode.downcase.include?("offline")
     end
   end
   
