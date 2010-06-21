@@ -1,6 +1,8 @@
 # Load the Rails environment
 require "#{File.dirname(__FILE__)}/app_root/config/environment"
 require 'test_help'
+require 'active_support'
+require 'active_support/test_case'
 require 'test/unit'
 require 'test/unit/ui/console/testrunner'
 require 'test/unit/util/backtracefilter'
@@ -107,7 +109,7 @@ class Test::Unit::TestCase
     end
   end
   
-  def create_testing_system_state_and_groups
+  def setup
     opts = { :current_mirror_version => 1 }
     opts[:offline_group_id] = 1 if OfflineMirror::app_offline?
     OfflineMirror::SystemState::create(opts) or raise "Unable to create testing SystemState"

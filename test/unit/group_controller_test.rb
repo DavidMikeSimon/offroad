@@ -4,10 +4,6 @@ require File.dirname(__FILE__) + '/../test_helper'
 # Tests for the actual generation and processing of mirror files are in mirror_data_test.rb
 
 class GroupControllerTest < ActionController::TestCase
-  def setup
-    create_testing_system_state_and_groups
-  end
-  
   def gen_up_mirror_data(group)
     content = StringIO.new
     writer = OfflineMirror::MirrorData.new(group, [content, "w"], "offline")

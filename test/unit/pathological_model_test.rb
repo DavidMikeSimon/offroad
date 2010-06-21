@@ -3,10 +3,6 @@ require File.dirname(__FILE__) + '/../test_helper'
 # This is a unit test on the ability of model_extensions to correctly handle bad acts_as_mirrored_offline calls
 
 class PathologicalModelTest < ActiveSupport::TestCase
-  def setup
-    create_testing_system_state_and_groups
-  end
-  
   common_test "cannot specify acts_as_mirrored_offline multiple times" do
     assert_raise OfflineMirror::ModelError do
       class MultipleTimesBrokenRecord < ActiveRecord::Base

@@ -3,10 +3,6 @@ require File.dirname(__FILE__) + '/../test_helper'
 # This is a unit test on the ability of model_extensions to handle group data models
 
 class GroupDataTest < ActiveSupport::TestCase
-  def setup
-    create_testing_system_state_and_groups
-  end
-  
   online_test "a new group is online by default" do
     g = Group.create(:name => "This Should Be Online")
     assert g.group_online?

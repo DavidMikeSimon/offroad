@@ -4,12 +4,10 @@ require File.dirname(__FILE__) + '/../test_helper'
 
 class GlobalDataTest < ActiveSupport::TestCase
   def setup
-    create_testing_system_state_and_groups
+    super
     
     @global_record = GlobalRecord.new(:title => "Something or other")
-    # If we didn't do this, offline test wouldn't be able to create the record
-    @global_record.bypass_offline_mirror_readonly_checks
-    @global_record.save!
+    force_save_and_reload(@global_record)
   end
   
   online_test "can create new global records" do

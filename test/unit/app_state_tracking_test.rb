@@ -3,10 +3,6 @@ require File.dirname(__FILE__) + '/../test_helper'
 # This is a unit test for all the OfflineMirror internal models whose names end with "State"
 
 class AppStateTrackingTest < ActiveSupport::TestCase
-  def setup
-    create_testing_system_state_and_groups
-  end
-  
   def find_record_state_from_record(rec)
     model_state = OfflineMirror::ModelState::find_by_app_model_name(rec.class.name)
     return OfflineMirror::SendableRecordState::find_by_model_state_id_and_local_record_id(model_state.id, rec.id)

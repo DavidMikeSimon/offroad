@@ -1,10 +1,6 @@
 require File.dirname(__FILE__) + '/../test_helper'
 
 class MirrorDataTest < ActiveSupport::TestCase
-  def setup
-    create_testing_system_state_and_groups
-  end
-  
   def assert_single_cargo_section_named(cs, name)
     count = 0
     cs.each_cargo_section(name) do |data|
