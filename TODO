@@ -30,6 +30,7 @@
   - Or alternately, just check valid? without saving
 - Consider paginating cargo by byte size instead of in fixed-length batches
 - Consider using activerecord-import, if available, to speed up insertions
+- Instead of checking RAILS_ENV, have different environments set a different configuration; this will improve testing
 
 - Scenario to deal with: offline app applies an initial down mirror, then makes local changes, then attempts to reapply _another_ initial down mirror
  - To deal with this, just ignore all non-global records in the second initial down mirror, since they should be identical

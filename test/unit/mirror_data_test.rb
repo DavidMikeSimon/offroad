@@ -75,9 +75,8 @@ class MirrorDataTest < ActiveSupport::TestCase
   online_test "down mirror files do not include irrelevant records" do
     another_offline_group = Group.create(:name => "Another Group")
     another_offline_group.group_offline = true
-    another_offline_group.reload
     another_group_data = GroupOwnedRecord.create(:description => "Another Data", :group => another_offline_group)
-    another_group_data.reload
+    [another_offline_group, another_group_data].each { |r| r.reload }
     
     content = StringIO.new
     writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"])
@@ -105,19 +104,9 @@ class MirrorDataTest < ActiveSupport::TestCase
   
   offline_test "up mirror files do not include irrelevant records" do
     fake_offline_group = Group.new(:name => "Another Group")
-    fake_offline_group.bypass_offline_mirror_readonly_checks
-    fake_offline_group.save!
-    fake_offline_group.reload
-    
     fake_group_data = GroupOwnedRecord.new(:description => "Another Data", :group => fake_offline_group)
-    fake_group_data.bypass_offline_mirror_readonly_checks
-    fake_group_data.save!
-    fake_group_data.reload
-    
     fake_global_data = GlobalRecord.new(:title => "Fake Stuff")
-    fake_global_data.bypass_offline_mirror_readonly_checks
-    fake_global_data.save!
-    fake_global_data.reload
+    force_save_and_reload(fake_offline_group, fake_group_data, fake_global_data)
     
     content = StringIO.new
     writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"])
@@ -145,20 +134,30 @@ class MirrorDataTest < ActiveSupport::TestCase
   end
   
   online_test "can insert and update group data using an up mirror file" do
-    mirror_file = StringIO.open do |sio|
-      cs = OfflineMirror::CargoStreamer.new(sio, "w")
-      # TODO - Make some changes, use GBC backend to send to cs, then revert changes
-      sio.string
-    end
+    @offline_group.name = "TEST 123"
+    @offline_group_data.description = "TEST XYZ"
+    another_group_data = GroupOwnedRecord.new(:description => "TEST ABC", :group => @offline_group)
+    force_save_and_reload(@offline_group, @offline_group_data, another_group_data)
     
-    assert @offline_group.name != "TEST 123"
-    assert @offline_group_data.description != "TEST XYZ"
+    content = StringIO.new
+    writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"], "offline")
+    writer.write_upwards_data
+    
+    @offline_group.name = "PRIOR"
+    @offline_group_data.description = "PRIOR"
+    force_save_and_reload(@offline_group, @offline_group_data)
+    force_destroy(another_group_data)
+    
+    assert_equal nil, Group.find_by_name("TEST 123")
+    assert_equal nil, GroupOwnedRecord.find_by_description("TEST XYZ")
     assert_equal nil, GroupOwnedRecord.find_by_description("TEST ABC")
     
-    # TODO - Apply the cargo file through the group controller
+    content.rewind
+    reader = OfflineMirror::MirrorData.new(@offline_group, [content, "r"])
+    reader.load_upwards_data
     
-    assert @offline_group.name == "TEST 123"
-    assert @offline_group_data.description == "TEST XYZ"
+    assert_equal @offline_group.id, Group.find_by_name("TEST 123").id
+    assert_equal @offline_group_data.id, GroupOwnedRecord.find_by_description("TEST XYZ").id
     assert GroupOwnedRecord.find_by_description("TEST ABC")
   end
   
@@ -178,19 +177,22 @@ class MirrorDataTest < ActiveSupport::TestCase
     # TODO Implement
   end
   
-  offline_test "cannot insert group records using a non-initial down mirror file" do
+  offline_test "cannot affect group records using a non-initial down mirror file" do
     # TODO Implement
   end
   
   online_test "cannot pass a down mirror file to load_upwards_data" do
     content = StringIO.new
-    writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"], "offline")
+    writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"], "online")
     writer.write_downwards_data
     
     content.rewind
     reader = OfflineMirror::MirrorData.new(@offline_group, content)
     assert_raise OfflineMirror::DataError do
       reader.load_upwards_data
+    end
+    assert_nothing_raised do
+      reader.load_downwards_data
     end
   end
   
@@ -203,6 +205,9 @@ class MirrorDataTest < ActiveSupport::TestCase
     reader = OfflineMirror::MirrorData.new(@offline_group, content)
     assert_raise OfflineMirror::DataError do
       reader.load_downwards_data
+    end
+    assert_nothing_raised do
+      reader.load_upwards_data
     end
   end
   

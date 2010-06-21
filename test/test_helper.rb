@@ -92,6 +92,21 @@ end
 
 # Test data setup (I don't like fixtures, for several reasons)
 class Test::Unit::TestCase
+  def force_save_and_reload(*records)
+    records.each do |record|
+      record.bypass_offline_mirror_readonly_checks
+      record.save!
+      record.reload
+    end
+  end
+  
+  def force_destroy(*records)
+    records.each do |record|
+      record.bypass_offline_mirror_readonly_checks
+      record.destroy
+    end
+  end
+  
   def create_testing_system_state_and_groups
     opts = { :current_mirror_version => 1 }
     opts[:offline_group_id] = 1 if OfflineMirror::app_offline?

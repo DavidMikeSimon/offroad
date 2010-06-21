@@ -8,12 +8,18 @@ class GroupControllerTest < ActionController::TestCase
     create_testing_system_state_and_groups
   end
   
-  def gen_up_mirror_data(group, new_msg = "TEST")
-    ""
+  def gen_up_mirror_data(group)
+    content = StringIO.new
+    writer = OfflineMirror::MirrorData.new(group, [content, "w"], "offline")
+    writer.write_upwards_data
+    return content.string
   end
   
-  def gen_down_mirror_data(group, new_title = "TEST")
-    ""
+  def gen_down_mirror_data(group)
+    content = StringIO.new
+    writer = OfflineMirror::MirrorData.new(group, [content, "w"], "online")
+    writer.write_downwards_data
+    return content.string
   end
   
   online_test "can retrieve a down mirror file for the offline group" do
@@ -59,15 +65,23 @@ class GroupControllerTest < ActionController::TestCase
   end
   
   online_test "can upload up mirror files" do
-    assert_equal "An Offline Group", @offline_group.name
-    post :upload_up_mirror, "id" => @offline_group.id, "mirror_data" => gen_up_mirror_data(@offline_group, "ABC")
+    @offline_group.name = "ABC"; force_save_and_reload(@offline_group)
+    mirror_data = gen_up_mirror_data(@offline_group)
+    @offline_group.name = "XYZ"; force_save_and_reload(@offline_group)
+    
+    post :upload_up_mirror, "id" => @offline_group.id, "mirror_data" => mirror_data
     assert_response :success
+    @offline_group.reload
     assert_equal "ABC", @offline_group.name
   end
   
   offline_test "can upload down mirror files" do
+    global_record = GlobalRecord.new(:title => "123"); force_save_and_reload(global_record)
+    mirror_data = gen_down_mirror_data(@offline_group)
+    force_destroy(global_record)
+    
     assert_equal 0, GlobalRecord.count
-    post :upload_down_mirror, "id" => @offline_group.id, "mirror_data" => gen_down_mirror_data(@offline_group, "123")
+    post :upload_down_mirror, "id" => @offline_group.id, "mirror_data" => mirror_data
     assert_response :success
     assert_equal 1, GlobalRecord.count
     assert_equal "123", GlobalRecord.first.title
