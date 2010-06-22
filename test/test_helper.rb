@@ -1,13 +1,14 @@
-# Load the Rails environment
-require "#{File.dirname(__FILE__)}/app_root/config/environment"
+require 'rubygems'
+require 'active_support'
 require 'test/unit'
 require 'test/unit/ui/console/testrunner'
 require 'test/unit/util/backtracefilter'
 
+# Load the Rails test environment (I ran into issues with test_help)
 silence_warnings do
-  # Undo changes to RAILS_ENV made by Rails' test_help
-  RAILS_ENV = ENV['RAILS_ENV']
+  RAILS_ENV = "test"
 end
+require "#{File.dirname(__FILE__)}/app_root/config/environment"
 
 begin
   require 'redgreen'
@@ -161,6 +162,18 @@ class Test::Unit::TestCase
   end
 end
 
+def define_wrapped_test(name, before_proc, after_proc, &block)
+  method_name = "test_" + name.to_s.gsub(/[^\w ]/, '_').gsub(' ', '_')
+  define_method method_name.to_sym, &block
+  define_method "wrapped_#{method_name}".to_sym do
+    before_proc.call if before_proc
+    send "unwrapped_#{method_name}".to_sym
+    after_proc.call if after_proc
+  end
+  alias_method "unwrapped_#{method_name}".to_sym, method_name.to_sym
+  alias_method method_name.to_sym, "wrapped_#{method_name}"
+end
+
 # Convenience methods to create tests that apply to particular environments
 
 def online_test(name, &block)
@@ -172,5 +185,5 @@ def offline_test(name, &block)
 end
 
 def common_test(name, &block)
-  define_method ("test_" + name.to_s.gsub(/[^\w ]/, '_').gsub(' ', '_')).to_sym, &block
+  define_wrapped_test(name, nil, nil, &block)
 end

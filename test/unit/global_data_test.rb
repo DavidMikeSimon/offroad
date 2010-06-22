@@ -81,5 +81,3 @@ class GlobalDataTest < Test::Unit::TestCase
     assert GlobalRecord.acts_as_mirrored_offline?
   end
 end
-
-run_test_class GlobalDataTest

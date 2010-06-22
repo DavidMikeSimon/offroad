@@ -25,5 +25,3 @@ class ModuleFuncsTest < Test::Unit::TestCase
     assert_equal @offline_group, OfflineMirror::offline_group
   end
 end
-
-run_test_class ModuleFuncsTest

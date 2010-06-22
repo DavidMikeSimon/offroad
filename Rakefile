@@ -68,7 +68,7 @@ task :rcov do
   $rcov_data_filename = "rcov-%u.tmp" % Time.now.to_i
 end
 
-desc 'Runs both the offline and online tests'
+desc 'Runs tests with optional limiting arguments'
 task :test, :filename_substring do |t, args|
   ["OFFLINE", "ONLINE"].each do |desc|
     id = fork # Forking so that we can start different Rails environments
@@ -95,20 +95,6 @@ task :test, :filename_substring do |t, args|
     end
   end
   
-  coverage_report
-end
-
-desc 'Runs the plugin tests in offline mode'
-task :offline_test, :filename_substring do |t, args|
-  RAILS_ENV = ENV["RAILS_ENV"] = "offline_test"
-  run_tests("OFFLINE", args.filename_substring)
-  coverage_report
-end
-
-desc 'Runs the plugin tests in online mode'
-task :online_test, :filename_substring do |t, args|
-  RAILS_ENV = ENV["RAILS_ENV"] = "test"
-  run_tests("ONLINE", args.filename_substring)
   coverage_report
 end
 

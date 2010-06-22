@@ -234,5 +234,3 @@ class MirrorDataTest < Test::Unit::TestCase
     # TODO Implement
   end
 end
-
-run_test_class MirrorDataTest

@@ -42,5 +42,3 @@ class MirrorInfoTest < Test::Unit::TestCase
   end
   
 end
-
-run_test_class MirrorInfoTest

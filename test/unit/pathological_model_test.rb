@@ -59,5 +59,3 @@ class PathologicalModelTest < Test::Unit::TestCase
     end
   end
 end
-
-run_test_class PathologicalModelTest

@@ -107,5 +107,3 @@ class GroupControllerTest < ActionController::TestCase
     end
   end
 end
-
-run_test_class GroupControllerTest

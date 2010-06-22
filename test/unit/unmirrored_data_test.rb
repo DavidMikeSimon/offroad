@@ -16,5 +16,3 @@ class UnmirroredDataTest < Test::Unit::TestCase
     end
   end
 end
-
-run_test_class UnmirroredDataTest

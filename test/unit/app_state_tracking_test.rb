@@ -185,5 +185,3 @@ class AppStateTrackingTest < Test::Unit::TestCase
     end
   end
 end
-
-run_test_class AppStateTrackingTest
