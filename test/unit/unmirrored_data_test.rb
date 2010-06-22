@@ -2,7 +2,7 @@ require File.dirname(__FILE__) + '/../test_helper'
 
 # This is a unit test on the ability of model_extensions to correctly ignore unmirrored data
 
-class UnmirroredDataTest < ActiveSupport::TestCase
+class UnmirroredDataTest < Test::Unit::TestCase
   common_test "unmirrored data model returns false to acts_as_mirrored_offline?" do
     assert_equal false, UnmirroredRecord.acts_as_mirrored_offline?
   end

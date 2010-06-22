@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/../test_helper'
 
-class MirrorInfoTest < ActiveSupport::TestCase
+class MirrorInfoTest < Test::Unit::TestCase
   common_test "can instantiate MirrorInfo instances, but they're invalid by default" do
     rec = nil
     assert_nothing_raised do

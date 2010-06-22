@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/../test_helper'
 
-class ModuleFuncsTest < ActiveSupport::TestCase 
+class ModuleFuncsTest < Test::Unit::TestCase
   online_test "app reports being offline" do
     assert OfflineMirror::app_online?, "App is online"
     assert_equal false, OfflineMirror::app_offline?, "App is not offline"

@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/../test_helper'
 
-class MirrorDataTest < ActiveSupport::TestCase
+class MirrorDataTest < Test::Unit::TestCase
   def assert_single_cargo_section_named(cs, name)
     count = 0
     cs.each_cargo_section(name) do |data|

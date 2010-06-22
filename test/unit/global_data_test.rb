@@ -2,7 +2,7 @@ require File.dirname(__FILE__) + '/../test_helper'
 
 # This is a unit test on the ability of model_extensions to handle global models
 
-class GlobalDataTest < ActiveSupport::TestCase
+class GlobalDataTest < Test::Unit::TestCase
   def setup
     super
     

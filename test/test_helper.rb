@@ -1,8 +1,5 @@
 # Load the Rails environment
 require "#{File.dirname(__FILE__)}/app_root/config/environment"
-require 'test_help'
-require 'active_support'
-require 'active_support/test_case'
 require 'test/unit'
 require 'test/unit/ui/console/testrunner'
 require 'test/unit/util/backtracefilter'
@@ -10,14 +7,13 @@ require 'test/unit/util/backtracefilter'
 silence_warnings do
   # Undo changes to RAILS_ENV made by Rails' test_help
   RAILS_ENV = ENV['RAILS_ENV']
-  
-  # Try to load the 'redgreen' colorizing gem and use it for test output
-  begin
-    require 'redgreen'
-    TestRunner = Test::Unit::UI::Console::RedGreenTestRunner
-  rescue
-    TestRunner = Test::Unit::UI::Console::TestRunner
-  end
+end
+
+begin
+  require 'redgreen'
+  TestRunner = Test::Unit::UI::Console::RedGreenTestRunner
+rescue
+  TestRunner = Test::Unit::UI::Console::TestRunner
 end
 
 # Monkey patch the backtrace filter to include all source files in the plugin
@@ -53,12 +49,6 @@ module Test::Unit::Util::BacktraceFilter
   end
 end
 
-# Run the migrations to set up the in-memory test database
-# TODO Improve test speed by only migrating once per testing environment, then just clearing tables as needed
-ActiveRecord::Migration.verbose = false
-ActiveRecord::Migrator.migrate("#{Rails.root}/db/migrate") # Migrations for the testing pseudo-Rails app
-ActiveRecord::Migrator.migrate("#{File.dirname(__FILE__)}/../lib/migrate/") # Plugin-internal tables
-
 # Runs a given test class immediately; this should be at the end of each test file
 def run_test_class(cls)
   lines = []
@@ -92,9 +82,54 @@ def run_test_class(cls)
   end
 end
 
-# Test data setup (I don't like fixtures, for several reasons)
+# Test data setup (I don't like rails' fixtures, for several reasons)
 class Test::Unit::TestCase
-  def force_save_and_reload(*records)
+  @@database_migrated = false
+  @@fixture = {}
+  
+  def self.initialize_database
+    unless @@database_migrated
+      ActiveRecord::Migration.verbose = false
+      ActiveRecord::Migrator.migrate("#{Rails.root}/db/migrate") # Migrations for the testing pseudo-app
+      ActiveRecord::Migrator.migrate("#{File.dirname(__FILE__)}/../lib/migrate/") # Plugin-internal tables
+      @@database_migrated = true
+    end
+    
+    ActiveRecord::Base.connection.tables.each do |table|
+      next if table == "schema_migrations"
+      ActiveRecord::Base.connection.execute("DELETE FROM #{table}")
+      ActiveRecord::Base.connection.execute("DELETE FROM sqlite_sequence WHERE name='#{table}'")
+    end
+    
+    opts = { :current_mirror_version => 1 }
+    opts[:offline_group_id] = 1 if OfflineMirror::app_offline?
+    OfflineMirror::SystemState::create(opts) or raise "Unable to create testing SystemState"
+    
+    @@fixture[:offline_group] = Group.new(:name => "An Offline Group")
+    force_save_and_reload(@@fixture[:offline_group])
+    raise "Test id mismatch" unless @@fixture[:offline_group].id == OfflineMirror::SystemState::current_mirror_version
+    
+    @@fixture[:offline_group_data] = GroupOwnedRecord.new(
+         :description => "Some Offline Data", :group => @@fixture[:offline_group])
+    force_save_and_reload(@@fixture[:offline_group_data])
+    
+    if OfflineMirror::app_online?
+      @@fixture[:offline_group].group_offline = true # In offline mode, the group will be offline by default
+      
+      @@fixture[:online_group] = Group.new(:name => "An Online Group") # Will be online by default (tested below)
+      force_save_and_reload(@@fixture[:online_group])
+      @@fixture[:online_group_data] = GroupOwnedRecord.new(:description => "Some Online Data", :group => @@fixture[:online_group])
+      force_save_and_reload(@@fixture[:online_group_data])
+      
+      @@fixture[:editable_group] = @@fixture[:online_group]
+      @@fixture[:editable_group_data] = @@fixture[:online_group_data]
+    else  
+      @@fixture[:editable_group] = @@fixture[:offline_group]
+      @@fixture[:editable_group_data] = @@fixture[:offline_group_data]
+    end
+  end
+  
+  def self.force_save_and_reload(*records)
     records.each do |record|
       record.bypass_offline_mirror_readonly_checks
       record.save!
@@ -102,42 +137,26 @@ class Test::Unit::TestCase
     end
   end
   
-  def force_destroy(*records)
+  def force_save_and_reload(*records)
+    self.class.force_save_and_reload(*records)
+  end
+  
+  def self.force_destroy(*records)
     records.each do |record|
       record.bypass_offline_mirror_readonly_checks
       record.destroy
     end
   end
   
+  def force_destroy(*records)
+    self.class.force_destroy(*records)
+  end
+  
   def setup
-    opts = { :current_mirror_version => 1 }
-    opts[:offline_group_id] = 1 if OfflineMirror::app_offline?
-    OfflineMirror::SystemState::create(opts) or raise "Unable to create testing SystemState"
+    self.class.initialize_database
     
-    # All the reloads below are to remove time precision that isn't stored in the database
-    
-    @offline_group = Group.new(:name => "An Offline Group")
-    @offline_group.bypass_offline_mirror_readonly_checks
-    @offline_group.save!
-    @offline_group.reload
-    raise "Test id mismatch" unless @offline_group.id == OfflineMirror::SystemState::current_mirror_version
-    
-    @offline_group_data = GroupOwnedRecord.create(:description => "Some Offline Data", :group => @offline_group)
-    @offline_group_data.reload
-    
-    if OfflineMirror::app_online?
-      @offline_group.group_offline = true
-      
-      @online_group = Group.create(:name => "An Online Group") # Will be online by default (tested below)
-      @online_group.reload
-      @online_group_data = GroupOwnedRecord.create(:description => "Some Online Data", :group => @online_group)
-      @online_group_data.reload
-      
-      @editable_group = @online_group
-      @editable_group_data = @online_group_data
-    else  
-      @editable_group = @offline_group
-      @editable_group_data = @offline_group_data
+    @@fixture.each_pair do |key, value|
+      instance_variable_set("@#{key.to_s}".to_sym, value)
     end
   end
 end

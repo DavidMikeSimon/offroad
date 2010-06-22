@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/../test_helper'
 
-class CargoStreamerTest < ActiveSupport::TestCase
+class CargoStreamerTest < Test::Unit::TestCase
   # Based on the pattern found here: http://stackoverflow.com/questions/315850/rails-model-without-database
   class TestModel < ActiveRecord::Base
     include OfflineMirror::CargoStreamer::CargoStreamable
