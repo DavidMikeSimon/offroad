@@ -1,101 +1,17 @@
 require 'rubygems'
 require 'rake'
+require 'rake/testtask'
 require 'rake/rdoctask'
-require 'cgi'
 
-begin
-  require 'rcov'
-rescue
-end
+desc 'Default: run unit tests.'
+task :default => :test
 
-def run_tests(desc, filename_substring = nil)
-  analyzer = nil
-  if $rcov_enabled
-    begin
-      fh = File.open($rcov_data_filename)
-      analyzer = Marshal.load(fh)
-      fh.close
-      puts "*** Loaded prior rcov data for aggregation"
-    rescue
-      analyzer = Rcov::CodeCoverageAnalyzer.new
-      puts "*** Created new rcov data"
-    end
-  end
-  
-  # The regular rake testtask way had magic that didn't work properly for me
-  Dir.glob('test/{unit}/*_test.rb').sort.each do |fn|
-    next if !filename_substring.nil? && !fn.include?(filename_substring)
-    if $rcov_enabled
-      analyzer.run_hooked do
-        load fn
-      end
-    else
-      load fn
-    end
-  end
-  
-  if $rcov_enabled
-    fh = File.open($rcov_data_filename, "w")
-    Marshal.dump(analyzer, fh)
-    fh.close
-    puts "*** Saved rcov data"
-  end
-  
-  puts ""
-end
-
-def coverage_report
-  return unless $rcov_enabled
-  
-  puts "Writing coverage analysis..."
-  formatter = Rcov::HTMLCoverage.new(
-    :ignore => [/\Wruby\W/, /\Wgems\W/, /^test\W/, /\Wmigrate\W/],
-    :destdir => "coverage"
-  )
-  fh = File.open($rcov_data_filename)
-  analyzer = Marshal.load(fh)
-  fh.close
-  analyzer.dump_coverage_info([formatter])
-  
-  File.delete($rcov_data_filename)
-end
-
-task :default => [:test]
-
-desc 'Uses rcov for coverage-testing following tests'
-task :rcov do
-  $rcov_enabled = true
-  $rcov_data_filename = "rcov-%u.tmp" % Time.now.to_i
-end
-
-desc 'Runs tests with optional limiting arguments'
-task :test, :filename_substring do |t, args|
-  ["OFFLINE", "ONLINE"].each do |desc|
-    id = fork # Forking so that we can start different Rails environments
-    if id
-      # Parent process; wait for the child process to end
-      Process.wait id
-    else
-      # Child process; run the rake task then end process
-      puts ""
-      puts "#"*80
-      puts "### BEGINNING %s TEST" % desc.to_s
-      puts "#"*80
-      puts ""
-      
-      case desc
-      when "OFFLINE"
-        RAILS_ENV = ENV["RAILS_ENV"] = "offline_test"
-      when "ONLINE"
-        RAILS_ENV = ENV["RAILS_ENV"] = "test"
-      end
-      
-      run_tests(desc, args.filename_substring)
-      exit!
-    end
-  end
-  
-  coverage_report
+desc 'Test the <%= file_name %> plugin.'
+Rake::TestTask.new(:test) do |t|
+  t.libs << 'lib'
+  t.libs << 'test'
+  t.pattern = 'test/**/*_test.rb'
+  t.verbose = true
 end
 
 desc 'Generate documentation for the offline_mirror plugin.'
@@ -105,4 +21,18 @@ Rake::RDocTask.new(:rdoc) do |rdoc|
   rdoc.options << '--line-numbers' << '--inline-source'
   rdoc.rdoc_files.include('README')
   rdoc.rdoc_files.include('lib/**/*.rb')
+end
+
+begin
+  require 'rcov/rcovtask'
+  
+  Rcov::RcovTask.new(:rcov) do |t|
+    t.libs << 'lib'
+    t.libs << 'test'
+    t.pattern = 'test/**/*_test.rb'
+    t.verbose = true
+    t.rcov_opts << '-o coverage -x "/ruby/,/gems/,/test/,/migrate/"'
+  end
+rescue LoadError
+  # Rcov wasn't available
 end

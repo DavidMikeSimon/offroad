@@ -1,23 +1,31 @@
-require 'rubygems'
-require 'active_support'
-require 'test/unit'
-require 'test/unit/ui/console/testrunner'
-require 'test/unit/util/backtracefilter'
+ENV['RAILS_ENV'] = 'test'
 
-# Load the Rails test environment (I ran into issues with test_help)
-silence_warnings do
-  RAILS_ENV = "test"
+prev_dir = Dir.getwd
+begin
+  Dir.chdir("#{File.dirname(__FILE__)}/..")
+  
+  begin
+    # Used when running plugin files directly
+    require "#{File.dirname(__FILE__)}/app_root/config/environment"
+  rescue LoadError
+    # This is needed for root-level rake task test:plugins
+    require "app_root/config/environment"
+  end
+ensure
+  Dir.chdir(prev_dir)
 end
-require "#{File.dirname(__FILE__)}/app_root/config/environment"
 
+require 'rubygems'
+require 'test/unit/util/backtracefilter'
+require 'test_help'
+
+# Try to load the redgreen test console outputter, if it's available
 begin
   require 'redgreen'
-  TestRunner = Test::Unit::UI::Console::RedGreenTestRunner
-rescue
-  TestRunner = Test::Unit::UI::Console::TestRunner
+rescue LoadError
 end
 
-# Monkey patch the backtrace filter to include all source files in the plugin
+# Monkey patch the backtrace filter to include source files in the plugin
 module Test::Unit::Util::BacktraceFilter
   def filter_backtrace(backtrace, prefix = nil)
     backtrace = backtrace.select do |e|
@@ -50,44 +58,26 @@ module Test::Unit::Util::BacktraceFilter
   end
 end
 
-# Runs a given test class immediately; this should be at the end of each test file
-def run_test_class(cls)
-  lines = []
-  saved_stdout = $stdout.clone
-  begin
-    $stdout = StringIO.new
-    TestRunner.run(cls)
-    $stdout.close
-    lines = $stdout.string.split("\n")
-  ensure
-    $stdout = saved_stdout
-  end
-  
-  if lines.last.include? ", 0 failures, 0 errors"
-    result_line = lines.last
-    if result_line =~ /^(.+?)(\d+) tests, (\d+) assertions, (\d+) failures, (\d+) errors(.+)$/
-      result_line = "%s%4u tests, %4u assertions, %4u failures, %4u errors%s" % [$1, $2, $3, $4, $5, $6]
-    end
-    puts "%-24s %s" % [cls.name + ":", result_line]
-  elsif lines.size == 0:
-    raise "No output when running test #{cls.name}"
-  else
-    puts ""
-    puts "!"*50
-    puts "!!!!!! #{cls.name}"
-    lines.each do |line|
-      puts "!!! " + line.chomp
-    end
-    puts "!"*50
-    puts ""
+def force_save_and_reload(*records)
+  records.each do |record|
+    record.bypass_offline_mirror_readonly_checks
+    record.save!
+    record.reload
   end
 end
 
-# Test data setup (I don't like rails' fixtures, for several reasons)
+def force_destroy(*records)
+  records.each do |record|
+    record.bypass_offline_mirror_readonly_checks
+    record.destroy
+  end
+end
+
 class Test::Unit::TestCase
   @@database_migrated = false
   @@fixture = {}
-  
+
+  # Test data setup (I don't like rails' fixtures, for several reasons)
   def self.initialize_database
     unless @@database_migrated
       ActiveRecord::Migration.verbose = false
@@ -128,29 +118,6 @@ class Test::Unit::TestCase
       @@fixture[:editable_group] = @@fixture[:offline_group]
       @@fixture[:editable_group_data] = @@fixture[:offline_group_data]
     end
-  end
-  
-  def self.force_save_and_reload(*records)
-    records.each do |record|
-      record.bypass_offline_mirror_readonly_checks
-      record.save!
-      record.reload
-    end
-  end
-  
-  def force_save_and_reload(*records)
-    self.class.force_save_and_reload(*records)
-  end
-  
-  def self.force_destroy(*records)
-    records.each do |record|
-      record.bypass_offline_mirror_readonly_checks
-      record.destroy
-    end
-  end
-  
-  def force_destroy(*records)
-    self.class.force_destroy(*records)
   end
   
   def setup
