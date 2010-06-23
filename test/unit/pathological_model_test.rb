@@ -32,6 +32,7 @@ class PathologicalModelTest < Test::Unit::TestCase
   end
   
   common_test "cannot specify :group_owned with a :group_key to a non-existing column" do
+    self.class.send(:remove_const, :InvalidColumnBrokenRecord) if self.class.const_defined?(:InvalidColumnBrokenRecord)
     class InvalidColumnBrokenRecord < ActiveRecord::Base
       set_table_name "broken_records"
       acts_as_mirrored_offline :group_owned, :group_key => :no_such_column

@@ -86,38 +86,31 @@ class Test::Unit::TestCase
       @@database_migrated = true
     end
     
+    OfflineMirror::config_app_online(true)
+    
     ActiveRecord::Base.connection.tables.each do |table|
       next if table == "schema_migrations"
       ActiveRecord::Base.connection.execute("DELETE FROM #{table}")
       ActiveRecord::Base.connection.execute("DELETE FROM sqlite_sequence WHERE name='#{table}'")
     end
     
-    opts = { :current_mirror_version => 1 }
-    opts[:offline_group_id] = 1 if OfflineMirror::app_offline?
-    OfflineMirror::SystemState::create(opts) or raise "Unable to create testing SystemState"
+    OfflineMirror::SystemState::create(
+      :current_mirror_version => 1,
+      :offline_group_id => 1
+    ) or raise "Unable to create testing SystemState"
     
     @@fixture[:offline_group] = Group.new(:name => "An Offline Group")
-    force_save_and_reload(@@fixture[:offline_group])
-    raise "Test id mismatch" unless @@fixture[:offline_group].id == OfflineMirror::SystemState::current_mirror_version
+    @@fixture[:online_group] = Group.new(:name => "An Online Group")
+    force_save_and_reload(@@fixture[:offline_group], @@fixture[:online_group])
+    @@fixture[:offline_group].group_offline = true
+    raise "Test id mismatch" unless @@fixture[:offline_group].id == OfflineMirror::SystemState::offline_group_id
     
-    @@fixture[:offline_group_data] = GroupOwnedRecord.new(
-         :description => "Some Offline Data", :group => @@fixture[:offline_group])
-    force_save_and_reload(@@fixture[:offline_group_data])
-    
-    if OfflineMirror::app_online?
-      @@fixture[:offline_group].group_offline = true # In offline mode, the group will be offline by default
+    @@fixture[:offline_group_data] = GroupOwnedRecord.new( :description => "Sam", :group => @@fixture[:offline_group])
+    @@fixture[:online_group_data] = GroupOwnedRecord.new(:description => "Max", :group => @@fixture[:online_group])
+    force_save_and_reload(@@fixture[:offline_group_data], @@fixture[:online_group_data])
       
-      @@fixture[:online_group] = Group.new(:name => "An Online Group") # Will be online by default (tested below)
-      force_save_and_reload(@@fixture[:online_group])
-      @@fixture[:online_group_data] = GroupOwnedRecord.new(:description => "Some Online Data", :group => @@fixture[:online_group])
-      force_save_and_reload(@@fixture[:online_group_data])
-      
-      @@fixture[:editable_group] = @@fixture[:online_group]
-      @@fixture[:editable_group_data] = @@fixture[:online_group_data]
-    else  
-      @@fixture[:editable_group] = @@fixture[:offline_group]
-      @@fixture[:editable_group_data] = @@fixture[:offline_group_data]
-    end
+    @@fixture[:editable_group] = @@fixture[:online_group]
+    @@fixture[:editable_group_data] = @@fixture[:online_group_data]
   end
   
   def setup
@@ -129,28 +122,54 @@ class Test::Unit::TestCase
   end
 end
 
-def define_wrapped_test(name, before_proc, after_proc, &block)
+def define_wrapped_test(name, before_proc, after_proc, block)
   method_name = "test_" + name.to_s.gsub(/[^\w ]/, '_').gsub(' ', '_')
   define_method method_name.to_sym, &block
   define_method "wrapped_#{method_name}".to_sym do
-    before_proc.call if before_proc
-    send "unwrapped_#{method_name}".to_sym
-    after_proc.call if after_proc
+    begin
+      before_proc.call(self) if before_proc
+      send "unwrapped_#{method_name}".to_sym
+    ensure
+      after_proc.call(self) if after_proc
+    end
   end
   alias_method "unwrapped_#{method_name}".to_sym, method_name.to_sym
-  alias_method method_name.to_sym, "wrapped_#{method_name}"
+  alias_method method_name.to_sym, "wrapped_#{method_name}".to_sym
 end
 
 # Convenience methods to create tests that apply to particular environments
 
+# Test that should be run in the online environment
 def online_test(name, &block)
-  common_test(name.to_s + " in online app", &block) unless RAILS_ENV.start_with?("offline")
+  before = Proc.new do
+    OfflineMirror::config_app_online(true)
+  end
+  
+  define_wrapped_test("ONLINE #{name}", before, nil, block)
 end
 
+# Test that should be run in the offline environment
 def offline_test(name, &block)
-  common_test(name.to_s + " in offline app", &block) if RAILS_ENV.start_with?("offline")
+  before = Proc.new do |t|
+    OfflineMirror::config_app_online(false)
+    t.instance_variable_set(:@editable_group, t.instance_variable_get(:@offline_group))
+    t.instance_variable_set(:@editable_group_data, t.instance_variable_get(:@offline_group_data))
+  end
+  
+  define_wrapped_test("OFFLINE #{name}", before, nil, block)
 end
 
+# Test that should be run in both environments
 def common_test(name, &block)
-  define_wrapped_test(name, nil, nil, &block)
+  online_test(name, &block)
+  offline_test(name, &block)
+end
+
+# Test that shouldn't care what environment it is started in
+def agnostic_test(name, &block)
+  before = Proc.new do |t|
+    OfflineMirror::config_app_online(nil)
+  end
+  
+  define_wrapped_test("AGNOSTIC #{name}", before, nil, block)
 end

@@ -7,4 +7,7 @@ module OfflineMirror
   
   class PluginError < RuntimeError
   end
+  
+  class AppModeUnknownError < RuntimeError
+  end
 end
