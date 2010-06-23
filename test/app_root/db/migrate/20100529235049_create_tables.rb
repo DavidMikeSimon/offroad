@@ -1,5 +1,13 @@
-class CreateMoreTables < ActiveRecord::Migration
+class CreateTables < ActiveRecord::Migration
   def self.up
+    create_table :groups do |t|
+      t.string :name
+      t.integer :favorite_id
+      t.integer :unmirrored_record_id
+      t.integer :global_record_id
+      t.timestamps
+    end
+    
     create_table :group_owned_records do |t|
       t.string :description
       t.integer :some_integer
@@ -31,6 +39,9 @@ class CreateMoreTables < ActiveRecord::Migration
   end
   
   def self.down
-    drop_table :group_data
+    drop_table :groups
+    drop_table :group_owned_records
+    drop_table :unmirrored_records
+    drop_table :broken_records
   end
 end
