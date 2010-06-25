@@ -4,9 +4,3 @@ test:
   verbosity: quiet
   pool: 5
   timeout: 5000
-offline_test:
-  adapter: sqlite3
-  database: ":memory:"
-  verbosity: quiet
-  pool: 5
-  timeout: 5000

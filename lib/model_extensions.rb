@@ -192,6 +192,7 @@ module OfflineMirror
       
       def owning_group
         return case offline_mirror_mode
+          # Using find_by_id so this returns nil if owning group not there, instead of rasing RecordNotFound
           when :group_owned then OfflineMirror::group_base_model.find_by_id(owning_group_id)
           when :group_base then self
         end
