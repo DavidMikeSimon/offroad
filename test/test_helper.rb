@@ -314,7 +314,7 @@ def define_wrapped_test(name, wrapper_proc, block)
   end
 end
 
-# Convenience methods to create tests that apply to particular environments
+# Convenience methods to create tests that apply to particular environments or situations
 
 # Test that should be run in the online environment
 def online_test(name, &block)
@@ -343,4 +343,9 @@ end
 # Test that shouldn't care what environment it is started in
 def agnostic_test(name, &block)
   define_wrapped_test("AGNOSTIC #{name}", nil, block)
+end
+
+# Test that involves both environments (within test, use in_online_system and in_offline_system)
+def cross_test(name, &block)
+  define_wrapped_test("CROSS #{name}", nil, block)
 end

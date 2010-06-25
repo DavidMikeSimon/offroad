@@ -129,31 +129,32 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
    
-  online_test "can insert and update group data using an up mirror file" do
-    @offline_group.name = "TEST 123"
-    @offline_group_data.description = "TEST XYZ"
-    another_group_data = GroupOwnedRecord.new(:description => "TEST ABC", :group => @offline_group)
-    force_save_and_reload(@offline_group, @offline_group_data, another_group_data)
+  cross_test "can insert and update group data using an up mirror file" do
+    mirror_data = ""
     
-    content = StringIO.new
-    writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"], "offline")
-    writer.write_upwards_data
+    in_offline_system do
+      @offline_group.name = "TEST 123"
+      @offline_group_data.description = "TEST XYZ"
+      another_group_data = GroupOwnedRecord.new(:description => "TEST ABC", :group => @offline_group)
+      force_save_and_reload(@offline_group, @offline_group_data, another_group_data)
+      
+      StringIO.open do |sio|
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
+        writer.write_upwards_data
+        mirror_data = sio.string
+      end
+    end
     
-    @offline_group.name = "PRIOR"
-    @offline_group_data.description = "PRIOR"
-    force_save_and_reload(@offline_group, @offline_group_data)
-    force_destroy(another_group_data)
-    assert_equal nil, Group.find_by_name("TEST 123")
-    assert_equal nil, GroupOwnedRecord.find_by_description("TEST XYZ")
-    assert_equal nil, GroupOwnedRecord.find_by_description("TEST ABC")
-    
-    content.rewind
-    reader = OfflineMirror::MirrorData.new(@offline_group, [content, "r"])
-    reader.load_upwards_data
-    
-    assert_equal @offline_group.id, Group.find_by_name("TEST 123").id
-    assert_equal @offline_group_data.id, GroupOwnedRecord.find_by_description("TEST XYZ").id
-    assert GroupOwnedRecord.find_by_description("TEST ABC")
+    in_online_system do
+      StringIO.open(mirror_data) do |sio|
+        reader = OfflineMirror::MirrorData.new(@offline_group, [sio, "r"])
+        reader.load_upwards_data
+      end
+      
+      assert_equal @offline_group.id, Group.find_by_name("TEST 123").id
+      assert GroupOwnedRecord.find_by_description("TEST ABC")
+      assert_equal @offline_group_data.id, GroupOwnedRecord.find_by_description("TEST XYZ").id
+    end
   end
   
   online_test "can delete group data using an up mirror file" do
