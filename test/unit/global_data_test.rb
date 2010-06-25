@@ -22,7 +22,7 @@ class GlobalDataTest < Test::Unit::TestCase
     end
   end
   
-  common_test "global data models report being global data" do
+  double_test "global data models report being global data" do
     assert GlobalRecord.offline_mirror_global_data?, "Global model should return true to offline_mirror_global_data?"
     assert_equal false, GlobalRecord.offline_mirror_group_data?, "Global model should return false to offline_mirror_group_data?"
   end
@@ -77,7 +77,7 @@ class GlobalDataTest < Test::Unit::TestCase
     end
   end
   
-  common_test "global data models return true to acts_as_mirrored_offline?" do
+  double_test "global data models return true to acts_as_mirrored_offline?" do
     assert GlobalRecord.acts_as_mirrored_offline?
   end
 end

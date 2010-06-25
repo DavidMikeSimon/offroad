@@ -11,7 +11,7 @@ class ModuleFuncsTest < Test::Unit::TestCase
     assert_equal false, OfflineMirror::app_online?, "App is not online"
   end
   
-  common_test "app reports correct version" do
+  double_test "app reports correct version" do
     # TODO Implement
   end
   

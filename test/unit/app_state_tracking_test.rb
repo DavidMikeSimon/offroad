@@ -8,7 +8,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
     return OfflineMirror::SendableRecordState::find_by_model_state_id_and_local_record_id(model_state.id, rec.id)
   end
   
-  common_test "can increment current mirror version" do
+  double_test "can increment current mirror version" do
     original_version = OfflineMirror::SystemState::current_mirror_version
     OfflineMirror::SystemState::increment_mirror_version
     new_version = OfflineMirror::SystemState::current_mirror_version
@@ -37,7 +37,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert_equal 0, group_state.down_mirror_version, "As-yet un-mirrored group has a down mirror version of 0"
   end
   
-  common_test "creating group owned record causes creation of valid state data" do
+  double_test "creating group owned record causes creation of valid state data" do
     rec = GroupOwnedRecord.create(:description => "Foo Bar", :group => @editable_group)
     
     rec_state = find_record_state_from_record(rec)
@@ -81,11 +81,11 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert_only_changing_attribute_causes_version_change(GlobalRecord, :title, rec)
   end
   
-  common_test "saving group base record updates mirror version only on changed records" do
+  double_test "saving group base record updates mirror version only on changed records" do
     assert_only_changing_attribute_causes_version_change(Group, :name, @editable_group)
   end
   
-  common_test "saving group owned record updates mirror version only on changed records" do
+  double_test "saving group owned record updates mirror version only on changed records" do
     assert_only_changing_attribute_causes_version_change(GroupOwnedRecord, :description, @editable_group_data)
   end
   
@@ -111,7 +111,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert_deleting_record_correctly_updated_record_state(@editable_group)
   end
   
-  common_test "deleting group owned record updates mirror version" do
+  double_test "deleting group owned record updates mirror version" do
     assert_deleting_record_correctly_updated_record_state(@editable_group_data)
   end
   
@@ -130,7 +130,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
     end
   end
   
-  common_test "can only find_or_create model state of models that act_as_mirrored_offline" do
+  double_test "can only find_or_create model state of models that act_as_mirrored_offline" do
     assert_nothing_raised do
       OfflineMirror::ModelState::find_or_create_by_model(GlobalRecord)
     end
@@ -157,15 +157,15 @@ class AppStateTrackingTest < Test::Unit::TestCase
     end
   end
   
-  common_test "can only find_or_initialize record state of records whose models act_as_mirrored_offline" do
+  double_test "can only find_or_initialize record state of records whose models act_as_mirrored_offline" do
     assert_record_state_method_only_works_on_saved_mirrored_records :find_or_initialize_by_record
   end
   
-  common_test "can note create/update on saved records whose models act_as_mirrored_offline" do
+  double_test "can note create/update on saved records whose models act_as_mirrored_offline" do
     assert_record_state_method_only_works_on_saved_mirrored_records :note_record_created_or_updated
   end
   
-  common_test "can only note deletion on saved records whose models act_as_mirrored_offline" do
+  double_test "can only note deletion on saved records whose models act_as_mirrored_offline" do
     assert_record_state_method_only_works_on_saved_mirrored_records :note_record_destroyed
   end
   

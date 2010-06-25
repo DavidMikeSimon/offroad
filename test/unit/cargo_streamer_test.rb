@@ -91,43 +91,43 @@ class CargoStreamerTest < Test::Unit::TestCase
     TestModel.new(:data => str)
   end
   
-  common_test "CargoStreamable extensions cause model serialized to xml to include type name" do
+  agnostic_test "CargoStreamable extensions cause model serialized to xml to include type name" do
     rec = test_rec("123")
     assert_equal false, rec.to_xml_without_type_inclusion.include?("TestModel")
     assert rec.to_xml.include?("TestModel")
   end
   
-  common_test "can encode and retrieve a model instances in an array" do
+  agnostic_test "can encode and retrieve a model instances in an array" do
     assert_round_trip_equality "test" => [[test_rec("A"), test_rec("B")]]
   end
   
-  common_test "encoded models do not lose their id" do
+  agnostic_test "encoded models do not lose their id" do
     rec = test_rec("ABC")
     rec.id = 45
     decoded = round_trip "test" => [[rec]]
     assert_equal 45, decoded["test"][0][0].id
   end
   
-  common_test "cannot encode and retrieve non-model data" do
+  agnostic_test "cannot encode and retrieve non-model data" do
     assert_raise OfflineMirror::CargoStreamerError do
       generate_cargo_string "a" => [[1]]
     end
   end
   
-  common_test "cannot encode a model that is not in an array" do
+  agnostic_test "cannot encode a model that is not in an array" do
     assert_raise OfflineMirror::CargoStreamerError do
       # This is not "in an array" for CargoStreamer; look at how generate_cargo_string is implemented
       generate_cargo_string "a" => [test_rec("Test")]
     end
   end
   
-  common_test "can decode cargo data even if there is other stuff around it" do
+  agnostic_test "can decode cargo data even if there is other stuff around it" do
     test_hash = {"foo bar narf bork" => [[test_rec("Test")]]}
     str = "BLAH BLAH BLAH" + generate_cargo_string(test_hash) + "BAR BAR BAR"
     assert_haar_equality test_hash, retrieve_cargo_from_string(str)
   end
   
-  common_test "can correctly identify the names of the cargo sections" do
+  agnostic_test "can correctly identify the names of the cargo sections" do
     test_hash = {"abc" => [[test_rec("A")]], "xyz" => [[test_rec("X")]]}
     str = generate_cargo_string test_hash
     StringIO.open(str) do |sio|
@@ -138,7 +138,7 @@ class CargoStreamerTest < Test::Unit::TestCase
     end
   end
   
-  common_test "can create and retrieve multiple ordered cargo sections with the same name" do
+  agnostic_test "can create and retrieve multiple ordered cargo sections with the same name" do
     test_data = [[test_rec("a"), test_rec("b")], [test_rec("c"), test_rec("d")], [test_rec("e"), test_rec("f")]]
    
     str = StringIO.open do |sio|
@@ -160,7 +160,7 @@ class CargoStreamerTest < Test::Unit::TestCase
     assert_haar_equality({"test" => test_data}, {"test" => result_data})
   end
   
-  common_test "can use first_cargo_section to get only the first section with a given name" do
+  agnostic_test "can use first_cargo_section to get only the first section with a given name" do
     result = StringIO.open do |sio|
       cs = OfflineMirror::CargoStreamer.new(sio, "w")
       for i in 1..3 do
@@ -176,7 +176,7 @@ class CargoStreamerTest < Test::Unit::TestCase
     end
   end
   
-  common_test "can use first_cargo_element to get the first element of the first section with a given name" do
+  agnostic_test "can use first_cargo_element to get the first element of the first section with a given name" do
     result = StringIO.open do |sio|
       cs = OfflineMirror::CargoStreamer.new(sio, "w")
       [10, 20, 30].each do |i|
@@ -192,7 +192,7 @@ class CargoStreamerTest < Test::Unit::TestCase
     end
   end
   
-  common_test "can use :human_readable to include a string version of a record" do
+  agnostic_test "can use :human_readable to include a string version of a record" do
     test_str = "ABCD\n123"
     rec = test_rec(test_str)
     
@@ -211,7 +211,7 @@ class CargoStreamerTest < Test::Unit::TestCase
     assert result.include?(test_str)
   end
   
-  common_test "uses an md5 fingerprint to detect corruption" do
+  agnostic_test "uses an md5 fingerprint to detect corruption" do
     str = generate_cargo_string "test" => [[test_rec("abc")]]
     
     md5sum = nil
@@ -231,7 +231,7 @@ class CargoStreamerTest < Test::Unit::TestCase
     end
   end
   
-  common_test "modes r and w work, other modes do not" do
+  agnostic_test "modes r and w work, other modes do not" do
     assert_nothing_raised "Mode r works" do
       OfflineMirror::CargoStreamer.new(StringIO.new(), "r")
     end
@@ -245,14 +245,14 @@ class CargoStreamerTest < Test::Unit::TestCase
     end
   end
   
-  common_test "cannot write cargo in read mode" do
+  agnostic_test "cannot write cargo in read mode" do
     assert_raise OfflineMirror::CargoStreamerError do
       cs = OfflineMirror::CargoStreamer.new(StringIO.new, "r")
       cs.write_cargo_section("test", [test_rec("test")])
     end
   end
   
-  common_test "cannot use invalid cargo section names" do
+  agnostic_test "cannot use invalid cargo section names" do
     cs = OfflineMirror::CargoStreamer.new(StringIO.new, "w")
     
     assert_raise OfflineMirror::CargoStreamerError, "Expect exception for symbol cargo name" do
@@ -268,7 +268,7 @@ class CargoStreamerTest < Test::Unit::TestCase
     end
   end
   
-  common_test "cannot encode invalid records" do
+  agnostic_test "cannot encode invalid records" do
     rec = TestModel.new() # Nothing set to the required "data" field
     assert_equal false, rec.valid?
     assert_raise OfflineMirror::CargoStreamerError do
@@ -280,7 +280,7 @@ class CargoStreamerTest < Test::Unit::TestCase
     end
   end
   
-  common_test "cannot encode a non-safe model class" do
+  agnostic_test "cannot encode a non-safe model class" do
     begin
       TestModel.set_safe
       assert_nothing_raised do
@@ -295,7 +295,7 @@ class CargoStreamerTest < Test::Unit::TestCase
     end
   end
   
-  common_test "cannot trick cargo streamer into decoding a non-safe model class" do
+  agnostic_test "cannot trick cargo streamer into decoding a non-safe model class" do
     begin
       TestModel.set_safe
       str = generate_cargo_string "test" => [[test_rec("Stuff")]]

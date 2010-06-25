@@ -334,8 +334,8 @@ def offline_test(name, &block)
   define_wrapped_test("OFFLINE #{name}", wrapper, block)
 end
 
-# Test that should be run in both environments
-def common_test(name, &block)
+# Test that should be run twice, once online and once offline
+def double_test(name, &block)
   online_test(name, &block)
   offline_test(name, &block)
 end

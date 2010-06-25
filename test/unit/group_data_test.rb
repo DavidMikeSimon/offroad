@@ -19,14 +19,14 @@ class GroupDataTest < Test::Unit::TestCase
     assert_equal false, @online_group_data.group_offline?, "Data belonging to groups in online mode should return false to group_offline?"
   end
   
-  common_test "offline group data has expected offline status" do
+  double_test "offline group data has expected offline status" do
     assert @offline_group.group_offline?, "Groups which have been set offline should return true to group_offline?"
     assert_equal false, @offline_group.group_online?, "Groups which have been set offline should return false to group_online?"
     assert @offline_group_data.group_offline?, "Data belonging to groups which have been set offline should return true to group_offline?"
     assert_equal false, @offline_group_data.group_online?, "Data belonging to groups which have been set offline should return false to group_online?"
   end
   
-  common_test "group data models report being group data" do
+  double_test "group data models report being group data" do
     assert Group.offline_mirror_group_data?, "Group model should return true to offline_mirror_group_data?"
     assert_equal false, Group.offline_mirror_global_data?, "Group model should return false to offline_mirror_global_data?"
     
@@ -34,12 +34,12 @@ class GroupDataTest < Test::Unit::TestCase
     assert_equal false, GroupOwnedRecord.offline_mirror_global_data?, "Group-owned model should return false to offline_mirror_global_data?"
   end
   
-  common_test "group base reports being owned by itself" do
+  double_test "group base reports being owned by itself" do
     assert_equal @offline_group.id, @offline_group.owning_group.id, "Can get offline group id thru owning_group dot id"
     assert_equal @offline_group.id, @offline_group.owning_group_id, "Can get offline group id thru owning_group_id"
   end
   
-  common_test "group-owned data reports proper ownership" do
+  double_test "group-owned data reports proper ownership" do
     assert_equal @offline_group.id, @offline_group_data.owning_group.id, "Can get owner id thru owning_group dot id"
     assert_equal @offline_group.id, @offline_group_data.owning_group_id, "Can get owner id thru owning_group_id"
   end
@@ -164,7 +164,7 @@ class GroupDataTest < Test::Unit::TestCase
     end
   end
   
-  common_test "group data can hold a foreign key to data owned by the same group" do
+  double_test "group data can hold a foreign key to data owned by the same group" do
     assert_nothing_raised do
       more_data = GroupOwnedRecord.create(:description => "More Data", :group => @editable_group, :parent => @editable_group_data)
       @editable_group.favorite = more_data
@@ -185,7 +185,7 @@ class GroupDataTest < Test::Unit::TestCase
     end
   end
   
-  common_test "group data cannot hold a foreign key to unmirrored data" do
+  double_test "group data cannot hold a foreign key to unmirrored data" do
     unmirrored_data = UnmirroredRecord.create(:content => "Some Unmirrored Data")
     assert_raise OfflineMirror::DataError, "Expect exception when putting bad foreign key in group base data" do
       @editable_group.unmirrored_record = unmirrored_data
@@ -203,12 +203,12 @@ class GroupDataTest < Test::Unit::TestCase
     end
   end
   
-  common_test "last_known_status is available for offline groups" do
+  double_test "last_known_status is available for offline groups" do
     status = @offline_group.last_known_status
     assert status
   end
   
-  common_test "group data models return true to acts_as_mirrored_offline?" do
+  double_test "group data models return true to acts_as_mirrored_offline?" do
     assert Group.acts_as_mirrored_offline?, "Group reports mirrored offline"
     assert GroupOwnedRecord.acts_as_mirrored_offline?, "GroupOwnedRecord reports mirrored offline"
   end

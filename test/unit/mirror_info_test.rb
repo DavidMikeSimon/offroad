@@ -1,7 +1,7 @@
 require File.dirname(__FILE__) + '/../test_helper'
 
 class MirrorInfoTest < Test::Unit::TestCase
-  common_test "can instantiate MirrorInfo instances, but they're invalid by default" do
+  double_test "can instantiate MirrorInfo instances, but they're invalid by default" do
     rec = nil
     assert_nothing_raised do
       rec = OfflineMirror::MirrorInfo.new
@@ -9,7 +9,7 @@ class MirrorInfoTest < Test::Unit::TestCase
     assert_equal false, rec.valid?
   end
   
-  common_test "can use new_from_group to create a MirrorInfo instance for a particular group" do
+  double_test "can use new_from_group to create a MirrorInfo instance for a particular group" do
     rec = OfflineMirror::MirrorInfo::new_from_group(@editable_group)
     assert rec.valid?
     assert Time.now - rec.created_at < 30
@@ -21,19 +21,19 @@ class MirrorInfoTest < Test::Unit::TestCase
     assert rec.generator.downcase.include?("offline mirror")
   end
   
-  common_test "cannot generate a MirrorInfo instance with an invalid mode" do
+  double_test "cannot generate a MirrorInfo instance with an invalid mode" do
     assert_raise OfflineMirror::PluginError do
       OfflineMirror::MirrorInfo::new_from_group(@editable_group, "foobar")
     end
   end
   
-  common_test "can generate a MirrorInfo instance with a mode that doesn't match app mode" do
+  double_test "can generate a MirrorInfo instance with a mode that doesn't match app mode" do
     assert_nothing_raised do
       OfflineMirror::MirrorInfo::new_from_group(@editable_group, OfflineMirror::app_online? ? "offline" : "online")
     end
   end
   
-  common_test "cannot save a MirrorInfo instance" do
+  double_test "cannot save a MirrorInfo instance" do
     rec = OfflineMirror::MirrorInfo::new_from_group(@editable_group)
     assert rec.valid?
     assert_raise RuntimeError do

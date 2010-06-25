@@ -230,7 +230,7 @@ class MirrorDataTest < Test::Unit::TestCase
     # TODO Implement
   end
   
-  common_test "cannot pass in a cargo file containing extraneous sections" do
+  double_test "cannot pass in a cargo file containing extraneous sections" do
     # TODO Implement
   end
 end
