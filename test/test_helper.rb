@@ -29,7 +29,7 @@ end
 module Test::Unit::Util::BacktraceFilter
   def filter_backtrace(backtrace, prefix = nil)
     backtrace = backtrace.select do |e|
-      (e.include? "offline_mirror" or !e.start_with? "/") and (!e.include? "Rakefile")
+      !(e.start_with?("/") || e.include?("test_helper.rb") || e.include?("Rakefile"))
     end
     
     common_prefix = nil
@@ -163,14 +163,15 @@ class VirtualTestDatabase
     @test_instance_vars[key] = {}
     @@test_instance.instance_variables.each do |varname|
       next unless @test_instance_var_names.has_key?(varname)
-      @test_instance_vars[key][varname] = @@test_instance.instance_variable_get(varname.to_sym)
+      @test_instance_vars[key][varname] = @@test_instance.instance_variable_get(varname.to_sym).dup
     end
   end
   
   def restore_instance_vars(key)
     delete_instance_vars
     @test_instance_vars[key].each_pair do |varname, value|
-      @@test_instance.instance_variable_set(varname.to_sym, value)
+      restored_val = value.is_a?(ActiveRecord::Base) ? value.class.find(value.id) : value.dup
+      @@test_instance.instance_variable_set(varname.to_sym, restored_val)
     end
   end
   
@@ -304,11 +305,13 @@ end
 def define_wrapped_test(name, wrapper_proc, block)
   method_name = "test_" + name.to_s.gsub(/[^\w ]/, '_').gsub(' ', '_')
   define_method method_name.to_sym, &block
-  define_method "wrapped_#{method_name}".to_sym do
-    wrapper_proc.call(self) { send "unwrapped_#{method_name}".to_sym }
+  if wrapper_proc
+    define_method "wrapped_#{method_name}".to_sym do
+      wrapper_proc.call(self) { send "unwrapped_#{method_name}".to_sym }
+    end
+    alias_method "unwrapped_#{method_name}".to_sym, method_name.to_sym
+    alias_method method_name.to_sym, "wrapped_#{method_name}".to_sym
   end
-  alias_method "unwrapped_#{method_name}".to_sym, method_name.to_sym
-  alias_method method_name.to_sym, "wrapped_#{method_name}".to_sym
 end
 
 # Convenience methods to create tests that apply to particular environments

@@ -68,7 +68,7 @@ class MirrorDataTest < Test::Unit::TestCase
     assert_single_model_cargo_entry_matches cs, @offline_group_data
   end
   
-  online_test "down mirror files do not include irrelevant records" do
+  online_test "down mirror files do not include irrelevant records" do    
     another_offline_group = Group.create(:name => "Another Group")
     another_offline_group.group_offline = true
     another_group_data = GroupOwnedRecord.create(:description => "Another Data", :group => another_offline_group)
@@ -128,7 +128,7 @@ class MirrorDataTest < Test::Unit::TestCase
       OfflineMirror::MirrorData.new(@offline_group, "FOO BAR BLAH").load_upwards_data
     end
   end
-  
+   
   online_test "can insert and update group data using an up mirror file" do
     @offline_group.name = "TEST 123"
     @offline_group_data.description = "TEST XYZ"
