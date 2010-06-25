@@ -1,7 +1,7 @@
 require File.dirname(__FILE__) + '/../test_helper'
 
 class MirrorInfoTest < Test::Unit::TestCase
-  double_test "can instantiate MirrorInfo instances, but they're invalid by default" do
+  agnostic_test "can instantiate MirrorInfo instances, but they're invalid by default" do
     rec = nil
     assert_nothing_raised do
       rec = OfflineMirror::MirrorInfo.new
@@ -21,7 +21,7 @@ class MirrorInfoTest < Test::Unit::TestCase
     assert rec.generator.downcase.include?("offline mirror")
   end
   
-  double_test "cannot generate a MirrorInfo instance with an invalid mode" do
+  agnostic_test "cannot generate a MirrorInfo instance with an invalid mode" do
     assert_raise OfflineMirror::PluginError do
       OfflineMirror::MirrorInfo::new_from_group(@editable_group, "foobar")
     end
@@ -33,8 +33,8 @@ class MirrorInfoTest < Test::Unit::TestCase
     end
   end
   
-  double_test "cannot save a MirrorInfo instance" do
-    rec = OfflineMirror::MirrorInfo::new_from_group(@editable_group)
+  agnostic_test "cannot save a MirrorInfo instance" do
+    rec = OfflineMirror::MirrorInfo::new_from_group(@editable_group, "online")
     assert rec.valid?
     assert_raise RuntimeError do
       rec.save

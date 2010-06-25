@@ -8,7 +8,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
     return OfflineMirror::SendableRecordState::find_by_model_state_id_and_local_record_id(model_state.id, rec.id)
   end
   
-  double_test "can increment current mirror version" do
+  agnostic_test "can increment current mirror version" do
     original_version = OfflineMirror::SystemState::current_mirror_version
     OfflineMirror::SystemState::increment_mirror_version
     new_version = OfflineMirror::SystemState::current_mirror_version

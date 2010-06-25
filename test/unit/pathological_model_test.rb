@@ -3,7 +3,7 @@ require File.dirname(__FILE__) + '/../test_helper'
 # This is a unit test on the ability of model_extensions to correctly handle bad acts_as_mirrored_offline calls
 
 class PathologicalModelTest < Test::Unit::TestCase
-  double_test "cannot specify acts_as_mirrored_offline multiple times" do
+  agnostic_test "cannot specify acts_as_mirrored_offline multiple times" do
     assert_raise OfflineMirror::ModelError do
       class MultipleTimesBrokenRecord < ActiveRecord::Base
         set_table_name "broken_records"
@@ -13,7 +13,7 @@ class PathologicalModelTest < Test::Unit::TestCase
     end
   end
   
-  double_test "cannot specify invalid mirror mode" do
+  agnostic_test "cannot specify invalid mirror mode" do
     assert_raise OfflineMirror::ModelError do
       class InvalidModeBrokenRecord < ActiveRecord::Base
         set_table_name "broken_records"
@@ -22,7 +22,7 @@ class PathologicalModelTest < Test::Unit::TestCase
     end
   end
   
-  double_test "cannot specify :group_owned mode without :group_key" do
+  agnostic_test "cannot specify :group_owned mode without :group_key" do
     assert_raise OfflineMirror::ModelError do
       class NoGroupKeyBrokenRecord < ActiveRecord::Base
         set_table_name "broken_records"
@@ -31,7 +31,7 @@ class PathologicalModelTest < Test::Unit::TestCase
     end
   end
   
-  double_test "cannot specify :group_owned with a :group_key to a non-existing column" do
+  agnostic_test "cannot specify :group_owned with a :group_key to a non-existing column" do
     self.class.send(:remove_const, :InvalidColumnBrokenRecord) if self.class.const_defined?(:InvalidColumnBrokenRecord)
     class InvalidColumnBrokenRecord < ActiveRecord::Base
       set_table_name "broken_records"
@@ -42,7 +42,7 @@ class PathologicalModelTest < Test::Unit::TestCase
     end
   end
   
-  double_test "cannot give acts_as_mirrored_offline unknown options" do
+  agnostic_test "cannot give acts_as_mirrored_offline unknown options" do
     assert_raise OfflineMirror::ModelError do
       class UnknownOptionsBrokenRecord < ActiveRecord::Base
         set_table_name "broken_records"
@@ -51,7 +51,7 @@ class PathologicalModelTest < Test::Unit::TestCase
     end
   end
   
-  double_test "cannot specify more than one group base" do
+  agnostic_test "cannot specify more than one group base" do
     # The Group model has already declare itself as :group base
     assert_raise OfflineMirror::ModelError do
       class DoubleGroupBaseBrokenRecord < ActiveRecord::Base
