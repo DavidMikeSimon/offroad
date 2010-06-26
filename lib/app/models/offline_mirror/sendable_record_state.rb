@@ -7,6 +7,12 @@ module OfflineMirror
     belongs_to :model_state
     validates_presence_of :model_state
     
+    include CargoStreamer::CargoStreamable
+    
+    def self.safe_to_load_from_cargo_stream?
+      true
+    end
+    
     def self.note_record_destroyed(record)
       mark_record_changes(record) do |rec|
         rec.local_record_id = 0

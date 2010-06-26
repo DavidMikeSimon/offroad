@@ -187,9 +187,10 @@ module OfflineMirror
         model_class = class_name.constantize # This is safe; it uses const_get, not eval
         raise "Class does not have cargo safety method" unless model_class.respond_to? :safe_to_load_from_cargo_stream?
         raise "Class is not safe_to_load_from_cargo_stream" unless model_class.safe_to_load_from_cargo_stream?
-        c = model_class.new
-        c.send(:attributes=, attrs_hash, false) # No attr_accessible check like this, so all attributes can be set
-        c
+        rec = model_class.new
+        rec.send(:attributes=, attrs_hash, false) # No attr_accessible check like this, so all attributes can be set
+        rec.readonly! # rec is just the data for creation of a "real" record; it shouldn't be saveable itself
+        rec
       end
     rescue StandardError => e
       raise CargoStreamerError.new("Corrupted data : #{e.class.to_s} : #{e.to_s}")

@@ -29,7 +29,7 @@ end
 module Test::Unit::Util::BacktraceFilter
   def filter_backtrace(backtrace, prefix = nil)
     backtrace = backtrace.select do |e|
-      !(e.start_with?("/") || e.include?("test_helper.rb") || e.include?("Rakefile"))
+      e.include?("offline_mirror") || !(e.start_with?("/") || e.include?("test_helper.rb") || e.include?("Rakefile"))
     end
     
     common_prefix = nil
@@ -63,6 +63,14 @@ def force_save_and_reload(*records)
     record.bypass_offline_mirror_readonly_checks
     record.save!
     record.reload
+  end
+end
+
+def force_consider_as_mirrored(*records)
+  records.each do |record|
+    srs = OfflineMirror::SendableRecordState.find_or_initialize_by_record(record)
+    srs.remote_record_id = srs.local_record_id
+    srs.save!
   end
 end
 
@@ -223,6 +231,7 @@ class OnlineTestDatabase < VirtualTestDatabase
     offline_group = Group.new(:name => "An Offline Group")
     online_group = Group.new(:name => "An Online Group")
     force_save_and_reload(offline_group, online_group)
+    force_consider_as_mirrored(offline_group)
     offline_group.group_offline = true
     setup_ivar(:@offline_group, offline_group)
     setup_ivar(:@online_group, online_group)
@@ -230,6 +239,7 @@ class OnlineTestDatabase < VirtualTestDatabase
     offline_data = GroupOwnedRecord.new( :description => "Sam", :group => offline_group)
     online_data = GroupOwnedRecord.new(:description => "Max", :group => online_group)
     force_save_and_reload(offline_data, online_data)
+    force_consider_as_mirrored(offline_data)
     setup_ivar(:@offline_group_data, offline_data)
     setup_ivar(:@online_group_data, online_data)
     
@@ -255,11 +265,13 @@ class OfflineTestDatabase < VirtualTestDatabase
     
     offline_group = Group.new(:name => "An Offline Group")
     force_save_and_reload(offline_group)
+    force_consider_as_mirrored(offline_group)
     offline_group.id == OfflineMirror::SystemState::offline_group_id or raise("Test group id mismatch")
     setup_ivar(:@offline_group, offline_group)
     
     offline_data = GroupOwnedRecord.new( :description => "Sam", :group => offline_group)
     force_save_and_reload(offline_data)
+    force_consider_as_mirrored(offline_data)
     setup_ivar(:@offline_group_data, offline_data)
     
     setup_ivar(:@editable_group, offline_group)

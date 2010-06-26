@@ -211,7 +211,22 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   cross_test "can delete group data using an up mirror file" do
-    # TODO Implement
+    mirror_data = ""
+    
+    in_offline_app do
+      @offline_group_data.destroy
+      StringIO.open do |sio|
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
+        writer.write_upwards_data
+        mirror_data = sio.string
+      end
+    end
+    
+    in_online_app do
+      reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
+      reader.load_upwards_data
+      assert_equal 0, GroupOwnedRecord.all(:conditions => { :group_id => @offline_group.id }).size
+    end
   end
   
   cross_test "can insert and update global records using a down mirror file" do
@@ -305,12 +320,16 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-  cross_test "cannot use an up mirror file to affect records not owned by the given group" do
+  cross_test "cannot use an up mirror file to create or update or delete records not owned by the given group" do
     # TODO Implement
     # Use this as a way of testing id translation too; use the second group as the offline group
   end
   
   double_test "cannot pass in a cargo file containing extraneous sections" do
+    # TODO Implement
+  end
+  
+  double_test "mirror files do not include unchanged records" do
     # TODO Implement
   end
 end
