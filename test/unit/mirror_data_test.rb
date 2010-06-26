@@ -307,6 +307,7 @@ class MirrorDataTest < Test::Unit::TestCase
   
   cross_test "cannot use an up mirror file to affect records not owned by the given group" do
     # TODO Implement
+    # Use this as a way of testing id translation too; use the second group as the offline group
   end
   
   double_test "cannot pass in a cargo file containing extraneous sections" do
