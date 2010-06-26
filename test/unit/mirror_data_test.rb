@@ -132,7 +132,7 @@ class MirrorDataTest < Test::Unit::TestCase
   cross_test "can insert and update group data using an up mirror file" do
     mirror_data = ""
     
-    in_offline_system do
+    in_offline_app do
       @offline_group.name = "TEST 123"
       @offline_group_data.description = "TEST XYZ"
       another_group_data = GroupOwnedRecord.new(:description => "TEST ABC", :group => @offline_group)
@@ -145,11 +145,9 @@ class MirrorDataTest < Test::Unit::TestCase
       end
     end
     
-    in_online_system do
-      StringIO.open(mirror_data) do |sio|
-        reader = OfflineMirror::MirrorData.new(@offline_group, [sio, "r"])
-        reader.load_upwards_data
-      end
+    in_online_app do
+      reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
+      reader.load_upwards_data
       
       assert_equal @offline_group.id, Group.find_by_name("TEST 123").id
       assert GroupOwnedRecord.find_by_description("TEST ABC")
@@ -157,77 +155,102 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-  online_test "can delete group data using an up mirror file" do
+  cross_test "can delete group data using an up mirror file" do
     # TODO Implement
   end
   
-  offline_test "can insert and update global records using a down mirror file" do
-    global_data_a = GlobalRecord.new(:title => "ABC")
-    global_data_b = GlobalRecord.new(:title => "123")
-    force_save_and_reload(global_data_a, global_data_b)
+  cross_test "can insert and update global records using a down mirror file" do
+    mirror_data = ""
     
-    content = StringIO.new
-    writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"], "online")
-    writer.write_downwards_data
-    
-    force_destroy(global_data_a)
-    global_data_b.title = "789"
-    force_save_and_reload(global_data_b)
-    
-    assert_equal nil, GlobalRecord.find_by_title("ABC")
-    assert_equal nil, GlobalRecord.find_by_title("123")
-    
-    content.rewind
-    reader = OfflineMirror::MirrorData.new(@offline_group, [content, "r"])
-    reader.load_downwards_data
-    
-    assert_equal global_data_b.id, GlobalRecord.find_by_title("123").id
-    assert GlobalRecord.find_by_title("ABC")
-  end
-  
-  offline_test "can delete global records using a down mirror file" do
-    # TODO Implement
-  end
-  
-  offline_test "can insert group records using an initial down mirror file" do
-    # TODO Implement
-  end
-  
-  offline_test "cannot affect group records using a non-initial down mirror file" do
-    # TODO Implement
-  end
-  
-  online_test "cannot pass a down mirror file to load_upwards_data" do
-    content = StringIO.new
-    writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"], "online")
-    writer.write_downwards_data
-    
-    content.rewind
-    reader = OfflineMirror::MirrorData.new(@offline_group, content)
-    assert_raise OfflineMirror::DataError do
-      reader.load_upwards_data
+    in_offline_app do
+      global_data_a = GlobalRecord.new(:title => "XYZ")
+      force_save_and_reload(global_data_a)
+      assert_equal 1, global_data_a.id
     end
-    assert_nothing_raised do
+    
+    in_online_app do
+      global_data_a = GlobalRecord.new(:title => "ABC")
+      global_data_b = GlobalRecord.new(:title => "123")
+      force_save_and_reload(global_data_a, global_data_b)
+      assert_equal 1, global_data_a.id
+      
+      StringIO.open do |sio|
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
+        writer.write_downwards_data
+        mirror_data = sio.string
+      end
+    end
+    
+    in_offline_app do
+      reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
       reader.load_downwards_data
+      assert_equal 1, GlobalRecord.find_by_title("ABC").id
+      assert GlobalRecord.find_by_title("123")
+      assert_equal nil, GlobalRecord.find_by_title("XYZ")
+    end
+  end
+  
+  cross_test "can delete global records using a down mirror file" do
+    # TODO Implement
+  end
+  
+  cross_test "can insert group records using an initial down mirror file" do
+    # TODO Implement
+  end
+  
+  cross_test "cannot affect group records using a non-initial down mirror file" do
+    # TODO Implement
+  end
+  
+  cross_test "cannot pass a down mirror file to load_upwards_data" do
+    mirror_data = ""
+    
+    in_online_app do
+      StringIO.open do |sio|
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
+        writer.write_downwards_data
+        mirror_data = sio.string
+      end
+      
+      reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
+      assert_raise OfflineMirror::DataError do
+        reader.load_upwards_data
+      end
+    end
+    
+    in_offline_app do
+      reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
+      assert_nothing_raised do
+        reader.load_downwards_data
+      end
     end
   end
   
   offline_test "cannot pass an up mirror file to load_downwards_data" do
-    content = StringIO.new
-    writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"], "offline")
-    writer.write_upwards_data
+    mirror_data = ""
     
-    content.rewind
-    reader = OfflineMirror::MirrorData.new(@offline_group, content)
-    assert_raise OfflineMirror::DataError do
-      reader.load_downwards_data
+    in_offline_app do
+      StringIO.open do |sio|
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
+        writer.write_upwards_data
+        mirror_data = sio.string
+      end
+      
+      reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
+      assert_raise OfflineMirror::DataError do
+        reader.load_downwards_data
+      end
     end
-    assert_nothing_raised do
-      reader.load_upwards_data
+    
+    in_online_app do
+      reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
+      assert_nothing_raised do
+        reader.load_upwards_data
+      end
     end
   end
   
-  online_test "cannot use an up mirror file to affect records not owned by the given group" do
+  cross_test "cannot use an up mirror file to affect records not owned by the given group" do
     # TODO Implement
   end
   

@@ -96,9 +96,7 @@ class VirtualTestDatabase
   
   def bring_forward(test_class, fresh_flag = false)
     ActiveRecord::Base.connection.clear_query_cache
-    unless @@current_database == self && test_class.object_id != @@test_instance.object_id
-      @@current_database.send(:put_away)
-    end
+    @@current_database.send(:put_away)
     @@test_instance = test_class
     fresh_flag ? restore_fresh : restore
     @@current_database = self
@@ -281,7 +279,7 @@ class Test::Unit::TestCase
     end
   end
   
-  def in_online_system(fresh_flag = false, &block)
+  def in_online_app(fresh_flag = false, &block)
     begin
       OfflineMirror::config_app_online(true)
       @@online_database.bring_forward(self, fresh_flag)
@@ -291,7 +289,7 @@ class Test::Unit::TestCase
     end
   end
   
-  def in_offline_system(fresh_flag = false, &block)
+  def in_offline_app(fresh_flag = false, &block)
     begin
       OfflineMirror::config_app_online(false)
       @@offline_database.bring_forward(self, fresh_flag)
@@ -319,7 +317,7 @@ end
 # Test that should be run in the online environment
 def online_test(name, &block)
   wrapper = Proc.new do |t|
-    t.in_online_system(true, &block)
+    t.in_online_app(true, &block)
   end
   
   define_wrapped_test("ONLINE #{name}", wrapper, block)
@@ -328,7 +326,7 @@ end
 # Test that should be run in the offline environment
 def offline_test(name, &block)
   wrapper = Proc.new do |t|
-    t.in_offline_system(true, &block)
+    t.in_offline_app(true, &block)
   end
   
   define_wrapped_test("OFFLINE #{name}", wrapper, block)
@@ -345,7 +343,7 @@ def agnostic_test(name, &block)
   define_wrapped_test("AGNOSTIC #{name}", nil, block)
 end
 
-# Test that involves both environments (within test, use in_online_system and in_offline_system)
+# Test that involves both environments (within test, use in_online_app and in_offline_app)
 def cross_test(name, &block)
   define_wrapped_test("CROSS #{name}", nil, block)
 end
