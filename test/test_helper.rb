@@ -161,13 +161,25 @@ class VirtualTestDatabase
     @test_instance_vars[key] = {}
     @@test_instance.instance_variables.each do |varname|
       next unless @test_instance_var_names.has_key?(varname)
-      @test_instance_vars[key][varname] = @@test_instance.instance_variable_get(varname.to_sym).dup
+      value = @@test_instance.instance_variable_get(varname.to_sym)
+      next unless value
+      @test_instance_vars[key][varname] = value.dup
     end
   end
   
   def restore_instance_vars(key)
     delete_instance_vars
     @test_instance_vars[key].each_pair do |varname, value|
+      restored_val = nil
+      if value.is_a?(ActiveRecord::Base)
+        if !value.destroyed? && (value.changed? || value.new_record?)
+          restored_val = value.class.find(value.id)
+        else
+          restored_val = value
+        end
+      else
+        restored_val = value.dup
+      end
       restored_val = value.is_a?(ActiveRecord::Base) ? value.class.find(value.id) : value.dup
       @@test_instance.instance_variable_set(varname.to_sym, restored_val)
     end
@@ -298,6 +310,11 @@ class Test::Unit::TestCase
       OfflineMirror::config_app_online(nil)
     end
   end
+  
+  def restore_all_from_fresh
+    @@offline_database.bring_forward(self, true)
+    @@online_database.bring_forward(self, true)
+  end
 end
 
 def define_wrapped_test(name, wrapper_proc, block)
@@ -345,5 +362,10 @@ end
 
 # Test that involves both environments (within test, use in_online_app and in_offline_app)
 def cross_test(name, &block)
-  define_wrapped_test("CROSS #{name}", nil, block)
+  wrapper = Proc.new do |t|
+    t.restore_all_from_fresh
+    t.instance_eval &block
+  end
+  
+  define_wrapped_test("CROSS #{name}", wrapper, block)
 end
