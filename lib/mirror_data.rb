@@ -2,6 +2,8 @@ module OfflineMirror
   private
   
   class MirrorData
+    attr_reader :group, :mode
+    
     def initialize(group, data, app_mode = OfflineMirror::app_online? ? "online" : "offline")
       @group = group
       ensure_valid_mode(app_mode)
@@ -12,7 +14,7 @@ module OfflineMirror
         when CargoStreamer then data
         when String then CargoStreamer.new(StringIO.new(data), "r")
         when Array then CargoStreamer.new(data[0], data[1])
-        else CargoStreamer.new(data, "r")
+        else raise OfflineMirror::PluginError.new("Invalid data format for MirrorData initialization")
       end
     end
     

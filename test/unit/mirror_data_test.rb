@@ -52,6 +52,61 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
+  cross_test "can only pass data to MirrorData instances as CargoStreamer, String, or IO" do
+    mirror_data = ""
+    in_online_app do
+      StringIO.open do |sio|
+        GlobalRecord.create(:title => "Foo Bar")
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
+        writer.write_downwards_data
+        mirror_data = sio.string
+      end
+    end
+    
+    sources = [
+      OfflineMirror::CargoStreamer.new(StringIO.new(mirror_data), "r"),
+      mirror_data,
+      [StringIO.new(mirror_data), "r"]
+    ]
+    sources.each do |source|
+      in_offline_app(true) do
+        assert_equal 0, GlobalRecord.count
+        reader = OfflineMirror::MirrorData.new(@offline_group, source)
+        reader.load_downwards_data
+        assert GlobalRecord.find_by_title("Foo Bar")
+      end
+    end
+    
+    in_offline_app(true) do
+      assert_raise OfflineMirror::PluginError do
+        OfflineMirror::MirrorData.new(@offline_group, 123)
+      end
+      assert_raise OfflineMirror::PluginError do
+        OfflineMirror::MirrorData.new(@offline_group, nil)
+      end
+    end
+  end
+  
+  double_test "cannot pass weird mode to MirrorData::new" do
+    assert_raise OfflineMirror::PluginError do
+      OfflineMirror::MirrorData.new(@offline_group, "", "foobar")
+    end
+    assert_nothing_raised do
+      OfflineMirror::MirrorData.new(@offline_group, "", OfflineMirror::app_online? ? "online" : "offline")
+    end
+  end
+  
+  double_test "MirrorData picks the current app mode if none is supplied" do
+    m = OfflineMirror::MirrorData.new(@offline_group, "")
+    m.mode == OfflineMirror::app_online? ? "online" : "offline"
+  end
+  
+  double_test "MirrorData can be given the opposite of the current app mode" do
+    reverse_mode = OfflineMirror::app_offline? ? "online" : "offline"
+    m = OfflineMirror::MirrorData.new(@offline_group, "", reverse_mode)
+    assert_equal reverse_mode, m.mode
+  end
+  
   online_test "can generate a valid down mirror file for the offline group" do
     global_record = GlobalRecord.create(:title => "Foo Bar")
     global_record.reload # To clear the high time precision that is lost in the database
