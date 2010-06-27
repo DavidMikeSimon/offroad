@@ -2,7 +2,7 @@ module OfflineMirror
   VERSION_MAJOR = 0
   VERSION_MINOR = 1
   
-  @@app_online_flag = nil
+  @@app_online_flag = true
   
   # Used in the environment configuration file to set the app to online or offline mode.
   # This should not be called from within the app.
