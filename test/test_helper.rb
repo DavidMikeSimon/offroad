@@ -280,12 +280,13 @@ class OfflineTestDatabase < VirtualTestDatabase
 end
 
 class Test::Unit::TestCase
-  @@databases_initialized = false
   @@online_database = nil
   @@offline_database = nil
   
   def setup
-    unless @@databases_initialized
+    unless ActiveRecord::Base.connection.table_exists?("schema_migrations")
+      # FIXME : Figure out why ActionController::TestCase keeps on deleting all the tables before each method
+      
       # First time the setup method has ran, create our test databases
       ActiveRecord::Migration.verbose = false
       ActiveRecord::Migrator.migrate("#{Rails.root}/db/migrate") # Migrations for the testing pseudo-app
@@ -298,8 +299,6 @@ class Test::Unit::TestCase
       @@offline_database = OfflineTestDatabase.new(self)
       
       OfflineMirror::config_app_online(nil)
-      
-      @@databases_initialized = true
     end
   end
   
