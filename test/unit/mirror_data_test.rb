@@ -296,7 +296,27 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   cross_test "can insert group records using an initial down mirror file" do
-    # TODO Implement
+    mirror_data = ""
+    in_online_app do
+      StringIO.open do |sio|
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
+        writer.write_downwards_data
+        mirror_data = sio.string
+      end
+    end
+    
+    in_offline_app(false, true) do
+      assert_equal 0, Group.count
+      assert_equal 0, GroupOwnedRecord.count
+      reader = OfflineMirror::MirrorData.new(nil, mirror_data)
+      reader.load_downwards_data
+      assert_equal 1, Group.count
+      assert_equal 1, GroupOwnedRecord.count
+    end
+  end
+  
+  cross_test "if no SystemState is present an initial down mirror file is required" do
+    # TODO Imlpement
   end
   
   cross_test "cannot affect group records using a non-initial down mirror file" do
@@ -364,6 +384,10 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   cross_test "transformed ids are handled properly when loading an initial down mirror file" do
+    # TODO Implement
+  end
+  
+  cross_test "transformed ids in foreign key columns are handled correctly" do
     # TODO Implement
   end
   

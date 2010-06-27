@@ -109,6 +109,15 @@ class VirtualTestDatabase
     fresh_flag ? restore_fresh : restore
     @@current_database = self
   end
+    
+  def delete_all_rows
+    tables = ["sqlite_sequence"] + ActiveRecord::Base.connection.tables
+    tables.each do |table|
+      next if table.start_with?("VIRTUAL_")
+      next if table == "schema_migrations"
+      ActiveRecord::Base.connection.execute "DELETE FROM #{table}"
+    end
+  end
   
   protected
   
@@ -204,15 +213,6 @@ class VirtualTestDatabase
     @test_instance_var_names ||= {}
     @test_instance_var_names[key.to_s] = true
     @@test_instance.instance_variable_set(key, value)
-  end
-  
-  def delete_all_rows
-    tables = ["sqlite_sequence"] + ActiveRecord::Base.connection.tables
-    tables.each do |table|
-      next if table.start_with?("VIRTUAL_")
-      next if table == "schema_migrations"
-      ActiveRecord::Base.connection.execute "DELETE FROM #{table}"
-    end
   end
 end
 
@@ -312,10 +312,13 @@ class Test::Unit::TestCase
     end
   end
   
-  def in_offline_app(fresh_flag = false, &block)
+  def in_offline_app(fresh_flag = false, delete_all_rows = false, &block)
     begin
       OfflineMirror::config_app_online(false)
       @@offline_database.bring_forward(self, fresh_flag)
+      if delete_all_rows
+        @@offline_database.delete_all_rows
+      end
       instance_eval &block
     ensure
       OfflineMirror::config_app_online(nil)
