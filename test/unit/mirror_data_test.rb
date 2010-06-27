@@ -223,9 +223,10 @@ class MirrorDataTest < Test::Unit::TestCase
     end
     
     in_online_app do
+      assert_equal 1, GroupOwnedRecord.count(:conditions => { :group_id => @offline_group.id })
       reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
       reader.load_upwards_data
-      assert_equal 0, GroupOwnedRecord.all(:conditions => { :group_id => @offline_group.id }).size
+      assert_equal 0, GroupOwnedRecord.count(:conditions => { :group_id => @offline_group.id })
     end
   end
   
@@ -236,6 +237,7 @@ class MirrorDataTest < Test::Unit::TestCase
       global_data_a = GlobalRecord.new(:title => "XYZ")
       force_save_and_reload(global_data_a)
       assert_equal 1, global_data_a.id
+      force_consider_as_mirrored(global_data_a)
     end
     
     in_online_app do
@@ -243,6 +245,7 @@ class MirrorDataTest < Test::Unit::TestCase
       global_data_b = GlobalRecord.new(:title => "123")
       force_save_and_reload(global_data_a, global_data_b)
       assert_equal 1, global_data_a.id
+      force_consider_as_mirrored(global_data_a, global_data_b)
       
       StringIO.open do |sio|
         writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
@@ -261,7 +264,35 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   cross_test "can delete global records using a down mirror file" do
-    # TODO Implement
+    in_offline_app do
+      global_data_1 = GlobalRecord.new(:title => "Test 1")
+      global_data_2 = GlobalRecord.new(:title => "Test 2")
+      force_save_and_reload(global_data_1, global_data_2)
+      force_consider_as_mirrored(global_data_1, global_data_2)
+    end
+    
+    mirror_data = ""
+    in_online_app do
+      global_data_1 = GlobalRecord.new(:title => "Test 1")
+      global_data_2 = GlobalRecord.new(:title => "Test 2")
+      force_save_and_reload(global_data_1, global_data_2)
+      force_consider_as_mirrored(global_data_1, global_data_2)
+      global_data_1.destroy
+      StringIO.open do |sio|
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
+        writer.write_downwards_data
+        mirror_data = sio.string
+      end
+    end
+    
+    in_offline_app do
+      assert_equal 2, GlobalRecord.count
+      reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
+      reader.load_downwards_data
+      assert_equal 1, GlobalRecord.count
+      assert_equal nil, GlobalRecord.find_by_title("Test 1")
+      assert GlobalRecord.find_by_title("Test 2")
+    end
   end
   
   cross_test "can insert group records using an initial down mirror file" do
@@ -320,16 +351,27 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-  cross_test "cannot use an up mirror file to create or update or delete records not owned by the given group" do
-    # TODO Implement
-    # Use this as a way of testing id translation too; use the second group as the offline group
-  end
-  
   double_test "cannot pass in a cargo file containing extraneous sections" do
     # TODO Implement
   end
   
-  double_test "mirror files do not include unchanged records" do
+  cross_test "cannot use an up mirror file to create or update or delete records not owned by the given group" do
+    # TODO Implement
+  end
+  
+  cross_test "transformed ids are handled properly when loading an up mirror file" do
+    # TODO Implement
+  end
+  
+  cross_test "transformed ids are handled properly when loading an initial down mirror file" do
+    # TODO Implement
+  end
+  
+  cross_test "mirror files do not include unchanged records" do
+    # TODO Implement
+  end
+  
+  cross_test "mirror files do not include deletion requests for records known to be deleted on remote system" do
     # TODO Implement
   end
 end
