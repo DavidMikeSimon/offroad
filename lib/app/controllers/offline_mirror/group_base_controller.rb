@@ -26,7 +26,7 @@ module OfflineMirror
     end
     
     def load_down_mirror_file(group, data)
-      ensure_group_offline(group)
+      ensure_group_offline(group) if group
       raise PluginError.new("Cannot accept down mirror file when app is in online mode") if OfflineMirror::app_online?
       mirror_data = MirrorData.new(group, [data, "r"])
       mirror_data.load_downwards_data

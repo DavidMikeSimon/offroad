@@ -106,4 +106,8 @@ class GroupControllerTest < ActionController::TestCase
       post :upload_up_mirror, "id" => @online_group.id, "mirror_data" => gen_up_mirror_data(@online_group)
     end
   end
+  
+  offline_test "can load initial down mirror files by supplying nil as group" do
+    # TODO Implement
+  end
 end
