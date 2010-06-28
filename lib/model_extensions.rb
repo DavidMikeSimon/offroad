@@ -180,9 +180,12 @@ module OfflineMirror
       end
       
       def group_online?
-        # We cannot get group_state if the record isn't saved...
-        # But, we know that the default state of newly created groups is online
-        new_record? or group_state.online?
+        return case offline_mirror_mode
+          when :group_owned then group_state.online?
+          # We cannot get group_state if the record isn't saved...
+          # But, we know that the default state of newly created groups is online
+          when :group_base then new_record? || group_state.online?
+        end
       end
       
       def group_offline=(b)

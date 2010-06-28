@@ -8,10 +8,6 @@ class GroupDataTest < Test::Unit::TestCase
     assert g.group_online?
   end
   
-  offline_test "group is offline by default" do
-    assert @offline_group.group_offline?
-  end
-  
   online_test "online group data has expected offline status" do
     assert @online_group.group_online?, "Groups which are in online mode should return true to group_online?"
     assert_equal false, @online_group.group_offline?, "Groups in online mode should return false to group_offline?"
@@ -224,6 +220,12 @@ class GroupDataTest < Test::Unit::TestCase
     assert_raise OfflineMirror::DataError do
       @offline_group_data.group = @online_group
       @offline_group_data.save!
+    end
+  end
+  
+  online_test "cannot create :group_owned data in an offline group" do
+    assert_raise ActiveRecord::ReadOnlyRecord do
+      GroupOwnedRecord.create(:description => "Test", :group => @offline_group)
     end
   end
 end
