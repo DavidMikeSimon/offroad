@@ -4,7 +4,7 @@ module OfflineMirror
   class SendableRecordState < ActiveRecord::Base
     set_table_name "offline_mirror_sendable_record_states"
     
-    belongs_to :model_state
+    belongs_to :model_state, :class_name => "::OfflineMirror::ModelState"
     validates_presence_of :model_state
     
     include CargoStreamer::CargoStreamable

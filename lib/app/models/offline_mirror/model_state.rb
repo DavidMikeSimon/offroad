@@ -4,8 +4,6 @@ module OfflineMirror
   class ModelState < ActiveRecord::Base
     set_table_name "offline_mirror_model_states"
     
-    has_many :group_model_pairings
-    
     validates_presence_of :app_model_name
     
     def self.find_or_create_by_model(cls, opts = {})

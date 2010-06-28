@@ -4,8 +4,6 @@ module OfflineMirror
   class GroupState < ActiveRecord::Base
     set_table_name "offline_mirror_group_states"
     
-    has_many :group_model_pairings
-    
     validates_presence_of :app_group_id
     
     include CargoStreamer::CargoStreamable
