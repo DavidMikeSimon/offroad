@@ -66,7 +66,8 @@ class MirrorDataTest < Test::Unit::TestCase
     sources = [
       OfflineMirror::CargoStreamer.new(StringIO.new(mirror_data), "r"),
       mirror_data,
-      [StringIO.new(mirror_data), "r"]
+      [StringIO.new(mirror_data), "r"],
+      [mirror_data, "r"]
     ]
     sources.each do |source|
       in_offline_app(true) do
@@ -126,7 +127,8 @@ class MirrorDataTest < Test::Unit::TestCase
   online_test "down mirror files do not include irrelevant records" do    
     another_offline_group = Group.create(:name => "Another Group")
     another_offline_group.group_offline = true
-    another_group_data = GroupOwnedRecord.create(:description => "Another Data", :group => another_offline_group)
+    another_group_data = GroupOwnedRecord.new(:description => "Another Data", :group => another_offline_group)
+    force_save_and_reload(another_group_data)
     [another_offline_group, another_group_data].each { |r| r.reload }
     
     content = StringIO.new

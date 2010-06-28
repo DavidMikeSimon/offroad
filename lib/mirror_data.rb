@@ -13,7 +13,9 @@ module OfflineMirror
       @cs = case data
         when CargoStreamer then data
         when String then CargoStreamer.new(StringIO.new(data), "r")
-        when Array then CargoStreamer.new(data[0], data[1])
+        when Array then (
+          data[0].is_a?(String) ? CargoStreamer.new(StringIO.new(data[0]), data[1]) : CargoStreamer.new(data[0], data[1])
+        )
         else raise OfflineMirror::PluginError.new("Invalid data format for MirrorData initialization")
       end
     end
