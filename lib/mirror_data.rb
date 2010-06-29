@@ -46,19 +46,21 @@ module OfflineMirror
     
     def load_downwards_data
       read_data_from("online") do
-        import_global_cargo
-        
-        # Read the initial down mirror data, if available.
-        # This is done after import_global_cargo because group data might belong_to global data.
         group_cargo_name = data_cargo_name_for_model(OfflineMirror::group_base_model)
         if @cs.has_cargo_named?(group_cargo_name)
+          # Read the initial down mirror data, if available.
+          # This is done after import_global_cargo because group data might belong_to global data.
           OfflineMirror::SystemState::create(
-            :current_mirror_version => @cs.first_cargo_element(group_cargo_name).id,
-            :offline_group_id => 1
+            :current_mirror_version => 1,
+            :offline_group_id => @cs.first_cargo_element(group_cargo_name).id
           ) or raise PluginError.new("Unable to create SystemState")
+          import_global_cargo
           import_group_specific_cargo
         elsif SystemState.count == 0
+          # If there's no SystemState, then we can't accept non-initial down mirror files
           raise DataError.new("This isn't an initial down mirror file")
+        else
+          import_global_cargo
         end
       end
     end
