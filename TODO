@@ -32,6 +32,7 @@
 - Remove offline_group_id system setting; don't really need it, since there should only be one group record
   - On that note, in offline app ensure that there is only one group record
 - When loading records, add higher records first (that is, the records that lower records belong_to)
+- ACK BUG ACK ACK: Deletion of records not working when I tried it with the nice-looking test app. What gives?
 
 - Scenario to deal with: offline app applies an initial down mirror, then makes local changes, then attempts to reapply _another_ initial down mirror
  - To deal with this, just ignore all non-global records in the second initial down mirror, since they should be identical
