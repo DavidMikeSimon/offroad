@@ -11,6 +11,10 @@ module OfflineMirror
       find_or_create_by_app_model_name(cls.to_s, opts)
     end
     
+    def app_model
+      app_model_name.constantize # This is safe; it uses const_get, not eval
+    end
+    
     private
     
     def self.ensure_mirrored_model(cls)

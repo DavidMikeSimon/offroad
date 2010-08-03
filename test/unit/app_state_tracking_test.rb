@@ -28,6 +28,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
     
     rec_state = find_record_state_from_record(rec)
     assert_equal "Group", rec_state.model_state.app_model_name, "ModelState has correct model name"
+    assert_equal Group.object_id, rec_state.model_state.app_model.object_id
     assert_newly_created_record_matches_state(rec, rec_state)
     
     group_state = OfflineMirror::GroupState::find_by_app_group_id(rec.id)
@@ -42,6 +43,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
     
     rec_state = find_record_state_from_record(rec)
     assert_equal "GroupOwnedRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
+    assert_equal GroupOwnedRecords.object_id, rec_state.model_state.app_model.object_id
     assert_newly_created_record_matches_state(rec, rec_state)
   end
   
@@ -58,6 +60,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
     rec_state = find_record_state_from_record(rec)
     assert rec_state, "SendableRecordState was created when record was created"
     assert_equal "GlobalRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
+    assert_equal GlobalRecord.object_id, rec_state.model_state.app_model.object_id
     assert_newly_created_record_matches_state(rec, rec_state)
   end
   
