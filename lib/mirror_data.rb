@@ -53,12 +53,12 @@ module OfflineMirror
           OfflineMirror::SystemState::create(
             :current_mirror_version => 1,
             :offline_group_id => @cs.first_cargo_element(group_cargo_name).id
-          ) or raise PluginError.new("Unable to create SystemState")
+          ) or raise PluginError.new("Cannot load initial down mirror file")
           import_global_cargo
           import_group_specific_cargo
         elsif SystemState.count == 0
           # If there's no SystemState, then we can't accept non-initial down mirror files
-          raise DataError.new("This isn't an initial down mirror file")
+          raise DataError.new("Initial down mirror file required")
         else
           import_global_cargo
         end

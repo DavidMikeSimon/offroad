@@ -82,6 +82,20 @@ class GroupControllerTest < ActionController::TestCase
     assert_equal 1, GlobalRecord.count
     assert_equal "123", GlobalRecord.first.title
   end
+    
+  cross_test "can upload initial down mirror files" do
+    mirror_data = ""
+    in_online_app do
+      get :download_down_mirror, "id" => @offline_group.id
+      mirror_data = @response.binary_content
+    end
+    
+    in_offline_app(false, true) do
+      assert_equal 0, Group.count
+      post :upload_initial_down_mirror, "mirror_data" => mirror_data
+      assert_equal 1, Group.count
+    end
+  end
   
   offline_test "cannot retrieve down mirror files" do
     assert_raise OfflineMirror::PluginError do
@@ -105,9 +119,5 @@ class GroupControllerTest < ActionController::TestCase
     assert_raise OfflineMirror::PluginError do
       post :upload_up_mirror, "id" => @online_group.id, "mirror_data" => gen_up_mirror_data(@online_group)
     end
-  end
-  
-  offline_test "can load initial down mirror files by supplying nil as group" do
-    # TODO Implement
   end
 end
