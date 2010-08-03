@@ -24,6 +24,7 @@
 - When transforming primary keys, also transform foreign key columns
 - Change mime-type of mirror files to something that doesn't allow it to be accidentally viewed in-browser
 - Use md5sum on the entire cargo file instead of just each individual part, to protect against corruption outside the actual data segments
+- Use signatures to verify that the cargo file came from where it was supposed to
 - Consider paginating cargo by byte size instead of in fixed-length batches
 - Consider using activerecord-import, if available, to speed up insertions
 - An emergency mirror file generation mode, which includes all records instead of just updates
