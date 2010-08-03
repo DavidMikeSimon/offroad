@@ -29,7 +29,7 @@ end
 module Test::Unit::Util::BacktraceFilter
   def filter_backtrace(backtrace, prefix = nil)
     backtrace = backtrace.select do |e|
-      e.include?("offline_mirror") || !(e.start_with?("/") || e.include?("test_helper.rb") || e.include?("Rakefile")) || e.include?("/test/")
+      e.include?("offline_mirror") || !(e.include?("/gems/") || e.include?("test_helper.rb") || e.include?("Rakefile"))
     end
     
     common_prefix = nil
