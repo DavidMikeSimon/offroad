@@ -23,12 +23,6 @@ module OfflineMirror
       mark_record_changes(record)
     end
     
-    def self.note_record_has_remote_id(record, remote_id)
-      srs = find_or_initialize_by_record(record)
-      srs.remote_id = remote_id
-      srs.save!
-    end
-    
     def self.find_or_initialize_by_record(rec)
       if rec.new_record?
         raise DataError.new("Cannot build record state for unsaved record")

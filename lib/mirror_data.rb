@@ -71,6 +71,10 @@ module OfflineMirror
       "data_#{model.name}"
     end
     
+    def deleted_cargo_name_for_model(model)
+      "deleted_#{model.name}"
+    end
+    
     def write_data
       # TODO : See if this can be done in some kind of read transaction
       @cs.write_cargo_section("mirror_info", [MirrorInfo.new_from_group(@group, @mode)], :human_readable => true)
@@ -96,9 +100,9 @@ module OfflineMirror
     def add_group_specific_cargo(include_deletions = false)
       # FIXME: Test that when this is called by the online app, it doesn't put group-specific junk in sendable_records
       OfflineMirror::group_owned_models.each do |name, cls|
-        add_model_cargo(cls, include_deletions, "#{cls.offline_mirror_group_key.to_sym} = #{@group.id}")
+        add_model_cargo(cls, include_deletions, :conditions => { cls.offline_mirror_group_key.to_sym => @group })
       end
-      add_model_cargo(OfflineMirror::group_base_model, false, "id => #{@group.id}")
+      add_model_cargo(OfflineMirror::group_base_model, false, :conditions => { :id => @group.id })
     end
     
     def add_global_cargo(include_deletions = true)
@@ -107,20 +111,19 @@ module OfflineMirror
       end
     end
     
-    def add_model_cargo(model, include_deletions, model_condition = "")
-      # TODO: Check against mirror version
-      model_state = ModelState.find_or_create_by_model(model)
-      model_condition = "#{model.table_name}.#{model_condition}" unless model_condition == ""
-      SendableRecordState.find_in_batches(
-        :conditions => (
-          ["model_state_id = #{model_state.id}"] +
-          (model_condition != "" ? [model_condition] : []) +
-          (include_deletions ? [] : ["local_record_id != 0"])
-        ),
-        :joins => "LEFT JOIN #{model.table_name} ON local_record_id = #{model.table_name}.id",
-        :batch_size => 100
-      ) do |batch|
+    def add_model_cargo(model, include_deletions, find_options = {})
+      # FIXME: Also include id transformation by joining with the mirrored_records table
+      # FIXME: Check against mirror version
+      model.find_in_batches(find_options.merge({:batch_size => 100})) do |batch|
         @cs.write_cargo_section(data_cargo_name_for_model(model), batch)
+      end
+      
+      if include_deletions
+        model_state = ModelState.find_or_create_by_model(model)
+        conditions = { :model_state_id => model_state.id, :local_record_id => 0 }
+        SendableRecordState.find_in_batches(:batch_size => 100, :conditions => conditions) do |batch|
+          @cs.write_cargo_section(deleted_cargo_name_for_model(model), batch)
+        end
       end
     end
     
@@ -140,24 +143,18 @@ module OfflineMirror
     def import_model_cargo(model, options = {})
       @cs.each_cargo_section(data_cargo_name_for_model(model)) do |batch|
         batch.each do |cargo_record|
-          # Remember: Their remote id is our local id, and vice versa
-          if cargo_record.local_record_id == 0
-            # This record no longer exists there, so let's destroy it here too
-            model.find(cargo_record.remote_record_id).destroy
-          else
-            # Update/create the record here to match the record there
-            db_record = cargo_record.remote_record_id != 0 ? model.find(cargo_record.remote_record_id) : Model.new
-            db_record.bypass_offline_mirror_readonly_checks
-            db_record.attributes = cargo_record.send(model.table_name.to_sym).attributes
-            db_record.save!
-            
-            # If this record is just being created here now, update the state with the source's id number
-            # TODO: Also do this upon receiving confirmation that it was created at the other side
-            # TODO: Might be able to optimize this so there's only one save per SRS instead of two
-            if cargo_record.remote_record_id == 0
-              SendableRecordState.note_record_has_remote_id(db_record, cargo_record.local_record_id)
-            end
-          end
+          db_record = model.find_or_initialize_by_id(cargo_record.id)
+          db_record.bypass_offline_mirror_readonly_checks
+          db_record.attributes = cargo_record.attributes
+          db_record.save!
+        end
+      end
+      
+      @cs.each_cargo_section(deleted_cargo_name_for_model(model)) do |batch|
+        id_list = batch.map { |srs| srs.remote_record_id } # Their remote id is our local id
+        model.all(:conditions => {:id => id_list}).each do |rec|
+          rec.bypass_offline_mirror_readonly_checks
+          rec.destroy
         end
       end
     end
