@@ -310,10 +310,14 @@ class MirrorDataTest < Test::Unit::TestCase
     in_offline_app(false, true) do
       assert_equal 0, Group.count
       assert_equal 0, GroupOwnedRecord.count
+      assert_equal 0, OfflineMirror::GroupState.count
+      assert_equal 0, OfflineMirror::SendableRecordState.count
       reader = OfflineMirror::MirrorData.new(nil, mirror_data)
       reader.load_downwards_data
       assert_equal 1, Group.count
       assert_equal 1, GroupOwnedRecord.count
+      assert_equal 1, OfflineMirror::GroupState.count
+      assert_equal 2, OfflineMirror::SendableRecordState.count
     end
   end
   
