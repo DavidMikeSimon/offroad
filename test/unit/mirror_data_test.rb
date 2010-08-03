@@ -310,14 +310,10 @@ class MirrorDataTest < Test::Unit::TestCase
     in_offline_app(false, true) do
       assert_equal 0, Group.count
       assert_equal 0, GroupOwnedRecord.count
-      assert_equal 0, OfflineMirror::GroupState.count
-      assert_equal 0, OfflineMirror::SendableRecordState.count
       reader = OfflineMirror::MirrorData.new(nil, mirror_data)
       reader.load_downwards_data
       assert_equal 1, Group.count
       assert_equal 1, GroupOwnedRecord.count
-      assert_equal 1, OfflineMirror::GroupState.count
-      assert_equal 2, OfflineMirror::SendableRecordState.count
     end
   end
   
@@ -390,7 +386,27 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   cross_test "transformed ids are handled properly when loading an initial down mirror file" do
-    # TODO Implement
+    mirror_data = ""
+    online_id_of_offline_rec = nil
+    in_online_app do
+      another_online_record = GroupOwnedRecord.create(:description => "Yet Another", :group => @online_group)
+      another_offline_rec = GroupOwnedRecord.new(:description => "One More", :group => @offline_group)
+      force_save_and_reload(another_offline_rec)
+      online_id_of_offline_rec = another_offline_rec.id
+      StringIO.open do |sio|
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
+        writer.write_downwards_data
+        mirror_data = sio.string
+      end
+    end
+    
+    in_offline_app do
+      reader = OfflineMirror::MirrorData.new(nil, mirror_data)
+      reader.load_downwards_data
+      another_offline_rec = GroupOwnedRecord.find_by_description("One More")
+      srs = OfflineMirror::SendableRecordState::find_or_initialize_by_record(another_offline_rec)
+      assert_equal online_id_of_offline_rec, srs.remote_record_id
+    end
   end
   
   cross_test "transformed ids in foreign key columns are handled correctly" do
