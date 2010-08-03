@@ -10,7 +10,7 @@ def common_test_settings(t)
   t.verbose = true
 end
 
-desc 'Default: run unit tests.'
+desc 'Default: run unit and functional tests.'
 task :default => :test
 
 desc 'Test the <%= file_name %> plugin.'

@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/../test_helper'
+require File.expand_path(File.dirname(__FILE__) + '/../test_helper')
 
 class MirrorInfoTest < Test::Unit::TestCase
   agnostic_test "can instantiate MirrorInfo instances, but they're invalid by default" do

@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/../test_helper'
+require File.expand_path(File.dirname(__FILE__) + '/../test_helper')
 
 # This just tests the controller's ability to properly access the functionality of the MirrorData class
 # Tests for the actual generation and processing of mirror files are in mirror_data_test.rb

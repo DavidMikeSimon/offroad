@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/../test_helper'
+require File.expand_path(File.dirname(__FILE__) + '/../test_helper')
 
 class CargoStreamerTest < Test::Unit::TestCase
   # Based on the pattern found here: http://stackoverflow.com/questions/315850/rails-model-without-database
