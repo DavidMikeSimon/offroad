@@ -83,25 +83,21 @@ module OfflineMirror
     end
     
     module CommonInstanceMethods
-      # This method allows a record to be saved or destroyed *once*, even when
-      # this would otherwise not be allowed due to i.e. trying to edit an
-      # offline group's data in the online app, trying to edit a global record
-      # in the offline app, etc.
-      # It's public to make usage of it from other parts of Offline Mirror
-      # more convenient. Do not use it from app code, you might end up
-      # with an inconsistent database state.
+      # Methods below this point are only to be used internally by OfflineMirror
+      # However, marking all of them private would make using them from elsewhere in the plugin troublesome
+      
+      #:nodoc:#
       def bypass_offline_mirror_readonly_checks
         @offline_mirror_readonly_bypassed = true
       end
       
+      #:nodoc:#
       def offline_mirror_model_state
         # TODO : Check if this instance level method is really necessary
         self.class.offline_mirror_model_state
       end
       
-      private
-      
-      
+      #:nodoc:#
       def checks_bypassed?
         if @offline_mirror_readonly_bypassed
           @offline_mirror_readonly_bypassed = false
@@ -110,6 +106,7 @@ module OfflineMirror
         return false
       end
       
+      #:nodoc:#
       def validate_changed_id_columns
         changed.each do |colname|
           raise DataError.new("Cannot change id of offline-mirror tracked records") if colname == "id"
@@ -263,7 +260,8 @@ module OfflineMirror
       
       #:nodoc#
       def after_mirrored_data_destroy
-        OfflineMirror::SendableRecordState::note_record_destroyed(self)
+        OfflineMirror::SendableRecordState::note_record_destroyed(self) if OfflineMirror::app_offline?
+        OfflineMirror::GroupState::note_group_destroyed(self) if offline_mirror_mode == :group_base
         return true
       end
       
@@ -289,7 +287,15 @@ module OfflineMirror
       
       #:nodoc#
       def after_mirrored_data_save
-        OfflineMirror::SendableRecordState::note_record_created_or_updated(self) if changed?
+        if offline_mirror_mode == :group_base
+          OfflineMirror::GroupState::find_or_create_by_group(self)
+        end
+        
+        if OfflineMirror::app_offline? && changed?
+          # Group records aren't sendable from the online app, so we only need to create SRSes in the offline app
+          OfflineMirror::SendableRecordState::note_record_created_or_updated(self)
+        end
+        
         return true
       end
       
@@ -298,8 +304,7 @@ module OfflineMirror
         OfflineMirror::GroupState.find_or_create_by_group(owning_group)
       end
       
-      private
-      
+      #:nodoc:#
       def group_being_destroyed
         return true unless owning_group # If the group doesn't exist anymore, then it's pretty well "destroyed"
         return group_state.group_being_destroyed

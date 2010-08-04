@@ -26,20 +26,15 @@ class AppStateTrackingTest < Test::Unit::TestCase
     prior_group_state_count = OfflineMirror::GroupState::count
     rec = Group.create(:name => "Foo Bar")
     
-    rec_state = find_record_state_from_record(rec)
-    assert_equal "Group", rec_state.model_state.app_model_name, "ModelState has correct model name"
-    assert_newly_created_record_matches_state(rec, rec_state)
-    
     group_state = OfflineMirror::GroupState::find_by_app_group_id(rec.id)
     assert_equal prior_group_state_count+1, OfflineMirror::GroupState::count, "GroupState was created on demand"
     assert_equal rec.id, group_state.app_group_id, "GroupState has correct app group id"
     assert_equal 0, group_state.up_mirror_version, "As-yet un-mirrored group has an up mirror version of 0"
     assert_equal 0, group_state.down_mirror_version, "As-yet un-mirrored group has a down mirror version of 0"
-    assert_equal group_state.id, rec_state.group_state_id
   end
   
-  double_test "creating group owned record causes creation of valid state data" do
-    rec = GroupOwnedRecord.create(:description => "Foo Bar", :group => @editable_group)
+  offline_test "creating group owned record causes creation of valid state data" do
+    rec = GroupOwnedRecord.create(:description => "Foo Bar", :group => @offline_group)
     
     rec_state = find_record_state_from_record(rec)
     assert_equal "GroupOwnedRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
@@ -47,6 +42,11 @@ class AppStateTrackingTest < Test::Unit::TestCase
     
     group_state = OfflineMirror::GroupState::find_by_app_group_id(rec.group_id)
     assert_equal group_state.id, rec_state.group_state_id
+  end
+  
+  online_test "creating group owned record does not cause creation of record state" do
+    rec = GroupOwnedRecord.create(:description => "Foo Bar", :group => @online_group)
+    assert_equal nil, find_record_state_from_record(rec)
   end
   
   online_test "creating global record causes creation of valid state data" do
@@ -85,12 +85,12 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert_only_changing_attribute_causes_version_change(GlobalRecord, :title, rec)
   end
   
-  double_test "saving group base record updates mirror version only on changed records" do
-    assert_only_changing_attribute_causes_version_change(Group, :name, @editable_group)
+  offline_test "saving group base record updates mirror version only on changed records" do
+    assert_only_changing_attribute_causes_version_change(Group, :name, @offline_group)
   end
   
-  double_test "saving group owned record updates mirror version only on changed records" do
-    assert_only_changing_attribute_causes_version_change(GroupOwnedRecord, :description, @editable_group_data)
+  offline_test "saving group owned record updates mirror version only on changed records" do
+    assert_only_changing_attribute_causes_version_change(GroupOwnedRecord, :description, @offline_group_data)
   end
   
   def assert_deleting_record_correctly_updated_record_state(rec)
@@ -111,12 +111,20 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert_deleting_record_correctly_updated_record_state(rec)
   end
   
-  online_test "deleting group base record updates mirror version" do
-    assert_deleting_record_correctly_updated_record_state(@editable_group)
+  offline_test "deleting group owned record updates mirror version" do
+    assert_deleting_record_correctly_updated_record_state(@editable_group_data)
   end
   
-  double_test "deleting group owned record updates mirror version" do
-    assert_deleting_record_correctly_updated_record_state(@editable_group_data)
+  online_test "deleting online group base record deletes corresponding group state" do
+    assert_not_nil OfflineMirror::GroupState::find_by_app_group_id(@online_group)
+    @online_group.destroy
+    assert_nil OfflineMirror::GroupState::find_by_app_group_id(@online_group)
+  end
+  
+  online_test "deleting offline group base record deletes corresponding group state" do
+    assert_not_nil OfflineMirror::GroupState::find_by_app_group_id(@offline_group)
+    @offline_group.destroy
+    assert_nil OfflineMirror::GroupState::find_by_app_group_id(@offline_group)
   end
   
   online_test "can only find_or_create group state of saved group records that are :group_base" do

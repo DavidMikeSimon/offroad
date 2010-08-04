@@ -12,8 +12,9 @@ module OfflineMirror
       true
     end
     
-    def self.exists_by_app_group_id?(local_id)
-      exists?(:app_group_id => local_id)
+    def self.note_group_destroyed(group)
+      rec = find_by_app_group_id(group.id)
+      rec.destroy
     end
     
     def self.find_or_create_by_group(obj, opts = {})
