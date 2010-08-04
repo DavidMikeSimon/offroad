@@ -2,7 +2,7 @@ module OfflineMirror
   VERSION_MAJOR = 0
   VERSION_MINOR = 1
   
-  @@app_online_flag = true
+  @@app_online_flag = nil
   
   # Used in the environment configuration file to set the app to online or offline mode.
   # This should not be called from within the app.
@@ -18,9 +18,9 @@ module OfflineMirror
   # Returns true if the app is in online mode (or in other words, this is the main server)
   def self.app_online?
     case @@app_online_flag
-    when true then true
-    when false then false
-    else raise AppModeUnknownError.new
+      when true then true
+      when false then false
+      else raise AppModeUnknownError.new
     end
   end
   
