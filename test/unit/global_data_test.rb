@@ -3,13 +3,6 @@ require File.expand_path(File.dirname(__FILE__) + '/../test_helper')
 # This is a unit test on the ability of model_extensions to handle global models
 
 class GlobalDataTest < Test::Unit::TestCase
-  def setup
-    super
-    
-    @global_record = GlobalRecord.new(:title => "Something or other")
-    force_save_and_reload(@global_record)
-  end
-  
   online_test "can create new global records" do
     assert_nothing_raised do
       GlobalRecord.create(:title => "Something or other")
@@ -28,52 +21,60 @@ class GlobalDataTest < Test::Unit::TestCase
   end
   
   online_test "global data is writable and destroyable" do
+    global_record = GlobalRecord.create(:title => "Something or other")
     assert_nothing_raised do
-      @global_record.title = "Something else"
-      @global_record.save!
-      @global_record.destroy
+      global_record.title = "Something else"
+      global_record.save!
+      global_record.destroy
     end
   end
   
   offline_test "global data is not writable or destroyable" do
+    global_record = GlobalRecord.new(:title => "Something or other")
+    force_save_and_reload(global_record)
+    
     assert_raise ActiveRecord::ReadOnlyRecord, "expect exception on title change" do
-      @global_record.title = "Something else"
-      @global_record.save!
+      global_record.title = "Something else"
+      global_record.save!
     end
     
     assert_raise ActiveRecord::ReadOnlyRecord, "expect exception on destroy" do
-      @global_record.destroy
+      global_record.destroy
     end
   end
   
   online_test "cannot change id of global data" do
+    global_record = GlobalRecord.create(:title => "Something or other")
     assert_raise OfflineMirror::DataError do
-      @global_record.id += 1
-      @global_record.save!
+      global_record.id += 1
+      global_record.save!
     end
   end
   
   online_test "global data can hold a foreign key to other global data" do
+    global_record = GlobalRecord.create(:title => "Something or other")
     another_global_record = GlobalRecord.create(:title => "Yet Another")
     
     assert_nothing_raised do
-      @global_record.friend = another_global_record
-      @global_record.save!
+      global_record.friend = another_global_record
+      global_record.save!
     end
   end
   
   online_test "global data cannot hold a foreign key to group data" do
+    global_record = GlobalRecord.create(:title => "Something or other")
     assert_raise OfflineMirror::DataError do
-      @global_record.some_group = @offline_group
-      @global_record.save!
+      global_record.some_group = @offline_group
+      global_record.save!
     end
   end
   
   online_test "global data cannot hold a foreign key to unmirrored data" do
+    global_record = GlobalRecord.create(:title => "Something or other")
     unmirrored_data = UnmirroredRecord.create(:content => "Some Unmirrored Data")
     assert_raise OfflineMirror::DataError do
-      @global_record.unmirrored_record = unmirrored_data
-      @global_record.save!
+      global_record.unmirrored_record = unmirrored_data
+      global_record.save!
     end
   end
   
