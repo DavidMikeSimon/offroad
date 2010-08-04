@@ -72,7 +72,8 @@ module OfflineMirror
           :include => assoc_list
         ) do |xml|
           xml.cargo_streamer_type r.class.name
-          xml.cargo_streamer_includes assoc_list.map{|a| "#{a.to_s}=#{r.send(a).class.name}"}.join(",")
+          assoc_info = assoc_list.reject{|a| r.send(a) == nil}.map{|a| "#{a.to_s}=#{r.send(a).class.name}"}.join(",")
+          xml.cargo_streamer_includes assoc_info
         end
       }.join()
       deflated_data = Zlib::Deflate::deflate(xml_data)
@@ -171,8 +172,8 @@ module OfflineMirror
     
     def compose_record_from_hash(model_class_name, attrs_hash)
       model_class = model_class_name.constantize
-      raise "Class does not have cargo safety method" unless model_class.respond_to? :safe_to_load_from_cargo_stream?
-      raise "Class is not safe_to_load_from_cargo_stream" unless model_class.safe_to_load_from_cargo_stream?
+      raise "Class #{model_class_name} does not have cargo safety method" unless model_class.respond_to? :safe_to_load_from_cargo_stream?
+      raise "Class #{model_class_name} is not safe_to_load_from_cargo_stream" unless model_class.safe_to_load_from_cargo_stream?
       
       rec = model_class.new
       rec.send(:attributes=, attrs_hash, false) # No attr_accessible check like this, so all attributes can be set

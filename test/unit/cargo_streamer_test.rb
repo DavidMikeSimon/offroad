@@ -97,12 +97,13 @@ class CargoStreamerTest < Test::Unit::TestCase
   end
   
   agnostic_test "can encode and retrieve model instances with first-level association data" do
-    r = test_rec("A")
-    r.fake_association = test_rec("B")
+    r1 = test_rec("A")
+    r1.fake_association = test_rec("B")
+    r2 = test_rec("XYZ") # Making sure we can also encode a model instance that doesn't have the assoc data
     
     str = StringIO.open do |sio|
       writer = OfflineMirror::CargoStreamer.new(sio, "w")
-      writer.write_cargo_section("abc", [r], :include => [:fake_association])
+      writer.write_cargo_section("abc", [r1, r2], :include => [:fake_association])
       sio.string
     end
     
