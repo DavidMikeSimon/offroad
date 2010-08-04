@@ -14,26 +14,7 @@ module OfflineMirror
   # Multiple cargo sections can have the same name; when the cargo is later read, requests for that name will be yielded each section in turn.
   # The data must always be in the form of arrays of ActiveRecord, or things that walk sufficiently like ActiveRecord
   class CargoStreamer
-    
-    # Patch that, when included into a model, adds a method to save class name with generated XML.
-    # Generated XML needs to include the type so that objects can be recreated by CargoStreamer.
-    # This patch also includes a useful to_s method for ActiveRecords, which can be overridden.
-    # Such classes also need to include a method called safe_to_load_from_cargo_stream? that returns true.
-    module CargoStreamable
-      def self.included(base)
-        base.alias_method_chain :to_xml, :type_inclusion
-      end
-      
-      def to_xml_with_type_inclusion(*args)
-        to_xml_without_type_inclusion(*args) do |xml|
-          xml.offline_mirror_type self.class.name
-        end
-      end
-      
-      def to_s
-        attributes.map{ |key, value| "#{key.to_s.titleize}: #{value.to_s}" }.join("\n")
-      end
-    end
+    # Models which are to be encoded need to have a method safe_to_load_from_cargo_stream? that returns true.
     
     # Creates a new CargoStreamer on the given stream, which will be used in the given mode (must be "w" or "r").
     # If the mode is "r", the file is immediately scanned to determine what cargo it contains.
@@ -67,17 +48,29 @@ module OfflineMirror
       end
       
       if options[:human_readable]
+        human_data = value.map{ |rec|
+          rec.attributes.map{ |k, v| "#{k.to_s.titleize}: #{v.to_s}" }.join("\n")
+        }.join("\n\n")
         @ioh.write "<!--\n"
         @ioh.write name.titleize + "\n"
         @ioh.write "\n"
-        @ioh.write clean_for_html_comment(value.to_s) + "\n"
+        @ioh.write clean_for_html_comment(human_data) + "\n"
         @ioh.write "-->\n"
       end
       
       name = name.chomp
       
       xml = Builder::XmlMarkup.new
-      xml_data = value.to_xml(:skip_instruct => true, :skip_types => true, :root => "records", :indent => 0)
+      xml_data = "<records>%s</records>" % value.map {
+        |r| r.to_xml(
+          :skip_instruct => true,
+          :skip_types => true,
+          :root => "record",
+          :indent => 0
+        ) do |xml|
+          xml.offline_mirror_type r.class.name
+        end
+      }.join()
       deflated_data = Zlib::Deflate::deflate(xml_data)
       b64_data = Base64.encode64(deflated_data).chomp
       digest = Digest::MD5::hexdigest(deflated_data).chomp

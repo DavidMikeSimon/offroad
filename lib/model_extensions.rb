@@ -23,8 +23,6 @@ module OfflineMirror
       # We should have deleted all the options from the hash by this point
       raise ModelError.new("Unknown or inapplicable option(s) specified") unless opts.size == 0
       
-      include CargoStreamer::CargoStreamable
-      
       if offline_mirror_group_data?
         include GroupDataInstanceMethods
       else

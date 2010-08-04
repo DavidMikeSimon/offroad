@@ -3,8 +3,6 @@ require File.expand_path(File.dirname(__FILE__) + '/../test_helper')
 class CargoStreamerTest < Test::Unit::TestCase
   # Based on the pattern found here: http://stackoverflow.com/questions/315850/rails-model-without-database
   class TestModel < ActiveRecord::Base
-    include OfflineMirror::CargoStreamer::CargoStreamable
-    
     self.abstract_class = true
     
     def self.columns
@@ -89,12 +87,6 @@ class CargoStreamerTest < Test::Unit::TestCase
   
   def test_rec(str)
     TestModel.new(:data => str)
-  end
-  
-  agnostic_test "CargoStreamable extensions cause model serialized to xml to include type name" do
-    rec = test_rec("123")
-    assert_equal false, rec.to_xml_without_type_inclusion.include?("TestModel")
-    assert rec.to_xml.include?("TestModel")
   end
   
   agnostic_test "can encode and retrieve a model instances in an array" do
@@ -201,7 +193,7 @@ class CargoStreamerTest < Test::Unit::TestCase
       cs.write_cargo_section("test", [rec], :human_readable => false)
       sio.string
     end
-    assert_equal false, result.include?(rec.to_s)
+    assert_equal false, result.include?(test_str)
     
     result = StringIO.open do |sio|
       cs = OfflineMirror::CargoStreamer.new(sio, "w")

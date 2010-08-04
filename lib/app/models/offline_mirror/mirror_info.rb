@@ -4,8 +4,6 @@ module OfflineMirror
   # Non-database model representing general information attached to any mirror file
   # Based on the pattern found here: http://stackoverflow.com/questions/315850/rails-model-without-database
   class MirrorInfo < ActiveRecord::Base
-    include CargoStreamer::CargoStreamable
-    
     self.abstract_class = true
     
     def self.columns

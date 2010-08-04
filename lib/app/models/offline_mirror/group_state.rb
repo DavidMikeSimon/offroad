@@ -6,8 +6,6 @@ module OfflineMirror
     
     validates_presence_of :app_group_id
     
-    include CargoStreamer::CargoStreamable
-    
     def self.safe_to_load_from_cargo_stream?
       true
     end

@@ -7,8 +7,6 @@ module OfflineMirror
     belongs_to :model_state, :class_name => "::OfflineMirror::ModelState"
     validates_presence_of :model_state
     
-    include CargoStreamer::CargoStreamable
-    
     named_scope :for_model, lambda { |model| { :conditions => {
       :model_state_id => ModelState::find_or_create_by_model(model).id
     } } }
