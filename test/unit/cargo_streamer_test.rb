@@ -12,6 +12,9 @@ class CargoStreamerTest < Test::Unit::TestCase
     columns << ActiveRecord::ConnectionAdapters::Column.new("id", nil, "integer", true)
     columns << ActiveRecord::ConnectionAdapters::Column.new("data", "", "string", false)
     
+    has_one(:fake_association)
+    attr_accessor :fake_association
+    
     validates_presence_of :data
     
     @@safety_switch = true
@@ -91,6 +94,24 @@ class CargoStreamerTest < Test::Unit::TestCase
   
   agnostic_test "can encode and retrieve a model instances in an array" do
     assert_round_trip_equality "test" => [[test_rec("A"), test_rec("B")]]
+  end
+  
+  agnostic_test "can encode and retrieve model instances with first-level association data" do
+    r = test_rec("A")
+    r.fake_association = test_rec("B")
+    
+    str = StringIO.open do |sio|
+      writer = OfflineMirror::CargoStreamer.new(sio, "w")
+      writer.write_cargo_section("abc", [r], :include => [:fake_association])
+      sio.string
+    end
+    
+    decoded_rec = StringIO.open(str) do |sio|
+      cs = OfflineMirror::CargoStreamer.new(sio, "r")
+      cs.first_cargo_section("abc")[0]
+    end
+    
+    assert_equal "B", decoded_rec.fake_association.data
   end
   
   agnostic_test "encoded models do not lose their id" do

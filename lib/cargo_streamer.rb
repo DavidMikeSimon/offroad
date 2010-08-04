@@ -27,8 +27,8 @@ module OfflineMirror
     
     # Writes a cargo section with the given name and value to the IO stream.
     # Options:
-    # * :human_readable => true - Before writing the cargo section, writes a human-readable comment with the value.
-    #   The value must be Hash-like for this.
+    # * :human_readable => true - Before writing the cargo section, writes a comment with human-readable data.
+    # * :include => [:assoc, :other_assoc] - Includes these first-level associations in the encoded data
     def write_cargo_section(name, value, options = {})
       raise CargoStreamerError.new("Mode must be 'w' to write cargo data") unless @mode == "w"
       raise CargoStreamerError.new("CargoStreamer section names must be strings") unless name.is_a? String
@@ -60,15 +60,19 @@ module OfflineMirror
       
       name = name.chomp
       
+      assoc_list = options[:include] || []
+      
       xml = Builder::XmlMarkup.new
       xml_data = "<records>%s</records>" % value.map {
         |r| r.to_xml(
           :skip_instruct => true,
           :skip_types => true,
           :root => "record",
-          :indent => 0
+          :indent => 0,
+          :include => assoc_list
         ) do |xml|
-          xml.offline_mirror_type r.class.name
+          xml.cargo_streamer_type r.class.name
+          xml.cargo_streamer_includes assoc_list.map{|a| "#{a.to_s}=#{r.send(a).class.name}"}.join(",")
         end
       }.join()
       deflated_data = Zlib::Deflate::deflate(xml_data)
@@ -165,6 +169,17 @@ module OfflineMirror
       s.to_s.gsub("--", "__").gsub("<", "[").gsub(">", "]")
     end
     
+    def compose_record_from_hash(model_class_name, attrs_hash)
+      model_class = model_class_name.constantize
+      raise "Class does not have cargo safety method" unless model_class.respond_to? :safe_to_load_from_cargo_stream?
+      raise "Class is not safe_to_load_from_cargo_stream" unless model_class.safe_to_load_from_cargo_stream?
+      
+      rec = model_class.new
+      rec.send(:attributes=, attrs_hash, false) # No attr_accessible check like this, so all attributes can be set
+      rec.readonly! # rec is just source data for creation of a "real" record; it shouldn't be saveable itself
+      rec
+    end
+    
     def verify_and_decode_cargo(digest, b64_data)
       deflated_data = Base64.decode64(b64_data)
       raise "MD5 check failure" unless Digest::MD5::hexdigest(deflated_data) == digest
@@ -175,15 +190,16 @@ module OfflineMirror
       raise "Decode failure, unable to find records key" unless records != nil
       records = [records] unless records.is_a?(Array)
       return records.map do |attrs_hash|
-        raise "Unable to find record type" unless attrs_hash.has_key?("offline_mirror_type")
-        class_name = attrs_hash.delete("offline_mirror_type")
-        model_class = class_name.constantize # This is safe; it uses const_get, not eval
-        raise "Class does not have cargo safety method" unless model_class.respond_to? :safe_to_load_from_cargo_stream?
-        raise "Class is not safe_to_load_from_cargo_stream" unless model_class.safe_to_load_from_cargo_stream?
-        rec = model_class.new
-        rec.send(:attributes=, attrs_hash, false) # No attr_accessible check like this, so all attributes can be set
-        rec.readonly! # rec is just the data for creation of a "real" record; it shouldn't be saveable itself
-        rec
+        raise "Unable to find record type" unless attrs_hash.has_key?("cargo_streamer_type")
+        class_name = attrs_hash.delete("cargo_streamer_type")
+        
+        raise "Unable to find includes list" unless attrs_hash.has_key?("cargo_streamer_includes")
+        (attrs_hash.delete("cargo_streamer_includes") || "").split(",").each do |assoc_info|
+          assoc_name, i_class_name = assoc_info.split("=")
+          attrs_hash[assoc_name] = compose_record_from_hash(i_class_name, attrs_hash[assoc_name])
+        end
+        
+        compose_record_from_hash(class_name, attrs_hash)
       end
     rescue StandardError => e
       raise CargoStreamerError.new("Corrupted data : #{e.class.to_s} : #{e.to_s}")
