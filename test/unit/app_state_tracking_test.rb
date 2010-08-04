@@ -35,6 +35,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert_equal rec.id, group_state.app_group_id, "GroupState has correct app group id"
     assert_equal 0, group_state.up_mirror_version, "As-yet un-mirrored group has an up mirror version of 0"
     assert_equal 0, group_state.down_mirror_version, "As-yet un-mirrored group has a down mirror version of 0"
+    assert_equal group_state.id, rec_state.group_state_id
   end
   
   double_test "creating group owned record causes creation of valid state data" do
@@ -43,6 +44,9 @@ class AppStateTrackingTest < Test::Unit::TestCase
     rec_state = find_record_state_from_record(rec)
     assert_equal "GroupOwnedRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
     assert_newly_created_record_matches_state(rec, rec_state)
+    
+    group_state = OfflineMirror::GroupState::find_by_app_group_id(rec.group_id)
+    assert_equal group_state.id, rec_state.group_state_id
   end
   
   online_test "creating global record causes creation of valid state data" do

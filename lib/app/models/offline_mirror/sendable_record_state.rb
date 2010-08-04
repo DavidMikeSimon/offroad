@@ -9,6 +9,16 @@ module OfflineMirror
     
     include CargoStreamer::CargoStreamable
     
+    named_scope :for_model, lambda { |model| { :conditions => {
+      :model_state_id => ModelState::find_or_create_by_model(model).id
+    } } }
+    
+    named_scope :for_group, lambda { |group| { :conditions => {
+      :group_state_id => group.group_state.id
+    } } }
+    
+    named_scope :for_deleted_records, :conditions => { :local_record_id => 0 }
+    
     def self.safe_to_load_from_cargo_stream?
       true
     end
@@ -33,15 +43,12 @@ module OfflineMirror
       end
       
       model_state_id = ModelState::find_or_create_by_model(rec.class).id
-      
-      # If this record is itself a group record, then create its GroupState entry if it doesn't already exist
-      if rec.class.offline_mirror_mode == :group_base && !GroupState::exists_by_app_group_id?(rec.id)
-        GroupState::find_or_create_by_group rec
-      end
+      group_state_id = rec.class.offline_mirror_group_data? ? GroupState::find_or_create_by_group(rec.owning_group).id : 0
       
       return find_or_initialize_by_model_state_id_and_local_record_id(
         :model_state_id => model_state_id,
         :local_record_id => rec.id,
+        :group_state_id => group_state_id,
         :remote_record_id => 0
       )
     end

@@ -31,10 +31,30 @@ module OfflineMirror
         include GlobalDataInstanceMethods
       end
       include CommonInstanceMethods
+      
       before_destroy :before_mirrored_data_destroy
       after_destroy :after_mirrored_data_destroy
       before_save :before_mirrored_data_save
       after_save :after_mirrored_data_save
+      
+      case mode
+      when :group_base then
+        named_scope :owned_by_offline_mirror_group, lambda { |group| { :conditions => { :id => group.id } } }
+      when :group_owned then
+        named_scope :owned_by_offline_mirror_group, lambda { |group| { :conditions => { offline_mirror_group_key => group.id } } }
+      end
+      
+      # Not all records will have a SendableRecordState, only those which belong to here and are mirrored to elsewhere
+      has_one(:offline_mirror_sendable_record_state,
+        :class_name => 'OfflineMirror::SendableRecordState',
+        :foreign_key => 'local_record_id',
+        :conditions => {:model_state_id => '#{offline_mirror_model_state.id}'}
+      )
+    end
+    
+    def offline_mirror_model_state
+      # TODO : Check if this class method is really necessary
+      OfflineMirror::ModelState::find_or_create_by_model(self)
     end
     
     def acts_as_mirrored_offline?
@@ -66,13 +86,21 @@ module OfflineMirror
       # This method allows a record to be saved or destroyed *once*, even when
       # this would otherwise not be allowed due to i.e. trying to edit an
       # offline group's data in the online app, trying to edit a global record
-      # in the offline app, etc. Do not use this method unless it's really
-      # necessary.
+      # in the offline app, etc.
+      # It's public to make usage of it from other parts of Offline Mirror
+      # more convenient. Do not use it from app code, you might end up
+      # with an inconsistent database state.
       def bypass_offline_mirror_readonly_checks
         @offline_mirror_readonly_bypassed = true
       end
       
+      def offline_mirror_model_state
+        # TODO : Check if this instance level method is really necessary
+        self.class.offline_mirror_model_state
+      end
+      
       private
+      
       
       def checks_bypassed?
         if @offline_mirror_readonly_bypassed

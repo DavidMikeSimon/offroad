@@ -23,7 +23,7 @@ module OfflineMirror
     def write_upwards_data
       # TODO : See if this can be done in some kind of read transaction
       write_data do
-        add_group_specific_cargo(true)
+        add_group_specific_cargo
       end
     end
     
@@ -71,8 +71,8 @@ module OfflineMirror
       "data_#{model.name}"
     end
     
-    def deleted_cargo_name_for_model(model)
-      "deleted_#{model.name}"
+    def deletion_cargo_name_for_model(model)
+      "deletion_#{model.name}"
     end
     
     def write_data
@@ -97,33 +97,35 @@ module OfflineMirror
       raise PluginError.new("Invalid app mode") unless ["online", "offline"].include?(mode)
     end
     
-    def add_group_specific_cargo(include_deletions = false)
+    def add_group_specific_cargo
       # FIXME: Test that when this is called by the online app, it doesn't put group-specific junk in sendable_records
       OfflineMirror::group_owned_models.each do |name, cls|
-        add_model_cargo(cls, include_deletions, :conditions => { cls.offline_mirror_group_key.to_sym => @group })
+        add_model_cargo(cls, @group)
       end
-      add_model_cargo(OfflineMirror::group_base_model, false, :conditions => { :id => @group.id })
+      add_model_cargo(OfflineMirror::group_base_model, @group)
     end
     
-    def add_global_cargo(include_deletions = true)
+    def add_global_cargo
       OfflineMirror::global_data_models.each do |name, cls|
-        add_model_cargo(cls, include_deletions)
+        add_model_cargo(cls)
       end
     end
     
-    def add_model_cargo(model, include_deletions, find_options = {})
-      # FIXME: Also include id transformation by joining with the mirrored_records table
+    def add_model_cargo(model, group = nil)
       # FIXME: Check against mirror version
-      model.find_in_batches(find_options.merge({:batch_size => 100})) do |batch|
-        @cs.write_cargo_section(data_cargo_name_for_model(model), batch)
+      
+      # Include the data for relevant records in this model
+      data_source = model
+      data_source = data_source.owned_by_offline_mirror_group(group) if group
+      data_source.find_in_batches(:batch_size => 100, :include => [:offline_mirror_sendable_record_state] ) do |batch|
+        @cs.write_cargo_section(data_cargo_name_for_model(model), batch) # FIXME This actually won't encode the SRS itself
       end
       
-      if include_deletions
-        model_state = ModelState.find_or_create_by_model(model)
-        conditions = { :model_state_id => model_state.id, :local_record_id => 0 }
-        SendableRecordState.find_in_batches(:batch_size => 100, :conditions => conditions) do |batch|
-          @cs.write_cargo_section(deleted_cargo_name_for_model(model), batch)
-        end
+      # Also need to include srs entries for records that have been destroyed
+      deletion_source = SendableRecordState.for_model(model).for_deleted_records
+      deletion_source = deletion_source.for_group(group) if group
+      deletion_source.find_in_batches(:batch_size => 100) do |batch|
+        @cs.write_cargo_section(deletion_cargo_name_for_model(model), batch)
       end
     end
     
@@ -141,6 +143,7 @@ module OfflineMirror
     end
     
     def import_model_cargo(model, options = {})
+      # Load the actual model data
       @cs.each_cargo_section(data_cargo_name_for_model(model)) do |batch|
         batch.each do |cargo_record|
           db_record = model.find_or_initialize_by_id(cargo_record.id)
@@ -150,7 +153,8 @@ module OfflineMirror
         end
       end
       
-      @cs.each_cargo_section(deleted_cargo_name_for_model(model)) do |batch|
+      # Destroy records here which were destroyed there
+      @cs.each_cargo_section(deletion_cargo_name_for_model(model)) do |batch|
         id_list = batch.map { |srs| srs.remote_record_id } # Their remote id is our local id
         model.all(:conditions => {:id => id_list}).each do |rec|
           rec.bypass_offline_mirror_readonly_checks

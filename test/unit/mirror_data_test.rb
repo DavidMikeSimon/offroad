@@ -125,6 +125,7 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   online_test "down mirror files do not include irrelevant records" do    
+    # TODO Check for irrelevant deletions
     another_offline_group = Group.create(:name => "Another Group")
     another_offline_group.group_offline = true
     another_group_data = GroupOwnedRecord.new(:description => "Another Data", :group => another_offline_group)
@@ -137,8 +138,8 @@ class MirrorDataTest < Test::Unit::TestCase
     
     content.rewind
     cs = OfflineMirror::CargoStreamer.new(content, "r")
-    assert_record_not_present cs, @another_offline_group
-    assert_record_not_present cs, @another_group_data
+    assert_record_not_present cs, another_offline_group
+    assert_record_not_present cs, another_group_data
     assert_single_model_cargo_entry_matches cs, @offline_group
     assert_single_model_cargo_entry_matches cs, @offline_group_data
   end
@@ -156,6 +157,7 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   offline_test "up mirror files do not include irrelevant records" do
+    # TODO Check for irrelevant deletions
     fake_offline_group = Group.new(:name => "Another Group")
     fake_group_data = GroupOwnedRecord.new(:description => "Another Data", :group => fake_offline_group)
     fake_global_data = GlobalRecord.new(:title => "Fake Stuff")
@@ -378,6 +380,14 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   cross_test "cannot use an up mirror file to create or update or delete records not owned by the given group" do
+    # TODO Implement
+  end
+  
+  cross_test "cannot use an up mirror file to delete the group record itself" do
+    # TODO Implement
+  end
+  
+  cross_test "cannot use a down mirror file to delete the group record itself" do
     # TODO Implement
   end
   
