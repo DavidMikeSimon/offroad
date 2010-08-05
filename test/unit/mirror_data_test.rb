@@ -419,4 +419,8 @@ class MirrorDataTest < Test::Unit::TestCase
   cross_test "mirror files do not include deletion requests for records known to be deleted on remote system" do
     # TODO Implement
   end
+  
+  cross_test "deleting received records also deletes received record state" do
+    # TODO Implement
+  end
 end

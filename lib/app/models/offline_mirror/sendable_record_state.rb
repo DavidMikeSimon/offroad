@@ -11,7 +11,7 @@ module OfflineMirror
       :model_state_id => ModelState::find_or_create_by_model(model).id
     } } }
     
-    named_scope :for_deleted_records, :conditions => { :local_record_id => 0 }
+    named_scope :for_deleted_records, :conditions => { :deleted => true }
     
     def app_record
       model_state.app_model.find(local_record_id)
@@ -24,7 +24,7 @@ module OfflineMirror
     
     def self.note_record_destroyed(record)
       mark_record_changes(record) do |rec|
-        rec.local_record_id = 0
+        rec.deleted = true
       end
     end
     

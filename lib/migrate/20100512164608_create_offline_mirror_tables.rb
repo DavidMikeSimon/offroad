@@ -39,6 +39,7 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
       t.column :model_state_id, :integer, :null => false
       t.column :local_record_id, :integer, :null => false # If 0, record doesn't exist in this app (it has been deleted)
       t.column :mirror_version, :integer, :default => 0, :null => false
+      t.column :deleted, :boolean, :default => false, :null => false
     end
     # This index is for locating the SRS for any given local app record
     add_index :offline_mirror_sendable_record_states, [:local_record_id, :model_state_id], :unique => true
