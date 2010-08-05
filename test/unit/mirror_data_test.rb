@@ -234,22 +234,40 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-  cross_test "can insert and update global records using a down mirror file" do
+  cross_test "can insert and update and delete global records using a down mirror file" do
     mirror_data = ""
+
+    in_online_app do
+      GlobalRecord.create(:title => "ABC")
+      GlobalRecord.create(:title => "123")
+      
+      StringIO.open do |sio|
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
+        writer.write_downwards_data
+        mirror_data = sio.string
+      end
+    end
     
+    offline_number_rec_id = nil
     in_offline_app do
-      global_data_a = GlobalRecord.new(:title => "XYZ")
-      force_save_and_reload(global_data_a)
-      assert_equal 1, global_data_a.id
-      force_consider_as_mirrored(global_data_a)
+      assert_equal 0, GlobalRecord.count
+      
+      reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
+      reader.load_downwards_data
+      
+      assert_equal 2, GlobalRecord.count
+      assert_not_nil GlobalRecord.find_by_title("ABC")
+      assert_not_nil GlobalRecord.find_by_title("123")
+      offline_number_rec_id = GlobalRecord.find_by_title("123")
     end
     
     in_online_app do
-      global_data_a = GlobalRecord.new(:title => "ABC")
-      global_data_b = GlobalRecord.new(:title => "123")
-      force_save_and_reload(global_data_a, global_data_b)
-      assert_equal 1, global_data_a.id
-      force_consider_as_mirrored(global_data_a, global_data_b)
+      number_rec = GlobalRecord.find_by_title("123")
+      number_rec.title = "789"
+      number_rec.save!
+
+      letter_rec = GlobalRecord.find_by_title("ABC")
+      letter_rec.destroy
       
       StringIO.open do |sio|
         writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
@@ -261,41 +279,12 @@ class MirrorDataTest < Test::Unit::TestCase
     in_offline_app do
       reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
       reader.load_downwards_data
-      assert_equal 1, GlobalRecord.find_by_title("ABC").id
-      assert GlobalRecord.find_by_title("123")
-      assert_equal nil, GlobalRecord.find_by_title("XYZ")
-    end
-  end
-  
-  cross_test "can delete global records using a down mirror file" do
-    in_offline_app do
-      global_data_1 = GlobalRecord.new(:title => "Test 1")
-      global_data_2 = GlobalRecord.new(:title => "Test 2")
-      force_save_and_reload(global_data_1, global_data_2)
-      force_consider_as_mirrored(global_data_1, global_data_2)
-    end
-    
-    mirror_data = ""
-    in_online_app do
-      global_data_1 = GlobalRecord.new(:title => "Test 1")
-      global_data_2 = GlobalRecord.new(:title => "Test 2")
-      force_save_and_reload(global_data_1, global_data_2)
-      force_consider_as_mirrored(global_data_1, global_data_2)
-      global_data_1.destroy
-      StringIO.open do |sio|
-        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
-        writer.write_downwards_data
-        mirror_data = sio.string
-      end
-    end
-    
-    in_offline_app do
-      assert_equal 2, GlobalRecord.count
-      reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
-      reader.load_downwards_data
+
       assert_equal 1, GlobalRecord.count
-      assert_equal nil, GlobalRecord.find_by_title("Test 1")
-      assert GlobalRecord.find_by_title("Test 2")
+      assert_nil GlobalRecord.find_by_title("ABC")
+      assert_nil GlobalRecord.find_by_title("123")
+      assert_not_nil GlobalRecord.find_by_title("789")
+      assert_equal offline_number_rec_id, GlobalRecord.find_by_title("789")
     end
   end
   

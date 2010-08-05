@@ -41,5 +41,4 @@
 	- Has the same mirror version as online, or
 	- Has prior version to online, or
 	- Has newer version than online (this shouldn't require any special handling...)
-- Scenario to deal with: offline app loses its offline_mirror_* table
-	- It should be possible to handle this case by just sending out an up-mirror file that solicits an initial down-mirror file
+- Scenario to deal with: turning an online app into an offline app, then online again, then offline again, with data xfer happening at each stage

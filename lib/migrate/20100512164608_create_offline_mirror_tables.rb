@@ -37,7 +37,6 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
     
     create_table :offline_mirror_sendable_record_states do |t|
       t.column :model_state_id, :integer, :null => false
-      t.column :group_state_id, :integer, :null => false
       t.column :local_record_id, :integer, :null => false # If 0, record doesn't exist in this app (it has been deleted)
       t.column :remote_record_id, :integer, :null => false # If 0, record might not exist in the remote app (i.e. hasn't yet been created)
       t.column :mirror_version, :integer, :default => 0, :null => false

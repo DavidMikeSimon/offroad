@@ -23,18 +23,6 @@ module OfflineMirror
       # We should have deleted all the options from the hash by this point
       raise ModelError.new("Unknown or inapplicable option(s) specified") unless opts.size == 0
       
-      if offline_mirror_group_data?
-        include GroupDataInstanceMethods
-      else
-        include GlobalDataInstanceMethods
-      end
-      include CommonInstanceMethods
-      
-      before_destroy :before_mirrored_data_destroy
-      after_destroy :after_mirrored_data_destroy
-      before_save :before_mirrored_data_save
-      after_save :after_mirrored_data_save
-      
       case mode
       when :group_base then
         named_scope :owned_by_offline_mirror_group, lambda { |group| { :conditions => { :id => group.id } } }
@@ -48,10 +36,21 @@ module OfflineMirror
         :foreign_key => 'local_record_id',
         :conditions => {:model_state_id => '#{offline_mirror_model_state.id}'}
       )
+      
+      if offline_mirror_group_data?
+        include GroupDataInstanceMethods
+      else
+        include GlobalDataInstanceMethods
+      end
+      include CommonInstanceMethods
+      
+      before_destroy :before_mirrored_data_destroy
+      after_destroy :after_mirrored_data_destroy
+      before_save :before_mirrored_data_save
+      after_save :after_mirrored_data_save
     end
     
     def offline_mirror_model_state
-      # TODO : Check if this class method is really necessary
       OfflineMirror::ModelState::find_or_create_by_model(self)
     end
     
@@ -82,7 +81,7 @@ module OfflineMirror
     
     module CommonInstanceMethods
       # Methods below this point are only to be used internally by OfflineMirror
-      # However, marking all of them private would make using them from elsewhere in the plugin troublesome
+      # However, making all of them private would make using them from elsewhere in the plugin troublesome
       
       #:nodoc:#
       def bypass_offline_mirror_readonly_checks

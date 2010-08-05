@@ -33,7 +33,7 @@ module OfflineMirror
         
         # If this group has no confirmed down mirror, also include all group data to be the offline app's initial state
         if @group.group_state.down_mirror_version == 0
-          add_group_specific_cargo
+          add_group_specific_cargo(@group)
         end
       end
     end
@@ -97,12 +97,11 @@ module OfflineMirror
       raise PluginError.new("Invalid app mode") unless ["online", "offline"].include?(mode)
     end
     
-    def add_group_specific_cargo
-      # FIXME: Test that when this is called by the online app, it doesn't put group-specific junk in sendable_records
+    def add_group_specific_cargo(group = nil)
       OfflineMirror::group_owned_models.each do |name, cls|
-        add_model_cargo(cls, @group)
+        add_model_cargo(cls, group)
       end
-      add_model_cargo(OfflineMirror::group_base_model, @group)
+      add_model_cargo(OfflineMirror::group_base_model, group)
     end
     
     def add_global_cargo
@@ -118,12 +117,11 @@ module OfflineMirror
       data_source = model
       data_source = data_source.owned_by_offline_mirror_group(group) if group
       data_source.find_in_batches(:batch_size => 100, :include => [:offline_mirror_sendable_record_state] ) do |batch|
-        @cs.write_cargo_section(data_cargo_name_for_model(model), batch) # FIXME This actually won't encode the SRS itself
+        @cs.write_cargo_section(data_cargo_name_for_model(model), batch)
       end
       
-      # Also need to include srs entries for records that have been destroyed
+      # Also need to include information about records that have been destroyed
       deletion_source = SendableRecordState.for_model(model).for_deleted_records
-      deletion_source = deletion_source.for_group(group) if group
       deletion_source.find_in_batches(:batch_size => 100) do |batch|
         @cs.write_cargo_section(deletion_cargo_name_for_model(model), batch)
       end
@@ -142,14 +140,31 @@ module OfflineMirror
       end
     end
     
-    def import_model_cargo(model, options = {})
-      # Load the actual model data
+    def import_model_cargo(model)
+      # Update/create records
       @cs.each_cargo_section(data_cargo_name_for_model(model)) do |batch|
         batch.each do |cargo_record|
-          db_record = model.find_or_initialize_by_id(cargo_record.id)
+          # Need ReceivableRecordState because otherwise we're unable to deal with this situation:
+          # - Get a mirror file
+          # - Before it gets confirmation for first mirror file, source updates, sends another mirror file, we accept that one too
+          # How can we figure out which records 2nd mirror file updates unless we know the remote id of records we've received?
+          # Requiring that each mirror in one direction be matched by another in the other direction will cause user headaches.
+          # Also, remote_record_id cannot belong in SendableRecordState, because there's more than one remote record id for global records.
+          # Face it, the situation demands it, you're gonna need RRS's, buck up.
+          # Remember to blow away the RRS's when turning an offline group into an online group.
+          #local_rrs = OfflineMirror::ReceivableRecordState.for_model(model).find_by_remote_record_id(cargo_srs.local_record_id)
+          db_record = model.new
           db_record.bypass_offline_mirror_readonly_checks
           db_record.attributes = cargo_record.attributes
           db_record.save!
+          
+          # An SRS will have been created for the new record if this is an initial group data file
+          # If so, we need to associate this record back to the remote side's original record for up mirroring
+          db_srs = db_record.offline_mirror_sendable_record_state
+          if db_srs
+            db_srs.remote_record_id = cargo_record.id
+            db_srs.save!
+          end
         end
       end
       
