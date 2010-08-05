@@ -111,8 +111,6 @@ module OfflineMirror
     end
     
     def add_model_cargo(model, group = nil)
-      # FIXME: Check against mirror version
-      
       # Include the data for relevant records in this model
       data_source = model
       data_source = data_source.owned_by_offline_mirror_group(group) if group
@@ -140,40 +138,35 @@ module OfflineMirror
       end
     end
     
-    def import_model_cargo(model)
+    def import_model_cargo(model, group = nil)
+      rrs_source = OfflineMirror::ReceivedRecordState.for_model(model).for_group(group)
+      
       # Update/create records
       @cs.each_cargo_section(data_cargo_name_for_model(model)) do |batch|
         batch.each do |cargo_record|
-          # Need ReceivableRecordState because otherwise we're unable to deal with this situation:
-          # - Get a mirror file
-          # - Before it gets confirmation for first mirror file, source updates, sends another mirror file, we accept that one too
-          # How can we figure out which records 2nd mirror file updates unless we know the remote id of records we've received?
-          # Requiring that each mirror in one direction be matched by another in the other direction will cause user headaches.
-          # Also, remote_record_id cannot belong in SendableRecordState, because there's more than one remote record id for global records.
-          # Face it, the situation demands it, you're gonna need RRS's, buck up.
-          # Remember to blow away the RRS's when turning an offline group into an online group.
-          #local_rrs = OfflineMirror::ReceivableRecordState.for_model(model).find_by_remote_record_id(cargo_srs.local_record_id)
-          db_record = model.new
-          db_record.bypass_offline_mirror_readonly_checks
-          db_record.attributes = cargo_record.attributes
-          db_record.save!
+          # Update the record if we can find it by the RRS, create a new record if we cannot
+          rrs = rrs_source.find_by_remote_record_id(cargo_record.id)
+          local_record = rrs ? rrs.app_record : model.new
+          local_record.bypass_offline_mirror_readonly_checks
+          local_record.attributes = cargo_record.attributes
+          local_record.save!
           
-          # An SRS will have been created for the new record if this is an initial group data file
-          # If so, we need to associate this record back to the remote side's original record for up mirroring
-          db_srs = db_record.offline_mirror_sendable_record_state
-          if db_srs
-            db_srs.remote_record_id = cargo_record.id
-            db_srs.save!
+          # An SRS will have been created for the new record if this record belongs to us
+          # If not, it belongs to remote, so create an RSS for this record if it doesn't already have one
+          unless local_record.offline_mirror_sendable_record_state || rrs
+            rrs_source.create(:local_record_id => local_record.id, :remote_record_id => cargo_record.id)
           end
         end
       end
       
       # Destroy records here which were destroyed there
       @cs.each_cargo_section(deletion_cargo_name_for_model(model)) do |batch|
-        id_list = batch.map { |srs| srs.remote_record_id } # Their remote id is our local id
-        model.all(:conditions => {:id => id_list}).each do |rec|
-          rec.bypass_offline_mirror_readonly_checks
-          rec.destroy
+        batch.each do |deletion_srs|
+          rrs = rrs_source.find_by_remote_record_id(deletion_srs.local_record_id)
+          raise DataError.new("Invalid remote id") unless rrs
+          local_record = rrs.app_record
+          local_record.bypass_offline_mirror_readonly_checks
+          local_record.destroy
         end
       end
     end

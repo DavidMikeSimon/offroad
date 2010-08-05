@@ -37,6 +37,16 @@ module OfflineMirror
         :conditions => {:model_state_id => '#{offline_mirror_model_state.id}'}
       )
       
+      # Not all records will have a ReceivedRecordState, only those which belong to remote and are mirrored to here
+      has_one(:offline_mirror_received_record_state,
+        :class_name => 'OfflineMirror::ReceivedRecordState',
+        :foreign_key => 'local_record_id',
+        :conditions => {
+          :model_state_id => '#{offline_mirror_model_state.id}',
+          :group_state_id => '#{self.class.offline_mirror_group_data? ? group_state.id : 0}'
+        }
+      )
+      
       if offline_mirror_group_data?
         include GroupDataInstanceMethods
       else
@@ -136,6 +146,9 @@ module OfflineMirror
     module GlobalDataInstanceMethods
       # Methods below this point are only to be used internally by OfflineMirror
       # However, marking all of them private would make using them from elsewhere in the plugin troublesome
+      
+      # TODO Should put common save and destroy wrappers in here, with access to a method that checks if SRS needed
+      # TODO That method should also be used in import_model_cargo instead of explicitly tryin to find the srs
       
       #:nodoc#
       def before_mirrored_data_destroy
@@ -295,6 +308,8 @@ module OfflineMirror
         
         return true
       end
+      
+      # TODO Should probably prefix the below with "offline_mirror_" to avoid potential name collisions
       
       #:nodoc#
       def group_state

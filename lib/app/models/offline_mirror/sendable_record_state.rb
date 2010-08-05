@@ -17,6 +17,7 @@ module OfflineMirror
       model_state.app_model.find(local_record_id)
     end
     
+    # We put SRS records in mirror files to represent deleted records
     def self.safe_to_load_from_cargo_stream?
       true
     end
@@ -44,8 +45,7 @@ module OfflineMirror
       
       return find_or_initialize_by_model_state_id_and_local_record_id(
         :model_state_id => model_state_id,
-        :local_record_id => rec.id,
-        :remote_record_id => 0
+        :local_record_id => rec.id
       )
     end
     

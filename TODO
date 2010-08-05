@@ -33,12 +33,18 @@
 - Remove offline_group_id system setting; don't really need it, since there should only be one group record
   - On that note, in offline app ensure that there is only one group record
 - When loading records, add higher records first (that is, the records that lower records belong_to)
+- At online app: When turning an offline group into an online group, delete its RRS's
 
-- Scenario to deal with: offline app applies an initial down mirror, then makes local changes, then attempts to reapply _another_ initial down mirror
+Scenarios to deal with:
+
+- Offline app applies an initial down mirror, then makes local changes, then attempts to reapply _another_ initial down mirror
  - To deal with this, just ignore all non-global records in the second initial down mirror, since they should be identical
-- Scenario to deal with: offline app creates an up-mirror, makes local changes, then up-mirror is applied and confirmed. Are local changes version-lost?
-- Scenario to deal with: offline app reverts to a prior backup, and prior backup either:
+- Offline app creates an up-mirror, makes local changes, then up-mirror is applied and confirmed. Are local changes version-lost?
+- Offline app reverts to a prior backup, and prior backup either:
 	- Has the same mirror version as online, or
 	- Has prior version to online, or
 	- Has newer version than online (this shouldn't require any special handling...)
-- Scenario to deal with: turning an online app into an offline app, then online again, then offline again, with data xfer happening at each stage
+- Turning an online app into an offline app, then online again, then offline again, with data xfer happening at each stage
+- Online app receives a mirror file, then offline updates and sends another mirror file, without receiving confirmation of first
+- Online app can delete entire offline group, in which case offline should revert to pre-initial-down-mirror state
+- Offline app attempts to delete offline group on online app: this should not be possible

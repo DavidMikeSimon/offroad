@@ -38,13 +38,22 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
     create_table :offline_mirror_sendable_record_states do |t|
       t.column :model_state_id, :integer, :null => false
       t.column :local_record_id, :integer, :null => false # If 0, record doesn't exist in this app (it has been deleted)
-      t.column :remote_record_id, :integer, :null => false # If 0, record might not exist in the remote app (i.e. hasn't yet been created)
       t.column :mirror_version, :integer, :default => 0, :null => false
     end
-    # This index is for locating the MirroredRecord model for any given local app record
-    add_index :offline_mirror_sendable_record_states, [:local_record_id, :model_state_id]
-    # This index is for generating mirror files, where for each model we need to find everything above a given mirror_version
+    # This index is for locating the SRS for any given local app record
+    add_index :offline_mirror_sendable_record_states, [:local_record_id, :model_state_id], :unique => true
+    # This index is for generating mirror files: for a given model need to find everything above a given mirror_version
     add_index :offline_mirror_sendable_record_states, [:model_state_id, :mirror_version]
+    
+    create_table :offline_mirror_received_record_states do |t|
+      t.column :model_state_id, :integer, :null => false
+      t.column :group_state_id, :integer, :null => false # If 0, is a global record
+      t.column :local_record_id, :integer, :null => false
+      t.column :remote_record_id, :integer, :null => false
+    end
+    add_index :offline_mirror_received_record_states, [:model_state_id, :group_state_id, :remote_record_id], :unique => true
+    # TODO: Perhaps index below can be removed; it enforces data integrity, but isn't actually used for lookups
+    add_index :offline_mirror_received_record_states, [:model_state_id, :local_record_id], :unique => true
   end
   
   def self.down
