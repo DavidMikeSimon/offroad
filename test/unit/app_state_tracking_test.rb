@@ -17,7 +17,6 @@ class AppStateTrackingTest < Test::Unit::TestCase
   
   def assert_newly_created_record_matches_state(rec, rec_state)
     assert_equal rec.id, rec_state.local_record_id, "SendableRecordState has correct record id"
-    assert_equal 0, rec_state.remote_record_id, "SendableRecordState has no remote record id prior to mirror confirm"
     cur_version = OfflineMirror::SystemState::current_mirror_version
     assert_equal cur_version, rec_state.mirror_version, "SendableRecordState has correct mirror version"
   end
@@ -50,9 +49,6 @@ class AppStateTrackingTest < Test::Unit::TestCase
     rec_state = find_record_state_from_record(rec)
     assert_equal "GroupOwnedRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
     assert_newly_created_record_matches_state(rec, rec_state)
-    
-    group_state = OfflineMirror::GroupState::find_by_app_group_id(rec.group_id)
-    assert_equal group_state.id, rec_state.group_state_id
   end
   
   online_test "creating group owned record does not cause creation of record state" do
@@ -106,13 +102,14 @@ class AppStateTrackingTest < Test::Unit::TestCase
   
   def assert_deleting_record_correctly_updated_record_state(rec)
     rec_state = find_record_state_from_record(rec)
+    assert_equal false, rec_state.deleted, "By default deleted flag is false"
     original_version = OfflineMirror::SystemState::current_mirror_version
     OfflineMirror::SystemState::increment_mirror_version
     
     rec.destroy
     rec_state.reload
     assert_equal original_version+1, rec_state.mirror_version, "Deleting record updated version"
-    assert_equal 0, rec_state.local_record_id, "Deleting record set local id to 0"
+    assert_equal true, rec_state.deleted, "Deleting record deleted flag to true"
     # TODO If a record was never part of any mirror file, just destroy the record state as well on its destruction
     # This implies that we need a test here that involves creating a fake mirror file
   end
@@ -163,20 +160,20 @@ class AppStateTrackingTest < Test::Unit::TestCase
     end
   end
   
-  def assert_method_only_works_on_saved_mirrored_records(method_name, test_class)
+  def assert_method_only_works_on_saved_mirrored_records(method_name)
     unmirrored_rec = UnmirroredRecord.create(:content => "Test")
     assert_raise OfflineMirror::ModelError do
-      test_class.send(method_name, unmirrored_rec)
+      OfflineMirror::SendableRecordState.send(method_name, unmirrored_rec)
     end
     
     group_rec = GroupOwnedRecord.new(:description => "Test", :group => @editable_group)
     assert_raise OfflineMirror::DataError do
-      test_class.send(method_name, group_rec)
+      OfflineMirror::SendableRecordState.send(method_name, group_rec)
     end
     
     group_rec.save!
     assert_nothing_raised do
-      test_class.send(method_name, group_rec)
+      OfflineMirror::SendableRecordState.send(method_name, group_rec)
     end
   end
   
@@ -201,15 +198,15 @@ class AppStateTrackingTest < Test::Unit::TestCase
   end
   
   double_test "can only find_or_initialize sendable record state of records whose models act_as_mirrored_offline" do
-    assert_method_only_works_on_saved_mirrored_records :find_or_initialize_by_record, SendableRecordState
+    assert_method_only_works_on_saved_mirrored_records :find_or_initialize_by_record
   end
   
   double_test "can note create/update on saved records whose models act_as_mirrored_offline" do
-    assert_method_only_works_on_saved_mirrored_records :note_record_created_or_updated, SendableRecordState
+    assert_method_only_works_on_saved_mirrored_records :note_record_created_or_updated
   end
   
   double_test "can only note deletion on saved records whose models act_as_mirrored_offline" do
-    assert_method_only_works_on_saved_mirrored_records :note_record_destroyed, SendableRecordState
+    assert_method_only_works_on_saved_mirrored_records :note_record_destroyed
   end
   
   offline_test "cannot auto-generate system settings" do

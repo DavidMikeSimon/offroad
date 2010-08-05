@@ -153,7 +153,8 @@ module OfflineMirror
           
           # An SRS will have been created for the new record if this record belongs to us
           # If not, it belongs to remote, so create an RSS for this record if it doesn't already have one
-          unless local_record.offline_mirror_sendable_record_state || rrs
+          # FIXME This is a terrible way to check if we need to create an RRS
+          unless !local_record.offline_mirror_sendable_record_state.new_record? || rrs
             ReceivedRecordState.create_by_record_and_remote_record_id(local_record, cargo_record.id)
           end
         end

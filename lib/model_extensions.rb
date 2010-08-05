@@ -79,7 +79,7 @@ module OfflineMirror
       #:nodoc:#
       def offline_mirror_sendable_record_state
         # Not all records will have a SendableRecordState, only those which belong to here and are mirrored to elsewhere
-        SendableRecordState.find_or_create_by_record(self)
+        SendableRecordState.find_or_initialize_by_record(self)
       end
       
       #:nodoc:#

@@ -22,6 +22,27 @@ module OfflineMirror
     end
     
     def self.create_by_record_and_remote_record_id(rec, remote_record_id)
+      ensure_record_is_acceptable(rec)
+      create(
+        :model_state_id => rec.class.offline_mirror_model_state.id,
+        :group_state_id => rec.class.offline_mirror_group_data? ? rec.group_state.id : 0,
+        :local_record_id => rec.id,
+        :remote_record_id => remote_record_id
+      )
+    end
+    
+    def self.find_by_record(rec)
+      ensure_record_is_acceptable(rec)
+      first(:conditions => {
+        :model_state_id => rec.class.offline_mirror_model_state.id,
+        :group_state_id => rec.class.offline_mirror_group_data? ? rec.group_state.id : 0,
+        :local_record_id => rec.id
+      })
+    end
+    
+    private
+    
+    def self.ensure_record_is_acceptable(rec)
       if rec.new_record?
         raise DataError.new("Cannot build record state for unsaved record")
       end
@@ -29,13 +50,6 @@ module OfflineMirror
       unless rec.class.acts_as_mirrored_offline?
         raise ModelError.new("Cannot build record state for unmirrored record")
       end
-      
-      create(
-        :model_state_id => rec.class.offline_mirror_model_state.id,
-        :group_state_id => rec.class.offline_mirror_group_data? ? rec.group_state.id : 0,
-        :local_record_id => rec.id,
-        :remote_record_id => remote_record_id
-      )
     end
   end
 end

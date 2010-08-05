@@ -158,10 +158,8 @@ class MirrorDataTest < Test::Unit::TestCase
   
   offline_test "up mirror files do not include irrelevant records" do
     # TODO Check for irrelevant deletions
-    fake_offline_group = Group.new(:name => "Another Group")
-    fake_group_data = GroupOwnedRecord.new(:description => "Another Data", :group => fake_offline_group)
     fake_global_data = GlobalRecord.new(:title => "Fake Stuff")
-    force_save_and_reload(fake_offline_group, fake_group_data, fake_global_data)
+    force_save_and_reload(fake_global_data)
     
     content = StringIO.new
     writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"])
@@ -169,11 +167,7 @@ class MirrorDataTest < Test::Unit::TestCase
     
     content.rewind
     cs = OfflineMirror::CargoStreamer.new(content, "r")
-    assert_record_not_present cs, fake_offline_group
-    assert_record_not_present cs, fake_group_data
     assert_record_not_present cs, fake_global_data
-    assert_single_model_cargo_entry_matches cs, @offline_group
-    assert_single_model_cargo_entry_matches cs, @offline_group_data
   end
   
   offline_test "cannot upload an invalid down mirror file" do
@@ -403,8 +397,9 @@ class MirrorDataTest < Test::Unit::TestCase
       reader = OfflineMirror::MirrorData.new(nil, mirror_data)
       reader.load_downwards_data
       another_offline_rec = GroupOwnedRecord.find_by_description("One More")
-      srs = OfflineMirror::SendableRecordState::find_or_initialize_by_record(another_offline_rec)
-      assert_equal online_id_of_offline_rec, srs.remote_record_id
+      rrs = OfflineMirror::ReceivedRecordState::find_by_record(another_offline_rec)
+      # FIXME FIXME FIXME : Need to assert here that the actual offline id matches remote_record_id in online app's RRS
+      flunk
     end
   end
   
