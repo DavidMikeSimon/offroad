@@ -223,15 +223,16 @@ class OnlineTestDatabase < VirtualTestDatabase
     offline_group = Group.new(:name => "An Offline Group")
     online_group = Group.new(:name => "An Online Group")
     force_save_and_reload(offline_group, online_group)
-    offline_group.create_offline_mirror_received_record_state(:remote_record_id => 1) # Pretend data came from offline
+    # Pretend data came from offline
     offline_group.group_offline = true
+    OfflineMirror::ReceivedRecordState.create_by_record_and_remote_record_id(offline_group, 1) # Data came from offline
     setup_ivar(:@offline_group, offline_group)
     setup_ivar(:@online_group, online_group)
     
     offline_data = GroupOwnedRecord.new( :description => "Sam", :group => offline_group)
     online_data = GroupOwnedRecord.new(:description => "Max", :group => online_group)
     force_save_and_reload(offline_data, online_data)
-    offline_data.create_offline_mirror_received_record_state(:remote_record_id => 1) # Pretend data came from offline
+    OfflineMirror::ReceivedRecordState.create_by_record_and_remote_record_id(offline_data, 1) # Data came from offline
     setup_ivar(:@offline_group_data, offline_data)
     setup_ivar(:@online_group_data, online_data)
     

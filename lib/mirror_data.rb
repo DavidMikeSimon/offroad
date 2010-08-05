@@ -114,7 +114,7 @@ module OfflineMirror
       # Include the data for relevant records in this model
       data_source = model
       data_source = data_source.owned_by_offline_mirror_group(group) if group
-      data_source.find_in_batches(:batch_size => 100, :include => [:offline_mirror_sendable_record_state] ) do |batch|
+      data_source.find_in_batches(:batch_size => 100) do |batch|
         @cs.write_cargo_section(data_cargo_name_for_model(model), batch)
       end
       
@@ -126,9 +126,9 @@ module OfflineMirror
     end
     
     def import_group_specific_cargo
-      import_model_cargo(OfflineMirror::group_base_model)
+      import_model_cargo(OfflineMirror::group_base_model, @group)
       OfflineMirror::group_owned_models.each do |name, cls|
-        import_model_cargo(cls)
+        import_model_cargo(cls, @group)
       end
     end
     
@@ -154,7 +154,7 @@ module OfflineMirror
           # An SRS will have been created for the new record if this record belongs to us
           # If not, it belongs to remote, so create an RSS for this record if it doesn't already have one
           unless local_record.offline_mirror_sendable_record_state || rrs
-            rrs_source.create(:local_record_id => local_record.id, :remote_record_id => cargo_record.id)
+            ReceivedRecordState.create_by_record_and_remote_record_id(local_record, cargo_record.id)
           end
         end
       end
@@ -167,6 +167,7 @@ module OfflineMirror
           local_record = rrs.app_record
           local_record.bypass_offline_mirror_readonly_checks
           local_record.destroy
+          rrs.destroy
         end
       end
     end

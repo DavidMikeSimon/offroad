@@ -23,14 +23,25 @@ class AppStateTrackingTest < Test::Unit::TestCase
   end
   
   online_test "creating group base record causes creation of valid state data" do
+    # TODO This should only work when the group is offline; online, no state data should be created
     prior_group_state_count = OfflineMirror::GroupState::count
     rec = Group.create(:name => "Foo Bar")
+    
+    # TODO Check record state
     
     group_state = OfflineMirror::GroupState::find_by_app_group_id(rec.id)
     assert_equal prior_group_state_count+1, OfflineMirror::GroupState::count, "GroupState was created on demand"
     assert_equal rec.id, group_state.app_group_id, "GroupState has correct app group id"
     assert_equal 0, group_state.up_mirror_version, "As-yet un-mirrored group has an up mirror version of 0"
     assert_equal 0, group_state.down_mirror_version, "As-yet un-mirrored group has a down mirror version of 0"
+  end
+  
+  online_test "state data is created when online group is made offline" do
+    # TODO Implement
+  end
+  
+  online_test "state data is destroyed when offline group is made online" do
+    # TODO Implement
   end
   
   offline_test "creating group owned record causes creation of valid state data" do
@@ -152,33 +163,53 @@ class AppStateTrackingTest < Test::Unit::TestCase
     end
   end
   
-  def assert_record_state_method_only_works_on_saved_mirrored_records(name)
+  def assert_method_only_works_on_saved_mirrored_records(method_name, test_class)
     unmirrored_rec = UnmirroredRecord.create(:content => "Test")
     assert_raise OfflineMirror::ModelError do
-      OfflineMirror::SendableRecordState.send(name, unmirrored_rec)
+      test_class.send(method_name, unmirrored_rec)
     end
     
     group_rec = GroupOwnedRecord.new(:description => "Test", :group => @editable_group)
     assert_raise OfflineMirror::DataError do
-      OfflineMirror::SendableRecordState.send(name, group_rec)
+      test_class.send(method_name, group_rec)
     end
     
     group_rec.save!
     assert_nothing_raised do
-      OfflineMirror::SendableRecordState.send(name, group_rec)
+      test_class.send(method_name, group_rec)
     end
   end
   
-  double_test "can only find_or_initialize record state of records whose models act_as_mirrored_offline" do
-    assert_record_state_method_only_works_on_saved_mirrored_records :find_or_initialize_by_record
+  double_test "can only create receivable record state of records whose models act_as_mirrored_offline" do
+    # TODO Implement
+  end
+  
+  online_test "can only create receivable record state of offline group data records" do
+    # TODO Implement
+  end
+  
+  online_test "can only create sendable record state of global data records" do
+    # TODO Implement
+  end
+  
+  offline_test "can only create receivable record state of global data records" do
+    # TODO Implement
+  end
+  
+  online_test "can only create sendable record state of group data records" do
+    # TODO Implement
+  end
+  
+  double_test "can only find_or_initialize sendable record state of records whose models act_as_mirrored_offline" do
+    assert_method_only_works_on_saved_mirrored_records :find_or_initialize_by_record, SendableRecordState
   end
   
   double_test "can note create/update on saved records whose models act_as_mirrored_offline" do
-    assert_record_state_method_only_works_on_saved_mirrored_records :note_record_created_or_updated
+    assert_method_only_works_on_saved_mirrored_records :note_record_created_or_updated, SendableRecordState
   end
   
   double_test "can only note deletion on saved records whose models act_as_mirrored_offline" do
-    assert_record_state_method_only_works_on_saved_mirrored_records :note_record_destroyed
+    assert_method_only_works_on_saved_mirrored_records :note_record_destroyed, SendableRecordState
   end
   
   offline_test "cannot auto-generate system settings" do

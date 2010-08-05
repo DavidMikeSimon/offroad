@@ -30,23 +30,6 @@ module OfflineMirror
         named_scope :owned_by_offline_mirror_group, lambda { |group| { :conditions => { offline_mirror_group_key => group.id } } }
       end
       
-      # Not all records will have a SendableRecordState, only those which belong to here and are mirrored to elsewhere
-      has_one(:offline_mirror_sendable_record_state,
-        :class_name => 'OfflineMirror::SendableRecordState',
-        :foreign_key => 'local_record_id',
-        :conditions => {:model_state_id => '#{offline_mirror_model_state.id}'}
-      )
-      
-      # Not all records will have a ReceivedRecordState, only those which belong to remote and are mirrored to here
-      has_one(:offline_mirror_received_record_state,
-        :class_name => 'OfflineMirror::ReceivedRecordState',
-        :foreign_key => 'local_record_id',
-        :conditions => {
-          :model_state_id => '#{offline_mirror_model_state.id}',
-          :group_state_id => '#{self.class.offline_mirror_group_data? ? group_state.id : 0}'
-        }
-      )
-      
       if offline_mirror_group_data?
         include GroupDataInstanceMethods
       else
@@ -94,14 +77,14 @@ module OfflineMirror
       # However, making all of them private would make using them from elsewhere in the plugin troublesome
       
       #:nodoc:#
-      def bypass_offline_mirror_readonly_checks
-        @offline_mirror_readonly_bypassed = true
+      def offline_mirror_sendable_record_state
+        # Not all records will have a SendableRecordState, only those which belong to here and are mirrored to elsewhere
+        SendableRecordState.find_or_create_by_record(self)
       end
       
       #:nodoc:#
-      def offline_mirror_model_state
-        # TODO : Check if this instance level method is really necessary
-        self.class.offline_mirror_model_state
+      def bypass_offline_mirror_readonly_checks
+        @offline_mirror_readonly_bypassed = true
       end
       
       #:nodoc:#

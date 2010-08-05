@@ -8,7 +8,7 @@ module OfflineMirror
     
     def self.find_or_create_by_model(cls, opts = {})
       ensure_mirrored_model(cls)
-      find_or_create_by_app_model_name(cls.to_s, opts)
+      x = find_or_create_by_app_model_name(cls.to_s, opts)
     end
 
     def app_model

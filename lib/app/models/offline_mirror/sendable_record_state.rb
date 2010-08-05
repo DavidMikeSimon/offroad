@@ -32,6 +32,12 @@ module OfflineMirror
       mark_record_changes(record)
     end
     
+    def self.find_or_create_by_record(rec)
+      srs = find_or_initialize_by_record(rec)
+      srs.save! if srs.new_record?
+      return srs
+    end
+    
     def self.find_or_initialize_by_record(rec)
       if rec.new_record?
         raise DataError.new("Cannot build record state for unsaved record")
@@ -41,10 +47,8 @@ module OfflineMirror
         raise ModelError.new("Cannot build record state for unmirrored record")
       end
       
-      model_state_id = ModelState::find_or_create_by_model(rec.class).id
-      
       return find_or_initialize_by_model_state_id_and_local_record_id(
-        :model_state_id => model_state_id,
+        :model_state_id => rec.class.offline_mirror_model_state.id,
         :local_record_id => rec.id
       )
     end
