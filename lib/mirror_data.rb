@@ -4,8 +4,9 @@ module OfflineMirror
   class MirrorData
     attr_reader :group, :mode
     
-    def initialize(group, data)
+    def initialize(group, data, options = {})
       @group = group
+      @initial_mode = options[:initial_mode] || false
       
       # CargoStreamer
       @cs = case data
@@ -20,20 +21,16 @@ module OfflineMirror
     
     def write_upwards_data
       write_data do
-        add_group_specific_cargo(@group)
+        add_group_specific_cargo
       end
     end
     
     def write_downwards_data
       write_data do
         add_global_cargo
-      end
-    end
-    
-    def write_initial_downwards_data
-      write_data(true) do
-        add_global_cargo(true)
-        add_group_specific_cargo(@group, true)
+        if @initial_mode
+          add_group_specific_cargo
+        end
       end
     end
     
@@ -41,7 +38,7 @@ module OfflineMirror
       raise PluginError.new("Can only load upwards data in online mode") unless OfflineMirror.app_online?
       
       read_data_from("offline") do |mirror_info|
-        import_group_specific_cargo(@group)
+        import_group_specific_cargo
       end
     end
     
@@ -49,7 +46,7 @@ module OfflineMirror
       raise PluginError.new("Can only load downwards data in offline mode") unless OfflineMirror.app_offline?
       
       read_data_from("online") do |mirror_info|
-        raise PluginError.new("Unexpected initial file value") unless mirror_info.initial_file == (@group == nil)
+        raise PluginError.new("Unexpected initial file value") unless mirror_info.initial_file == @initial_mode
         
         group_cargo_name = data_cargo_name_for_model(OfflineMirror::group_base_model)
         if mirror_info.initial_file
@@ -63,7 +60,7 @@ module OfflineMirror
             :offline_group_id => @cs.first_cargo_element(group_cargo_name).id
           ) or raise PluginError.new("Cannot create valid system state from initial down mirror file")
           import_global_cargo # Global cargo must be done first because group data might belong_to global data
-          import_group_specific_cargo(@group, true)
+          import_group_specific_cargo
         elsif SystemState.count == 0
           # If there's no SystemState, then we can't accept non-initial down mirror files
           raise DataError.new("Initial down mirror file required")
@@ -98,11 +95,10 @@ module OfflineMirror
       end
     end
     
-    def write_data(initial_file = false)
+    def write_data
       # TODO : See if this whole thing can be done in some kind of read transaction
-      @cs.write_cargo_section("mirror_info", [
-        MirrorInfo.new_from_group(@group, OfflineMirror::app_online? ? "online" : "offline", initial_file)
-      ], :human_readable => true)
+      mirror_info = MirrorInfo.new_from_group(@group, OfflineMirror::app_online? ? "online" : "offline", @initial_mode)
+      @cs.write_cargo_section("mirror_info", [mirror_info], :human_readable => true)
       @cs.write_cargo_section("group_state", [@group.group_state], :human_readable => true)
       yield
     end
@@ -119,29 +115,29 @@ module OfflineMirror
       end
     end
     
-    def add_group_specific_cargo(group, initial_mode = false)
+    def add_group_specific_cargo
       OfflineMirror::group_owned_models.each do |name, cls|
-        add_model_cargo(cls, group, initial_mode)
+        add_model_cargo(cls)
       end
-      add_model_cargo(OfflineMirror::group_base_model, group, initial_mode)
+      add_model_cargo(OfflineMirror::group_base_model)
     end
     
-    def add_global_cargo(initial_mode = false)
+    def add_global_cargo
       OfflineMirror::global_data_models.each do |name, cls|
-        add_model_cargo(cls, nil, initial_mode)
+        add_model_cargo(cls)
       end
     end
     
-    def add_model_cargo(model, group = nil, initial_mode = false)
+    def add_model_cargo(model)
       # Include the data for relevant records in this model
       data_source = model
-      data_source = data_source.owned_by_offline_mirror_group(group) if group
+      data_source = data_source.owned_by_offline_mirror_group(@group) if model.offline_mirror_group_data? && @group
       data_source.find_in_batches(:batch_size => 100) do |batch|
         @cs.write_cargo_section(data_cargo_name_for_model(model), batch)
-        if initial_mode && group
+        if @initial_mode && @group
           # In initial mode the remote app will create records with the same id's as the corresponding records here
           # We need to keep track of this to later notice updates to those records vs. creation of new records
-          rrs_source = OfflineMirror::ReceivedRecordState.for_model(model).for_group(group)
+          rrs_source = OfflineMirror::ReceivedRecordState.for_model(model).for_group(@group)
           batch.each do |rec|
             existing_rrs = rrs_source.find_by_remote_record_id(rec.id)
             ReceivedRecordState.create_by_record_and_remote_record_id(rec, rec.id) unless existing_rrs
@@ -149,7 +145,7 @@ module OfflineMirror
         end
       end
       
-      unless initial_mode
+      unless @initial_mode
         # Also need to include information about records that have been destroyed
         deletion_source = SendableRecordState.for_model(model).for_deleted_records
         deletion_source.find_in_batches(:batch_size => 100) do |batch|
@@ -158,10 +154,10 @@ module OfflineMirror
       end
     end
     
-    def import_group_specific_cargo(group, initial_mode = false)
-      import_model_cargo(OfflineMirror::group_base_model, group, initial_mode)
+    def import_group_specific_cargo
+      import_model_cargo(OfflineMirror::group_base_model)
       OfflineMirror::group_owned_models.each do |name, cls|
-        import_model_cargo(cls, group, initial_mode)
+        import_model_cargo(cls)
       end
     end
     
@@ -171,15 +167,16 @@ module OfflineMirror
       end
     end
     
-    def import_model_cargo(model, group = nil, initial_mode = false)
-      rrs_source = OfflineMirror::ReceivedRecordState.for_model(model).for_group(group)
+    def import_model_cargo(model)
+      rrs_source = OfflineMirror::ReceivedRecordState.for_model(model)
+      rrs_source = rrs_source.for_group(@group) if model.offline_mirror_group_data?
       
       # Update/create records
       @cs.each_cargo_section(data_cargo_name_for_model(model)) do |batch|
         batch.each do |cargo_record|
           # Update the record if we're not in initial mode and can find it by the RRS, create a new record otherwise
           rrs, local_record = nil, nil
-          if initial_mode
+          if @initial_mode
             local_record = model.new
             local_record.id = cargo_record.id
           else
@@ -191,21 +188,23 @@ module OfflineMirror
           local_record.attributes = cargo_record.attributes
           local_record.save!
           
-          unless initial_mode || rrs
-            ReceivedRecordState.create_by_record_and_remote_record_id(local_record, cargo_record.id)
+          unless @initial_mode || rrs
+            x = ReceivedRecordState.create_by_record_and_remote_record_id(local_record, cargo_record.id)
           end
         end
       end
       
       # Destroy records here which were destroyed there
-      @cs.each_cargo_section(deletion_cargo_name_for_model(model)) do |batch|
-        batch.each do |deletion_srs|
-          rrs = rrs_source.find_by_remote_record_id(deletion_srs.local_record_id)
-          raise DataError.new("Invalid remote id") unless rrs
-          local_record = rrs.app_record
-          local_record.bypass_offline_mirror_readonly_checks
-          local_record.destroy
-          rrs.destroy
+      unless @initial_mode
+        @cs.each_cargo_section(deletion_cargo_name_for_model(model)) do |batch|
+          batch.each do |deletion_srs|
+            rrs = rrs_source.find_by_remote_record_id(deletion_srs.local_record_id)
+            raise DataError.new("Invalid id for deletion: #{model.name} #{deletion_srs.local_record_id}") unless rrs
+            local_record = rrs.app_record
+            local_record.bypass_offline_mirror_readonly_checks
+            local_record.destroy
+            rrs.destroy
+          end
         end
       end
     end

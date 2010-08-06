@@ -93,8 +93,8 @@ class MirrorDataTest < Test::Unit::TestCase
     global_record.reload # To clear the high time precision that is lost in the database
     
     content = StringIO.new
-    writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"])
-    writer.write_initial_downwards_data
+    writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"], :initial_mode => true)
+    writer.write_downwards_data
     
     content.rewind
     cs = OfflineMirror::CargoStreamer.new(content, "r")
@@ -128,8 +128,8 @@ class MirrorDataTest < Test::Unit::TestCase
     [another_offline_group, another_group_data].each { |r| r.reload }
     
     content = StringIO.new
-    writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"])
-    writer.write_initial_downwards_data
+    writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"], :initial_mode => true)
+    writer.write_downwards_data
     
     content.rewind
     cs = OfflineMirror::CargoStreamer.new(content, "r")
@@ -287,7 +287,7 @@ class MirrorDataTest < Test::Unit::TestCase
       number_rec = GlobalRecord.find_by_title("123")
       number_rec.title = "789"
       number_rec.save!
-
+      
       letter_rec = GlobalRecord.find_by_title("ABC")
       letter_rec.destroy
       
@@ -314,8 +314,8 @@ class MirrorDataTest < Test::Unit::TestCase
     mirror_data = ""
     in_online_app do
       StringIO.open do |sio|
-        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
-        writer.write_initial_downwards_data
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"], :initial_mode => true)
+        writer.write_downwards_data
         mirror_data = sio.string
       end
     end
@@ -323,7 +323,7 @@ class MirrorDataTest < Test::Unit::TestCase
     in_offline_app(false, true) do
       assert_equal 0, Group.count
       assert_equal 0, GroupOwnedRecord.count
-      reader = OfflineMirror::MirrorData.new(nil, mirror_data)
+      reader = OfflineMirror::MirrorData.new(nil, mirror_data, :initial_mode => true)
       reader.load_downwards_data
       assert_equal 1, Group.count
       assert_equal 1, GroupOwnedRecord.count
@@ -338,8 +338,8 @@ class MirrorDataTest < Test::Unit::TestCase
     mirror_data = ""
     in_online_app do
       StringIO.open do |sio|
-        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
-        writer.write_initial_downwards_data
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"], :initial_mode => true)
+        writer.write_downwards_data
         mirror_data = sio.string
       end
     end
@@ -351,7 +351,7 @@ class MirrorDataTest < Test::Unit::TestCase
       force_save_and_reload(group_data, global_data)
       UnmirroredRecord.create(:content => "Old Old Old")
       
-      reader = OfflineMirror::MirrorData.new(nil, mirror_data)
+      reader = OfflineMirror::MirrorData.new(nil, mirror_data, :initial_mode => true)
       reader.load_downwards_data
       
       assert_equal nil, Group.find_by_name("Old")
@@ -371,12 +371,12 @@ class MirrorDataTest < Test::Unit::TestCase
     # TODO Implement
   end
   
-  cross_test "cannot upload an initial down mirror file after passing a group to MirrorData.new" do
+  cross_test "cannot upload an initial down mirror file unless passed :initial_mode => true to MirrorData.new" do
     mirror_data = ""
     in_online_app do
       StringIO.open do |sio|
-        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
-        writer.write_initial_downwards_data
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"], :initial_mode => true)
+        writer.write_downwards_data
         mirror_data = sio.string
       end
     end
@@ -389,7 +389,7 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-  cross_test "cannot upload a non-initial down mirror file after passing no group to MirrorData.new" do
+  cross_test "cannot upload a non-initial down mirror file after passing :initial_mode => true to MirrorData.new" do
     mirror_data = ""
     in_online_app do
       StringIO.open do |sio|
@@ -400,7 +400,7 @@ class MirrorDataTest < Test::Unit::TestCase
     end
     
     in_offline_app do
-      reader = OfflineMirror::MirrorData.new(nil, mirror_data)
+      reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data, :initial_mode => true)
       assert_raise OfflineMirror::PluginError do
         reader.load_downwards_data
       end
@@ -483,8 +483,8 @@ class MirrorDataTest < Test::Unit::TestCase
     global_record.destroy
     
     sio = StringIO.new
-    writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
-    writer.write_initial_downwards_data
+    writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"], :initial_mode => true)
+    writer.write_downwards_data
     
     sio.rewind
     cs = OfflineMirror::CargoStreamer.new(sio, "r")
@@ -501,14 +501,14 @@ class MirrorDataTest < Test::Unit::TestCase
       online_id_of_offline_rec = another_offline_rec.id
       
       StringIO.open do |sio|
-        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
-        writer.write_initial_downwards_data
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"], :initial_mode => true)
+        writer.write_downwards_data
         mirror_data = sio.string
       end
     end
     
     in_offline_app do
-      reader = OfflineMirror::MirrorData.new(nil, mirror_data)
+      reader = OfflineMirror::MirrorData.new(nil, mirror_data, :initial_mode => true)
       reader.load_downwards_data
       rec = GroupOwnedRecord.find_by_description("One More")
       assert_equal online_id_of_offline_rec, rec.id

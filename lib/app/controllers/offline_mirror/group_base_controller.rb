@@ -10,15 +10,11 @@ module OfflineMirror
       end
     end
     
-    def render_down_mirror_file(group, filename, initial_file, render_args = {})
+    def render_down_mirror_file(group, filename, render_args = {})
       ensure_group_offline(group)
       raise PluginError.new("Cannot generate down-mirror file when app in offline mode") if OfflineMirror::app_offline?
       render_appending_mirror_data(group, filename, render_args) do |mirror_data|
-        if initial_file
-          mirror_data.write_initial_downwards_data
-        else
-          mirror_data.write_downwards_data
-        end
+        mirror_data.write_downwards_data
       end
     end
     
@@ -28,10 +24,10 @@ module OfflineMirror
       MirrorData.new(group, [data, "r"]).load_upwards_data
     end
     
-    def load_down_mirror_file(group, data)
+    def load_down_mirror_file(group, data, options = {})
       ensure_group_offline(group) if group
       raise PluginError.new("Cannot accept down mirror file when app is in online mode") if OfflineMirror::app_online?
-      MirrorData.new(group, [data, "r"]).load_downwards_data
+      MirrorData.new(group, [data, "r"], :initial_mode => options[:initial_mode]).load_downwards_data
     end
     
     private
@@ -45,9 +41,11 @@ module OfflineMirror
       headers['Content-Disposition'] = "attachment; filename=\"#{filename}\""
       viewable_content = render_to_string render_args
       
+      initial_mode = render_args.delete(:initial_mode) || false
+      
       render_proc = Proc.new do |response, output|
         output.write(viewable_content)
-        mirror_data = MirrorData.new(group, CargoStreamer.new(output, "w"))
+        mirror_data = MirrorData.new(group, CargoStreamer.new(output, "w"), :initial_mode => initial_mode)
         yield mirror_data
       end
       
