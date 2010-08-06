@@ -136,6 +136,15 @@ module OfflineMirror
       data_source = data_source.owned_by_offline_mirror_group(group) if group
       data_source.find_in_batches(:batch_size => 100) do |batch|
         @cs.write_cargo_section(data_cargo_name_for_model(model), batch)
+        if initial_mode && group
+          # In initial mode the remote app will create records with the same id's as the corresponding records here
+          # We need to keep track of this to later notice updates to those records vs. creation of new records
+          rrs_source = OfflineMirror::ReceivedRecordState.for_model(model).for_group(group)
+          batch.each do |rec|
+            existing_rrs = rrs_source.find_by_remote_record_id(rec.id)
+            ReceivedRecordState.create_by_record_and_remote_record_id(rec, rec.id) unless existing_rrs
+          end
+        end
       end
       
       unless initial_mode

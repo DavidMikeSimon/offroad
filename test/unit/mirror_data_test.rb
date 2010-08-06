@@ -490,7 +490,7 @@ class MirrorDataTest < Test::Unit::TestCase
       reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
       reader.load_upwards_data
       assert_equal nil, GroupOwnedRecord.find_by_description("One More")
-      assert_equal "Back To The Future", GroupOwnedRecord.find(online_id_of_offline_rec)
+      assert_equal "Back To The Future", GroupOwnedRecord.find(online_id_of_offline_rec).description
     end
   end
   
