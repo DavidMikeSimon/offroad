@@ -32,8 +32,8 @@ module OfflineMirror
     
     def write_initial_downwards_data
       write_data(true) do
-        add_global_cargo
-        add_group_specific_cargo(@group)
+        add_global_cargo(true)
+        add_group_specific_cargo(@group, true)
       end
     end
     
@@ -97,7 +97,7 @@ module OfflineMirror
     end
     
     def write_data(initial_file = false)
-      # TODO : See if this can be done in some kind of read transaction
+      # TODO : See if this whole thing can be done in some kind of read transaction
       @cs.write_cargo_section("mirror_info", [
         MirrorInfo.new_from_group(@group, OfflineMirror::app_online? ? "online" : "offline", initial_file)
       ], :human_readable => true)
@@ -117,20 +117,20 @@ module OfflineMirror
       end
     end
     
-    def add_group_specific_cargo(group)
+    def add_group_specific_cargo(group, initial_mode = false)
       OfflineMirror::group_owned_models.each do |name, cls|
-        add_model_cargo(cls, group)
+        add_model_cargo(cls, group, initial_mode)
       end
-      add_model_cargo(OfflineMirror::group_base_model, group)
+      add_model_cargo(OfflineMirror::group_base_model, group, initial_mode)
     end
     
-    def add_global_cargo
+    def add_global_cargo(initial_mode = false)
       OfflineMirror::global_data_models.each do |name, cls|
-        add_model_cargo(cls)
+        add_model_cargo(cls, nil, initial_mode)
       end
     end
     
-    def add_model_cargo(model, group = nil)
+    def add_model_cargo(model, group = nil, initial_mode = false)
       # Include the data for relevant records in this model
       data_source = model
       data_source = data_source.owned_by_offline_mirror_group(group) if group
@@ -138,10 +138,12 @@ module OfflineMirror
         @cs.write_cargo_section(data_cargo_name_for_model(model), batch)
       end
       
-      # Also need to include information about records that have been destroyed
-      deletion_source = SendableRecordState.for_model(model).for_deleted_records
-      deletion_source.find_in_batches(:batch_size => 100) do |batch|
-        @cs.write_cargo_section(deletion_cargo_name_for_model(model), batch)
+      unless initial_mode
+        # Also need to include information about records that have been destroyed
+        deletion_source = SendableRecordState.for_model(model).for_deleted_records
+        deletion_source.find_in_batches(:batch_size => 100) do |batch|
+          @cs.write_cargo_section(deletion_cargo_name_for_model(model), batch)
+        end
       end
     end
     

@@ -442,6 +442,19 @@ class MirrorDataTest < Test::Unit::TestCase
   cross_test "transformed ids are handled properly when loading a down mirror file" do
   end
   
+  online_test "initial down mirror files do not include deletion entries" do
+    global_record = GlobalRecord.create(:title => "Something")
+    global_record.destroy
+    
+    sio = StringIO.new
+    writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
+    writer.write_initial_downwards_data
+    
+    sio.rewind
+    cs = OfflineMirror::CargoStreamer.new(sio, "r")
+    assert_equal false, cs.has_cargo_named?(writer.send(:deletion_cargo_name_for_model, GlobalRecord))
+  end
+  
   cross_test "transformed ids are handled properly when loading an initial down mirror file" do
     mirror_data = ""
     online_id_of_offline_rec = nil
@@ -450,6 +463,7 @@ class MirrorDataTest < Test::Unit::TestCase
       another_offline_rec = GroupOwnedRecord.new(:description => "One More", :group => @offline_group)
       force_save_and_reload(another_offline_rec)
       online_id_of_offline_rec = another_offline_rec.id
+      
       StringIO.open do |sio|
         writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
         writer.write_initial_downwards_data
@@ -462,6 +476,21 @@ class MirrorDataTest < Test::Unit::TestCase
       reader.load_downwards_data
       rec = GroupOwnedRecord.find_by_description("One More")
       assert_equal online_id_of_offline_rec, rec.id
+      rec.description = "Back To The Future"
+      rec.save!
+      
+      StringIO.open do |sio|
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
+        writer.write_upwards_data
+        mirror_data = sio.string
+      end
+    end
+    
+    in_online_app do
+      reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
+      reader.load_upwards_data
+      assert_equal nil, GroupOwnedRecord.find_by_description("One More")
+      assert_equal "Back To The Future", GroupOwnedRecord.find(online_id_of_offline_rec)
     end
   end
   
