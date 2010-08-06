@@ -197,6 +197,18 @@ class MirrorDataTest < Test::Unit::TestCase
       OfflineMirror::MirrorData.new(@offline_group, "FOO BAR BLAH").load_upwards_data
     end
   end
+  
+  offline_test "cannot use load_upwards_data in offline mode" do
+    assert_raise OfflineMirror::PluginError do
+      OfflineMirror::MirrorData.new(@offline_group, "FOO BAR BLAH").load_upwards_data
+    end
+  end
+  
+  online_test "cannot use load_downwards_data in online mode" do
+    assert_raise OfflineMirror::PluginError do
+      OfflineMirror::MirrorData.new(@offline_group, "FOO BAR BLAH").load_downwards_data
+    end
+  end
    
   cross_test "can insert and update group data using an up mirror file" do
     mirror_data = ""
@@ -352,10 +364,6 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   cross_test "importing an initial down mirror file resets all autoincrement counters" do
-    # TODO Implement
-  end
-  
-  online_test "cannot use an 'initial' up mirror file to delete online records" do
     # TODO Implement
   end
   
