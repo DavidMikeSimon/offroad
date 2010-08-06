@@ -88,26 +88,6 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-  double_test "cannot pass weird mode to MirrorData::new" do
-    assert_raise OfflineMirror::PluginError do
-      OfflineMirror::MirrorData.new(@offline_group, "", "foobar")
-    end
-    assert_nothing_raised do
-      OfflineMirror::MirrorData.new(@offline_group, "", OfflineMirror::app_online? ? "online" : "offline")
-    end
-  end
-  
-  double_test "MirrorData picks the current app mode if none is supplied" do
-    m = OfflineMirror::MirrorData.new(@offline_group, "")
-    m.mode == OfflineMirror::app_online? ? "online" : "offline"
-  end
-  
-  double_test "MirrorData can be given the opposite of the current app mode" do
-    reverse_mode = OfflineMirror::app_offline? ? "online" : "offline"
-    m = OfflineMirror::MirrorData.new(@offline_group, "", reverse_mode)
-    assert_equal reverse_mode, m.mode
-  end
-  
   online_test "can generate a valid initial down mirror file for the offline group" do
     global_record = GlobalRecord.create(:title => "Foo Bar")
     global_record.reload # To clear the high time precision that is lost in the database

@@ -4,10 +4,8 @@ module OfflineMirror
   class MirrorData
     attr_reader :group, :mode
     
-    def initialize(group, data, app_mode = OfflineMirror::app_online? ? "online" : "offline")
+    def initialize(group, data)
       @group = group
-      ensure_valid_mode(app_mode)
-      @mode = app_mode
       
       # CargoStreamer
       @cs = case data
@@ -40,28 +38,34 @@ module OfflineMirror
     end
     
     def load_upwards_data
+      raise PluginError.new("Can only load upwards data in online mode") unless OfflineMirror.app_online?
+      
       read_data_from("offline") do |mirror_info|
-        import_group_specific_cargo
+        import_group_specific_cargo(@group)
       end
     end
     
     def load_downwards_data
+      raise PluginError.new("Can only load downwards data in offline mode") unless OfflineMirror.app_offline?
+      
       read_data_from("online") do |mirror_info|
         group_cargo_name = data_cargo_name_for_model(OfflineMirror::group_base_model)
-        if @cs.has_cargo_named?(group_cargo_name) && mirror_info.initial_file
-          # This is an initial data file, so we have to delete ALL data currently in the database
+        if mirror_info.initial_file
+          raise DataError.new("No group data in initial down mirror file") unless @cs.has_cargo_named?(group_cargo_name)
+          # This is an initial mirror file, so we want it to determine the entirety of the database's new state
           delete_all_existing_database_records!
           
           OfflineMirror::SystemState::create(
             :current_mirror_version => 1,
             :offline_group_id => @cs.first_cargo_element(group_cargo_name).id
-          ) or raise PluginError.new("Cannot load initial down mirror file")
+          ) or raise PluginError.new("Cannot create valid system state from initial down mirror file")
           import_global_cargo # Global cargo must be done first because group data might belong_to global data
-          import_group_specific_cargo
+          import_group_specific_cargo(@group)
         elsif SystemState.count == 0
           # If there's no SystemState, then we can't accept non-initial down mirror files
           raise DataError.new("Initial down mirror file required")
         else
+          # Regular, non-initial down mirror file
           import_global_cargo
         end
       end
@@ -93,7 +97,9 @@ module OfflineMirror
     
     def write_data(initial_file = false)
       # TODO : See if this can be done in some kind of read transaction
-      @cs.write_cargo_section("mirror_info", [MirrorInfo.new_from_group(@group, @mode, initial_file)], :human_readable => true)
+      @cs.write_cargo_section("mirror_info", [
+        MirrorInfo.new_from_group(@group, OfflineMirror::app_online? ? "online" : "offline", initial_file)
+      ], :human_readable => true)
       @cs.write_cargo_section("group_state", [@group.group_state], :human_readable => true)
       yield
     end
@@ -108,10 +114,6 @@ module OfflineMirror
       OfflineMirror::group_base_model.connection.transaction do
         yield mirror_info
       end
-    end
-    
-    def ensure_valid_mode(mode)
-      raise PluginError.new("Invalid app mode") unless ["online", "offline"].include?(mode)
     end
     
     def add_group_specific_cargo(group)
@@ -142,10 +144,10 @@ module OfflineMirror
       end
     end
     
-    def import_group_specific_cargo
-      import_model_cargo(OfflineMirror::group_base_model, @group)
+    def import_group_specific_cargo(group)
+      import_model_cargo(OfflineMirror::group_base_model, group)
       OfflineMirror::group_owned_models.each do |name, cls|
-        import_model_cargo(cls, @group)
+        import_model_cargo(cls, group)
       end
     end
     
