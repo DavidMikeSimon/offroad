@@ -53,6 +53,7 @@ module OfflineMirror
         if mirror_info.initial_file
           raise DataError.new("No group data in initial down mirror file") unless @cs.has_cargo_named?(group_cargo_name)
           # This is an initial mirror file, so we want it to determine the entirety of the database's new state
+          # However, existing data is safe if there's a mid-import error; read_data_from puts us in a transaction
           delete_all_existing_database_records!
           
           OfflineMirror::SystemState::create(
@@ -60,7 +61,7 @@ module OfflineMirror
             :offline_group_id => @cs.first_cargo_element(group_cargo_name).id
           ) or raise PluginError.new("Cannot create valid system state from initial down mirror file")
           import_global_cargo # Global cargo must be done first because group data might belong_to global data
-          import_group_specific_cargo(@group)
+          import_group_specific_cargo(@group, true)
         elsif SystemState.count == 0
           # If there's no SystemState, then we can't accept non-initial down mirror files
           raise DataError.new("Initial down mirror file required")
@@ -144,10 +145,10 @@ module OfflineMirror
       end
     end
     
-    def import_group_specific_cargo(group)
-      import_model_cargo(OfflineMirror::group_base_model, group)
+    def import_group_specific_cargo(group, initial_mode = false)
+      import_model_cargo(OfflineMirror::group_base_model, group, initial_mode)
       OfflineMirror::group_owned_models.each do |name, cls|
-        import_model_cargo(cls, group)
+        import_model_cargo(cls, group, initial_mode)
       end
     end
     
@@ -157,23 +158,27 @@ module OfflineMirror
       end
     end
     
-    def import_model_cargo(model, group = nil)
+    def import_model_cargo(model, group = nil, initial_mode = false)
       rrs_source = OfflineMirror::ReceivedRecordState.for_model(model).for_group(group)
       
       # Update/create records
       @cs.each_cargo_section(data_cargo_name_for_model(model)) do |batch|
         batch.each do |cargo_record|
-          # Update the record if we can find it by the RRS, create a new record if we cannot
-          rrs = rrs_source.find_by_remote_record_id(cargo_record.id)
-          local_record = rrs ? rrs.app_record : model.new
+          # Update the record if we're not in initial mode and can find it by the RRS, create a new record otherwise
+          rrs, local_record = nil, nil
+          if initial_mode
+            local_record = model.new
+            local_record.id = cargo_record.id
+          else
+            rrs = rrs_source.find_by_remote_record_id(cargo_record.id)
+            local_record = rrs ? rrs.app_record : model.new
+          end
+          
           local_record.bypass_offline_mirror_readonly_checks
           local_record.attributes = cargo_record.attributes
           local_record.save!
           
-          # An SRS will have been created for the new record if this record belongs to us
-          # If not, it belongs to remote, so create an RSS for this record if it doesn't already have one
-          # FIXME This is a terrible way to check if we need to create an RRS
-          unless !local_record.offline_mirror_sendable_record_state.new_record? || rrs
+          unless initial_mode || rrs
             ReceivedRecordState.create_by_record_and_remote_record_id(local_record, cargo_record.id)
           end
         end

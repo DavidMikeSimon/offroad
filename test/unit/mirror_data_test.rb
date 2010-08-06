@@ -460,10 +460,8 @@ class MirrorDataTest < Test::Unit::TestCase
     in_offline_app do
       reader = OfflineMirror::MirrorData.new(nil, mirror_data)
       reader.load_downwards_data
-      another_offline_rec = GroupOwnedRecord.find_by_description("One More")
-      rrs = OfflineMirror::ReceivedRecordState::find_by_record(another_offline_rec)
-      # FIXME FIXME FIXME : Need to assert here that the actual offline id matches remote_record_id in online app's RRS
-      flunk
+      rec = GroupOwnedRecord.find_by_description("One More")
+      assert_equal online_id_of_offline_rec, rec.id
     end
   end
   
