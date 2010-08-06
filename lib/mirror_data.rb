@@ -4,29 +4,20 @@ module OfflineMirror
   class MirrorData
     attr_reader :group, :mode
     
-    def initialize(group, data, options = {})
+    def initialize(group, options = {})
       @group = group
       @initial_mode = options[:initial_mode] || false
-      
-      # CargoStreamer
-      @cs = case data
-        when CargoStreamer then data
-        when String then CargoStreamer.new(StringIO.new(data), "r")
-        when Array then (
-          data[0].is_a?(String) ? CargoStreamer.new(StringIO.new(data[0]), data[1]) : CargoStreamer.new(data[0], data[1])
-        )
-        else raise OfflineMirror::PluginError.new("Invalid data format for MirrorData initialization")
-      end
+      @cs = nil #CargoStreamer, set by write_data and read_data_from
     end
     
-    def write_upwards_data
-      write_data do
+    def write_upwards_data(tgt = nil)
+      write_data(tgt) do
         add_group_specific_cargo
       end
     end
     
-    def write_downwards_data
-      write_data do
+    def write_downwards_data(tgt = nil)
+      write_data(tgt) do
         add_global_cargo
         if @initial_mode
           add_group_specific_cargo
@@ -34,18 +25,18 @@ module OfflineMirror
       end
     end
     
-    def load_upwards_data
+    def load_upwards_data(src)
       raise PluginError.new("Can only load upwards data in online mode") unless OfflineMirror.app_online?
       
-      read_data_from("offline") do |mirror_info|
+      read_data_from("offline", src) do |mirror_info|
         import_group_specific_cargo
       end
     end
     
-    def load_downwards_data
+    def load_downwards_data(src)
       raise PluginError.new("Can only load downwards data in offline mode") unless OfflineMirror.app_offline?
       
-      read_data_from("online") do |mirror_info|
+      read_data_from("online", src) do |mirror_info|
         raise PluginError.new("Unexpected initial file value") unless mirror_info.initial_file == @initial_mode
         
         group_cargo_name = MirrorData::data_cargo_name_for_model(OfflineMirror::group_base_model)
@@ -95,15 +86,36 @@ module OfflineMirror
       end
     end
     
-    def write_data
+    def write_data(tgt)
+      temp_sio = nil
+      case tgt
+        when CargoStreamer
+          @cs = tgt
+        when nil
+          temp_sio = StringIO.new("", "w")
+          @cs = CargoStreamer.new(temp_sio, "w")
+        else
+          @cs = CargoStreamer.new(tgt, "w")
+      end
+      
       # TODO : See if this whole thing can be done in some kind of read transaction
       mirror_info = MirrorInfo.new_from_group(@group, OfflineMirror::app_online? ? "online" : "offline", @initial_mode)
       @cs.write_cargo_section("mirror_info", [mirror_info], :human_readable => true)
       @cs.write_cargo_section("group_state", [@group.group_state], :human_readable => true)
       yield
+      
+      return temp_sio.string if temp_sio
+    ensure
+      @cs = nil
     end
     
-    def read_data_from(expected_source_app_mode)
+    def read_data_from(expected_source_app_mode, src)
+      @cs = case src
+        when CargoStreamer then src
+        when String then CargoStreamer.new(StringIO.new(src, "r"), "r")
+        else CargoStreamer.new(src, "r")
+      end
+      
       raise DataError.new("Invalid mirror file, no info section found") unless @cs.has_cargo_named?("mirror_info")
       mirror_info = @cs.first_cargo_element("mirror_info")
       unless mirror_info.app_mode.downcase == expected_source_app_mode.downcase
@@ -113,6 +125,8 @@ module OfflineMirror
       OfflineMirror::group_base_model.connection.transaction do
         yield mirror_info
       end
+    ensure
+      @cs = nil
     end
     
     def add_group_specific_cargo
