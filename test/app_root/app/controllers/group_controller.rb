@@ -1,6 +1,10 @@
 class GroupController < OfflineMirror::GroupBaseController
   def download_down_mirror
-    render_down_mirror_file Group.find(params[:id]), "down-mirror-file", :layout => "mirror"
+    render_down_mirror_file Group.find(params[:id]), "down-mirror-file", false, :layout => "mirror"
+  end
+  
+  def download_initial_down_mirror
+    render_down_mirror_file Group.find(params[:id]), "down-mirror-file", true, :layout => "mirror"
   end
   
   def download_up_mirror

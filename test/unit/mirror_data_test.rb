@@ -371,6 +371,42 @@ class MirrorDataTest < Test::Unit::TestCase
     # TODO Implement
   end
   
+  cross_test "cannot upload an initial down mirror file after passing a group to MirrorData.new" do
+    mirror_data = ""
+    in_online_app do
+      StringIO.open do |sio|
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
+        writer.write_initial_downwards_data
+        mirror_data = sio.string
+      end
+    end
+    
+    in_offline_app do
+      reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
+      assert_raise OfflineMirror::PluginError do
+        reader.load_downwards_data
+      end
+    end
+  end
+  
+  cross_test "cannot upload a non-initial down mirror file after passing no group to MirrorData.new" do
+    mirror_data = ""
+    in_online_app do
+      StringIO.open do |sio|
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
+        writer.write_downwards_data
+        mirror_data = sio.string
+      end
+    end
+    
+    in_offline_app do
+      reader = OfflineMirror::MirrorData.new(nil, mirror_data)
+      assert_raise OfflineMirror::PluginError do
+        reader.load_downwards_data
+      end
+    end
+  end
+  
   cross_test "cannot pass a down mirror file to load_upwards_data" do
     mirror_data = ""
     

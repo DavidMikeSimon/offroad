@@ -49,6 +49,8 @@ module OfflineMirror
       raise PluginError.new("Can only load downwards data in offline mode") unless OfflineMirror.app_offline?
       
       read_data_from("online") do |mirror_info|
+        raise PluginError.new("Unexpected initial file value") unless mirror_info.initial_file == (@group == nil)
+        
         group_cargo_name = data_cargo_name_for_model(OfflineMirror::group_base_model)
         if mirror_info.initial_file
           raise DataError.new("No group data in initial down mirror file") unless @cs.has_cargo_named?(group_cargo_name)

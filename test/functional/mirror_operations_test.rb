@@ -16,7 +16,7 @@ class MirrorOperationsTest < ActionController::TestCase
       GroupOwnedRecord.create(:description => "Third Item", :group => test_group)
       
       test_group.group_offline = true
-      get :download_down_mirror, "id" => test_group.id
+      get :download_initial_down_mirror, "id" => test_group.id
       mirror_data = @response.binary_content
     end
     

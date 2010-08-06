@@ -4,20 +4,6 @@ require File.expand_path(File.dirname(__FILE__) + '/../test_helper')
 # Tests for the actual generation and processing of mirror files are in mirror_data_test.rb
 
 class GroupControllerTest < ActionController::TestCase
-  def gen_up_mirror_data(group)
-    content = StringIO.new
-    writer = OfflineMirror::MirrorData.new(group, [content, "w"], "offline")
-    writer.write_upwards_data
-    return content.string
-  end
-  
-  def gen_down_mirror_data(group)
-    content = StringIO.new
-    writer = OfflineMirror::MirrorData.new(group, [content, "w"], "online")
-    writer.write_downwards_data
-    return content.string
-  end
-  
   online_test "can retrieve a down mirror file for the offline group" do
     get :download_down_mirror, "id" => @offline_group.id
     assert_response :success
@@ -27,7 +13,24 @@ class GroupControllerTest < ActionController::TestCase
     
     StringIO.open(content) do |sio|
       cs = OfflineMirror::CargoStreamer.new(sio, "r")
-      assert cs.first_cargo_element("mirror_info").app_mode.downcase.include?("online")
+      mirror_info = cs.first_cargo_element("mirror_info")
+      assert mirror_info.app_mode.downcase.include?("online")
+      assert_equal false, mirror_info.initial_file
+    end
+  end
+  
+  online_test "can retrieve an initial down mirror file for the offline group" do
+    get :download_initial_down_mirror, "id" => @offline_group.id
+    assert_response :success
+    assert @response.headers["Content-Disposition"].include?("attachment")
+    content = @response.binary_content
+    assert content.include?("downloaded from the Test App online system"), "testapp's down mirror view file used"
+    
+    StringIO.open(content) do |sio|
+      cs = OfflineMirror::CargoStreamer.new(sio, "r")
+      mirror_info = cs.first_cargo_element("mirror_info")
+      assert mirror_info.app_mode.downcase.include?("online")
+      assert mirror_info.initial_file
     end
   end
   
@@ -60,33 +63,43 @@ class GroupControllerTest < ActionController::TestCase
     end
   end
   
-  online_test "can upload up mirror files" do
-    @offline_group.name = "ABC"; force_save_and_reload(@offline_group)
-    mirror_data = gen_up_mirror_data(@offline_group)
-    @offline_group.name = "XYZ"; force_save_and_reload(@offline_group)
+  cross_test "can upload up mirror files" do
+    mirror_data = ""
+    in_offline_app do
+      @offline_group.name = "ABC"; force_save_and_reload(@offline_group)
+      get :download_up_mirror, "id" => @offline_group.id
+      mirror_data = @response.binary_content
+    end
     
-    post :upload_up_mirror, "id" => @offline_group.id, "mirror_data" => mirror_data
-    assert_response :success
-    @offline_group.reload
-    assert_equal "ABC", @offline_group.name
+    in_online_app do
+      post :upload_up_mirror, "id" => @offline_group.id, "mirror_data" => mirror_data
+      assert_response :success
+      @offline_group.reload
+      assert_equal "ABC", @offline_group.name
+    end
   end
   
   offline_test "can upload down mirror files" do
-    global_record = GlobalRecord.new(:title => "123"); force_save_and_reload(global_record)
-    mirror_data = gen_down_mirror_data(@offline_group)
-    force_destroy(global_record)
+    mirror_data = ""
+    in_online_app do
+      global_record = GlobalRecord.new(:title => "123"); force_save_and_reload(global_record)
+      get :download_down_mirror, "id" => @offline_group.id
+      mirror_data = @response.binary_content
+    end
     
-    assert_equal 0, GlobalRecord.count
-    post :upload_down_mirror, "id" => @offline_group.id, "mirror_data" => mirror_data
-    assert_response :success
-    assert_equal 1, GlobalRecord.count
-    assert_equal "123", GlobalRecord.first.title
+    in_offline_app do
+      assert_equal 0, GlobalRecord.count
+      post :upload_down_mirror, "id" => @offline_group.id, "mirror_data" => mirror_data
+      assert_response :success
+      assert_equal 1, GlobalRecord.count
+      assert_equal "123", GlobalRecord.first.title
+    end
   end
     
   cross_test "can upload initial down mirror files" do
     mirror_data = ""
     in_online_app do
-      get :download_down_mirror, "id" => @offline_group.id
+      get :download_initial_down_mirror, "id" => @offline_group.id
       mirror_data = @response.binary_content
     end
     
@@ -104,20 +117,35 @@ class GroupControllerTest < ActionController::TestCase
   end
   
   offline_test "cannot upload up mirror files" do
+    get :download_up_mirror, "id" => @offline_group.id
+    mirror_data = @response.binary_content
+    
     assert_raise OfflineMirror::PluginError do
-      post :upload_up_mirror, "id" => @offline_group.id, "mirror_data" => gen_up_mirror_data(@offline_group)
+      post :upload_up_mirror, "id" => @offline_group.id, "mirror_data" => mirror_data
     end
   end
   
   online_test "cannot upload down mirror files" do
+    get :download_down_mirror, "id" => @offline_group.id
+    mirror_data = @response.binary_content
+    
     assert_raise OfflineMirror::PluginError do
-      post :upload_down_mirror, "id" => @offline_group.id, "mirror_data" => gen_down_mirror_data(@offline_group)
+      post :upload_down_mirror, "id" => @offline_group.id, "mirror_data" => mirror_data
     end
   end
   
-  online_test "cannot upload a mirror file for an online group" do
-    assert_raise OfflineMirror::PluginError do
-      post :upload_up_mirror, "id" => @online_group.id, "mirror_data" => gen_up_mirror_data(@online_group)
+  cross_test "cannot upload a mirror file for an online group" do
+    mirror_data = ""
+    in_offline_app do
+      get :download_up_mirror, "id" => @offline_group.id
+      mirror_data = @response.binary_content
+    end
+    
+    in_online_app do
+      @offline_group.group_offline = false
+      assert_raise OfflineMirror::PluginError do
+        post :upload_up_mirror, "id" => @online_group.id, "mirror_data" => mirror_data
+      end
     end
   end
 end
