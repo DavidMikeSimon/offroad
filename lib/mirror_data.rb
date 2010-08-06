@@ -48,7 +48,7 @@ module OfflineMirror
       read_data_from("online") do |mirror_info|
         raise PluginError.new("Unexpected initial file value") unless mirror_info.initial_file == @initial_mode
         
-        group_cargo_name = data_cargo_name_for_model(OfflineMirror::group_base_model)
+        group_cargo_name = MirrorData::data_cargo_name_for_model(OfflineMirror::group_base_model)
         if mirror_info.initial_file
           raise DataError.new("No group data in initial down mirror file") unless @cs.has_cargo_named?(group_cargo_name)
           # This is an initial mirror file, so we want it to determine the entirety of the database's new state
@@ -73,11 +73,11 @@ module OfflineMirror
     
     private
     
-    def data_cargo_name_for_model(model)
+    def self.data_cargo_name_for_model(model)
       "data_#{model.name}"
     end
     
-    def deletion_cargo_name_for_model(model)
+    def self.deletion_cargo_name_for_model(model)
       "deletion_#{model.name}"
     end
     
@@ -133,7 +133,7 @@ module OfflineMirror
       data_source = model
       data_source = data_source.owned_by_offline_mirror_group(@group) if model.offline_mirror_group_data? && @group
       data_source.find_in_batches(:batch_size => 100) do |batch|
-        @cs.write_cargo_section(data_cargo_name_for_model(model), batch)
+        @cs.write_cargo_section(MirrorData::data_cargo_name_for_model(model), batch)
         if @initial_mode && @group
           # In initial mode the remote app will create records with the same id's as the corresponding records here
           # We need to keep track of this to later notice updates to those records vs. creation of new records
@@ -149,7 +149,7 @@ module OfflineMirror
         # Also need to include information about records that have been destroyed
         deletion_source = SendableRecordState.for_model(model).for_deleted_records
         deletion_source.find_in_batches(:batch_size => 100) do |batch|
-          @cs.write_cargo_section(deletion_cargo_name_for_model(model), batch)
+          @cs.write_cargo_section(MirrorData::deletion_cargo_name_for_model(model), batch)
         end
       end
     end
@@ -172,7 +172,7 @@ module OfflineMirror
       rrs_source = rrs_source.for_group(@group) if model.offline_mirror_group_data?
       
       # Update/create records
-      @cs.each_cargo_section(data_cargo_name_for_model(model)) do |batch|
+      @cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
         batch.each do |cargo_record|
           # Update the record if we're not in initial mode and can find it by the RRS, create a new record otherwise
           rrs, local_record = nil, nil
@@ -196,7 +196,7 @@ module OfflineMirror
       
       # Destroy records here which were destroyed there
       unless @initial_mode
-        @cs.each_cargo_section(deletion_cargo_name_for_model(model)) do |batch|
+        @cs.each_cargo_section(MirrorData::deletion_cargo_name_for_model(model)) do |batch|
           batch.each do |deletion_srs|
             rrs = rrs_source.find_by_remote_record_id(deletion_srs.local_record_id)
             raise DataError.new("Invalid id for deletion: #{model.name} #{deletion_srs.local_record_id}") unless rrs
