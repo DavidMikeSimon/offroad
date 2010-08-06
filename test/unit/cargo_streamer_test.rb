@@ -46,19 +46,17 @@ class CargoStreamerTest < Test::Unit::TestCase
   end
   
   def retrieve_cargo_from_string(str)
-    return StringIO.open(str) do |sio|
-      hash = {}
-      
-      reader = OfflineMirror::CargoStreamer.new(sio, "r")
-      reader.cargo_section_names.each do |key|
-        hash[key] = []
-        reader.each_cargo_section(key) do |elem|
-          hash[key] << elem
-        end
+    hash = {}
+    
+    reader = OfflineMirror::CargoStreamer.new(str, "r")
+    reader.cargo_section_names.each do |key|
+      hash[key] = []
+      reader.each_cargo_section(key) do |elem|
+        hash[key] << elem
       end
-      
-      hash
     end
+    
+    return hash
   end
   
   def round_trip(hash = {})
@@ -143,13 +141,10 @@ class CargoStreamerTest < Test::Unit::TestCase
   
   agnostic_test "can correctly identify the names of the cargo sections" do
     test_hash = {"abc" => [[test_rec("A")]], "xyz" => [[test_rec("X")]]}
-    str = generate_cargo_string test_hash
-    StringIO.open(str) do |sio|
-      cs = OfflineMirror::CargoStreamer.new(sio, "r")
-      assert_equal test_hash.keys, cs.cargo_section_names
-      assert cs.has_cargo_named?("abc")
-      assert_equal false, cs.has_cargo_named?("foobar")
-    end
+    cs = OfflineMirror::CargoStreamer.new(generate_cargo_string(test_hash), "r")
+    assert_equal test_hash.keys, cs.cargo_section_names
+    assert cs.has_cargo_named?("abc")
+    assert_equal false, cs.has_cargo_named?("foobar")
   end
   
   agnostic_test "can create and retrieve multiple ordered cargo sections with the same name" do
@@ -164,11 +159,9 @@ class CargoStreamerTest < Test::Unit::TestCase
     end
     
     result_data = []
-    StringIO.open(str) do |sio|
-      cs = OfflineMirror::CargoStreamer.new(sio, "r")
-      cs.each_cargo_section "xyz" do |dat|
-        result_data << dat
-      end
+    cs = OfflineMirror::CargoStreamer.new(str, "r")
+    cs.each_cargo_section "xyz" do |dat|
+      result_data << dat
     end
     
     assert_haar_equality({"test" => test_data}, {"test" => result_data})
@@ -183,11 +176,9 @@ class CargoStreamerTest < Test::Unit::TestCase
       sio.string
     end
     
-    StringIO.open(result) do |sio|
-      cs = OfflineMirror::CargoStreamer.new(sio, "r")
-      assert_equal test_rec("item number 1").attributes, cs.first_cargo_section("testing")[0].attributes
-      assert_equal nil, cs.first_cargo_section("no-such-section")
-    end
+    cs = OfflineMirror::CargoStreamer.new(result, "r")
+    assert_equal test_rec("item number 1").attributes, cs.first_cargo_section("testing")[0].attributes
+    assert_equal nil, cs.first_cargo_section("no-such-section")
   end
   
   agnostic_test "can use first_cargo_element to get the first element of the first section with a given name" do
@@ -199,11 +190,9 @@ class CargoStreamerTest < Test::Unit::TestCase
       sio.string
     end
     
-    StringIO.open(result) do |sio|
-      cs = OfflineMirror::CargoStreamer.new(sio, "r")
-      assert_equal test_rec("item number 10").attributes, cs.first_cargo_element("testing").attributes
-      assert_equal nil, cs.first_cargo_element("no-such-section")
-    end
+    cs = OfflineMirror::CargoStreamer.new(result, "r")
+    assert_equal test_rec("item number 10").attributes, cs.first_cargo_element("testing").attributes
+    assert_equal nil, cs.first_cargo_element("no-such-section")
   end
   
   agnostic_test "can use :human_readable to include a string version of a record" do
@@ -323,6 +312,18 @@ class CargoStreamerTest < Test::Unit::TestCase
       end
     ensure
       TestModel.set_safe
+    end
+  end
+  
+  agnostic_test "cargo streamer can read directly from a passed in string" do
+    str = generate_cargo_string("test" => [[test_rec("abc")]])
+    cs = OfflineMirror::CargoStreamer.new(str, "r")
+    assert cs.has_cargo_named?("test")
+  end
+  
+  agnostic_test "cannot have cargo streamer write to a passed in string" do
+    assert_raise OfflineMirror::CargoStreamerError do
+      OfflineMirror::CargoStreamer.new("", "w")
     end
   end
 end

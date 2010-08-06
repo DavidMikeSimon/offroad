@@ -20,8 +20,15 @@ module OfflineMirror
     # If the mode is "r", the file is immediately scanned to determine what cargo it contains.
     def initialize(ioh, mode)
       raise CargoStreamerError.new("Invalid mode: must be 'w' or 'r'") unless ["w", "r"].include?(mode)
-      @ioh = ioh
       @mode = mode
+      
+      if ioh.is_a? String
+        raise CargoStreamerError.new("Cannot accept string as ioh in write mode") unless @mode == "r"
+        @ioh = StringIO.new(ioh, "r")
+      else
+        @ioh = ioh
+      end
+      
       scan_for_cargo if @mode == "r"
     end
     
