@@ -108,6 +108,22 @@ class MirrorDataTest < Test::Unit::TestCase
     assert_equal reverse_mode, m.mode
   end
   
+  online_test "can generate a valid initial down mirror file for the offline group" do
+    global_record = GlobalRecord.create(:title => "Foo Bar")
+    global_record.reload # To clear the high time precision that is lost in the database
+    
+    content = StringIO.new
+    writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"])
+    writer.write_initial_downwards_data
+    
+    content.rewind
+    cs = OfflineMirror::CargoStreamer.new(content, "r")
+    assert_common_mirror_elements_appear_valid cs, "online"
+    assert_single_model_cargo_entry_matches cs, global_record
+    assert_single_model_cargo_entry_matches cs, @offline_group
+    assert_single_model_cargo_entry_matches cs, @offline_group_data
+  end
+  
   online_test "can generate a valid down mirror file for the offline group" do
     global_record = GlobalRecord.create(:title => "Foo Bar")
     global_record.reload # To clear the high time precision that is lost in the database
@@ -120,12 +136,32 @@ class MirrorDataTest < Test::Unit::TestCase
     cs = OfflineMirror::CargoStreamer.new(content, "r")
     assert_common_mirror_elements_appear_valid cs, "online"
     assert_single_model_cargo_entry_matches cs, global_record
+    assert_record_not_present cs, @offline_group
+    assert_record_not_present cs, @offline_group_data
+  end
+  
+  online_test "initial down mirror files do not include irrelevant records" do    
+    another_offline_group = Group.create(:name => "Another Group")
+    another_offline_group.group_offline = true
+    another_group_data = GroupOwnedRecord.new(:description => "Another Data", :group => another_offline_group)
+    force_save_and_reload(another_group_data)
+    [another_offline_group, another_group_data].each { |r| r.reload }
+    
+    content = StringIO.new
+    writer = OfflineMirror::MirrorData.new(@offline_group, [content, "w"])
+    writer.write_initial_downwards_data
+    
+    content.rewind
+    cs = OfflineMirror::CargoStreamer.new(content, "r")
+    assert_record_not_present cs, another_offline_group
+    assert_record_not_present cs, another_group_data
     assert_single_model_cargo_entry_matches cs, @offline_group
     assert_single_model_cargo_entry_matches cs, @offline_group_data
   end
   
   online_test "down mirror files do not include irrelevant records" do    
-    # TODO Check for irrelevant deletions
+    global_record = GlobalRecord.create(:title => "Foo Bar")
+    global_record.reload # To clear the high time precision that is lost in the database
     another_offline_group = Group.create(:name => "Another Group")
     another_offline_group.group_offline = true
     another_group_data = GroupOwnedRecord.new(:description => "Another Data", :group => another_offline_group)
@@ -140,8 +176,9 @@ class MirrorDataTest < Test::Unit::TestCase
     cs = OfflineMirror::CargoStreamer.new(content, "r")
     assert_record_not_present cs, another_offline_group
     assert_record_not_present cs, another_group_data
-    assert_single_model_cargo_entry_matches cs, @offline_group
-    assert_single_model_cargo_entry_matches cs, @offline_group_data
+    assert_record_not_present cs, @offline_group
+    assert_record_not_present cs, @offline_group_data
+    assert_single_model_cargo_entry_matches cs, global_record
   end
   
   offline_test "can generate a valid up mirror file for the offline group" do
@@ -157,7 +194,6 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   offline_test "up mirror files do not include irrelevant records" do
-    # TODO Check for irrelevant deletions
     fake_global_data = GlobalRecord.new(:title => "Fake Stuff")
     force_save_and_reload(fake_global_data)
     
@@ -230,7 +266,7 @@ class MirrorDataTest < Test::Unit::TestCase
   
   cross_test "can insert and update and delete global records using a down mirror file" do
     mirror_data = ""
-
+    
     in_online_app do
       GlobalRecord.create(:title => "ABC")
       GlobalRecord.create(:title => "123")
@@ -273,7 +309,7 @@ class MirrorDataTest < Test::Unit::TestCase
     in_offline_app do
       reader = OfflineMirror::MirrorData.new(@offline_group, mirror_data)
       reader.load_downwards_data
-
+      
       assert_equal 1, GlobalRecord.count
       assert_nil GlobalRecord.find_by_title("ABC")
       assert_nil GlobalRecord.find_by_title("123")
@@ -287,7 +323,7 @@ class MirrorDataTest < Test::Unit::TestCase
     in_online_app do
       StringIO.open do |sio|
         writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
-        writer.write_downwards_data
+        writer.write_initial_downwards_data
         mirror_data = sio.string
       end
     end
@@ -304,6 +340,43 @@ class MirrorDataTest < Test::Unit::TestCase
   
   cross_test "if no SystemState is present an initial down mirror file is required" do
     # TODO Imlpement
+  end
+  
+  cross_test "importing an initial down mirror file deletes all currently existing records" do
+    mirror_data = ""
+    in_online_app do
+      StringIO.open do |sio|
+        writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
+        writer.write_initial_downwards_data
+        mirror_data = sio.string
+      end
+    end
+    
+    in_offline_app do
+      @offline_group.update_attribute(:name, "Old")
+      group_data = GroupOwnedRecord.new(:description => "Old", :group => @offline_group)
+      global_data = GlobalRecord.new(:title => "Old")
+      force_save_and_reload(group_data, global_data)
+      UnmirroredRecord.create(:content => "Old Old Old")
+      
+      reader = OfflineMirror::MirrorData.new(nil, mirror_data)
+      reader.load_downwards_data
+      
+      assert_equal nil, Group.find_by_name("Old")
+      assert_equal nil, GroupOwnedRecord.find_by_description("Old")
+      assert_equal 1, Group.count
+      assert_equal 1, GroupOwnedRecord.count
+      assert_equal 0, GlobalRecord.count
+      assert_equal 0, UnmirroredRecord.count
+    end
+  end
+  
+  cross_test "importing an initial down mirror file resets all autoincrement counters" do
+    # TODO Implement
+  end
+  
+  online_test "cannot use an 'initial' up mirror file to delete online records" do
+    # TODO Implement
   end
   
   cross_test "cannot affect group records using a non-initial down mirror file" do
@@ -378,6 +451,9 @@ class MirrorDataTest < Test::Unit::TestCase
     # TODO Implement
   end
   
+  cross_test "transformed ids are handled properly when loading a down mirror file" do
+  end
+  
   cross_test "transformed ids are handled properly when loading an initial down mirror file" do
     mirror_data = ""
     online_id_of_offline_rec = nil
@@ -388,7 +464,7 @@ class MirrorDataTest < Test::Unit::TestCase
       online_id_of_offline_rec = another_offline_rec.id
       StringIO.open do |sio|
         writer = OfflineMirror::MirrorData.new(@offline_group, [sio, "w"])
-        writer.write_downwards_data
+        writer.write_initial_downwards_data
         mirror_data = sio.string
       end
     end

@@ -18,17 +18,18 @@ module OfflineMirror
       [:app_version, :string],
       [:operating_system, :string],
       [:generator, :string],
-      [:schema_migrations, :string]
+      [:schema_migrations, :string],
+      [:initial_file, :boolean]
     ].each do |attr_name, attr_type|
       columns << ActiveRecord::ConnectionAdapters::Column.new(attr_name.to_s, nil, attr_type.to_s, true)
-      validates_presence_of attr_name
+      validates_presence_of attr_name unless attr_type == :boolean
     end
     
     def self.safe_to_load_from_cargo_stream?
       true
     end
     
-    def self.new_from_group(group, mode = OfflineMirror::app_online? ? "online" : "offline")
+    def self.new_from_group(group, mode = OfflineMirror::app_online? ? "online" : "offline", initial_file = false)
       raise PluginError.new("Invalid mode") unless ["offline", "online"].include?(mode)
       migration_query = "SELECT version FROM schema_migrations ORDER BY version"
       migrations = OfflineMirror::group_base_model.connection.select_all(migration_query).map{ |r| r["version"] }
@@ -40,7 +41,8 @@ module OfflineMirror
         :app_version => OfflineMirror::app_version,
         :operating_system => RUBY_PLATFORM,
         :generator => "Offline Mirror " + OfflineMirror::VERSION_MAJOR.to_s + "." + OfflineMirror::VERSION_MINOR.to_s,
-        :schema_migrations => migrations.join(",")
+        :schema_migrations => migrations.join(","),
+        :initial_file => initial_file
       )
     end
     
