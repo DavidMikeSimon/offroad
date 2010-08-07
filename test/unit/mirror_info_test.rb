@@ -36,9 +36,8 @@ class MirrorInfoTest < Test::Unit::TestCase
   agnostic_test "cannot save a MirrorInfo instance" do
     rec = OfflineMirror::MirrorInfo::new_from_group(@editable_group, "online")
     assert rec.valid?
-    assert_raise RuntimeError do
+    assert_raise OfflineMirror::DataError do
       rec.save
     end
   end
-  
 end

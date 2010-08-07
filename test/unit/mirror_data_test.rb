@@ -204,7 +204,9 @@ class MirrorDataTest < Test::Unit::TestCase
     end
     
     in_online_app do
+      prior_rrs_count = OfflineMirror::ReceivedRecordState.count
       OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_equal prior_rrs_count+1, OfflineMirror::ReceivedRecordState.count 
       assert_equal @offline_group.id, Group.find_by_name("TEST 123").id
       assert GroupOwnedRecord.find_by_description("TEST ABC")
       assert_equal @offline_group_data.id, GroupOwnedRecord.find_by_description("TEST XYZ").id
@@ -220,8 +222,10 @@ class MirrorDataTest < Test::Unit::TestCase
     end
     
     in_online_app do
+      prior_rrs_count = OfflineMirror::ReceivedRecordState.count
       assert_equal 1, GroupOwnedRecord.count(:conditions => { :group_id => @offline_group.id })
       OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_equal prior_rrs_count-1, OfflineMirror::ReceivedRecordState.count
       assert_equal 0, GroupOwnedRecord.count(:conditions => { :group_id => @offline_group.id })
     end
   end
@@ -237,8 +241,11 @@ class MirrorDataTest < Test::Unit::TestCase
     
     offline_number_rec_id = nil
     in_offline_app do
+      rrs_scope = OfflineMirror::ReceivedRecordState.for_model(GlobalRecord)
+      assert_equal 0, rrs_scope.count
       assert_equal 0, GlobalRecord.count
       OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      assert_equal 2, rrs_scope.count
       assert_equal 2, GlobalRecord.count
       assert_not_nil GlobalRecord.find_by_title("ABC")
       assert_not_nil GlobalRecord.find_by_title("123")
@@ -257,7 +264,9 @@ class MirrorDataTest < Test::Unit::TestCase
     end
     
     in_offline_app do
+      rrs_scope = OfflineMirror::ReceivedRecordState.for_model(GlobalRecord)
       OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      assert_equal 1, rrs_scope.count
       assert_equal 1, GlobalRecord.count
       assert_nil GlobalRecord.find_by_title("ABC")
       assert_nil GlobalRecord.find_by_title("123")
@@ -275,14 +284,25 @@ class MirrorDataTest < Test::Unit::TestCase
     in_offline_app(false, true) do
       assert_equal 0, Group.count
       assert_equal 0, GroupOwnedRecord.count
+      assert_equal 0, OfflineMirror::ReceivedRecordState.for_model(Group).count
+      assert_equal 0, OfflineMirror::ReceivedRecordState.for_model(GroupOwnedRecord).count
       OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
       assert_equal 1, Group.count
       assert_equal 1, GroupOwnedRecord.count
+      assert_equal 1, OfflineMirror::ReceivedRecordState.for_model(Group).count
+      assert_equal 1, OfflineMirror::ReceivedRecordState.for_model(GroupOwnedRecord).count
     end
   end
   
   cross_test "if no SystemState is present an initial down mirror file is required" do
-    # TODO Imlpement
+    mirror_data = ""
+    in_online_app { mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data }
+    
+    in_offline_app(false, true) do
+      assert_raise OfflineMirror::DataError do
+        OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      end
+    end
   end
   
   cross_test "importing an initial down mirror file deletes all currently existing records" do
@@ -309,8 +329,23 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-  cross_test "importing an initial down mirror file resets all autoincrement counters" do
-    # TODO Implement
+  cross_test "importing an initial down mirror file resets autoincrement counters" do
+    mirror_data = ""
+    in_online_app do
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+    end
+    
+    in_offline_app do
+      global_rec_a = GlobalRecord.new(:title => "A")
+      global_rec_b = GlobalRecord.new(:title => "B")
+      global_rec_c = GlobalRecord.new(:title => "C")
+      force_save_and_reload(global_rec_a, global_rec_b, global_rec_c)
+      
+      OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      
+      global_rec = GlobalRecord.create(:title => "Test")
+      assert_equal 1, global_rec.id
+    end
   end
   
   cross_test "cannot affect group records using a non-initial down mirror file" do
@@ -377,37 +412,65 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-  double_test "cannot pass in a cargo file containing extraneous sections" do
-    # TODO Implement
-  end
-  
-  cross_test "cannot use an up mirror file to create or update or delete records not owned by the given group" do
-    # TODO Implement
-  end
-  
-  cross_test "cannot use an up mirror file to delete the group record itself" do
-    # TODO Implement
-  end
-  
-  cross_test "cannot use a down mirror file to delete the group record itself" do
-    # TODO Implement
-  end
+#   cross_test "cannot use an up mirror file to create or update or delete records not owned by the given group" do
+#     # TODO Implement
+#   end
+#   
+#   cross_test "cannot use an up mirror file to delete the group record itself" do
+#     # TODO Implement
+#   end
+#   
+#   cross_test "cannot use a down mirror file to delete the group record itself" do
+#     # TODO Implement
+#   end
   
   cross_test "transformed ids are handled properly when loading an up mirror file" do
-    # TODO Implement
+    in_online_app do
+      another_online_record = GroupOwnedRecord.create(:description => "Yet Another", :group => @online_group)
+    end
+    
+    mirror_data = ""
+    offline_id_of_new_rec = nil
+    in_offline_app do
+      another_offline_rec = GroupOwnedRecord.create(:description => "One More", :group => @offline_group)
+      offline_id_of_new_rec = another_offline_rec.id
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+    end
+    
+    in_online_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      rec = GroupOwnedRecord.find_by_description("One More")
+      assert rec
+      assert_equal offline_id_of_new_rec, OfflineMirror::ReceivedRecordState.find_by_record(rec).remote_record_id
+    end
   end
   
   cross_test "transformed ids are handled properly when loading a down mirror file" do
-  end
-  
-  online_test "initial down mirror files do not include deletion entries" do
-    global_record = GlobalRecord.create(:title => "Something")
-    global_record.destroy
+    mirror_data = ""
+    online_id_of_new_offline_rec = nil
+    in_online_app do
+      another_online_record = GroupOwnedRecord.create(:description => "Yet Another", :group => @online_group)
+      another_offline_rec = GroupOwnedRecord.new(:description => "One More", :group => @offline_group)
+      force_save_and_reload(another_offline_rec)
+      online_id_of_offline_rec = another_offline_rec.id
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+    end
     
-    str = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
-    cs = OfflineMirror::CargoStreamer.new(str, "r")
-    deletion_cargo_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, GlobalRecord)
-    assert_equal false, cs.has_cargo_named?(deletion_cargo_name)
+    in_offline_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      rec = GroupOwnedRecord.find_by_description("One More")
+      assert rec
+      assert_equal online_id_of_new_offline_rec, rec.id
+      rec.description = "Back To The Future"
+      rec.save!
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+    end
+    
+    in_online_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_equal nil, GroupOwnedRecord.find_by_description("One More")
+      assert_equal "Back To The Future", GroupOwnedRecord.find(online_id_of_new_offline_rec).description
+    end
   end
   
   cross_test "transformed ids are handled properly when loading an initial down mirror file" do
@@ -436,20 +499,30 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_equal "Back To The Future", GroupOwnedRecord.find(online_id_of_offline_rec).description
     end
   end
-  
-  cross_test "transformed ids in foreign key columns are handled correctly" do
-    # TODO Implement
+    
+  online_test "initial down mirror files do not include deletion entries" do
+    global_record = GlobalRecord.create(:title => "Something")
+    global_record.destroy
+    
+    str = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+    cs = OfflineMirror::CargoStreamer.new(str, "r")
+    deletion_cargo_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, GlobalRecord)
+    assert_equal false, cs.has_cargo_named?(deletion_cargo_name)
   end
   
-  cross_test "mirror files do not include unchanged records" do
-    # TODO Implement
-  end
-  
-  cross_test "mirror files do not include deletion requests for records known to be deleted on remote system" do
-    # TODO Implement
-  end
-  
-  cross_test "deleting received records also deletes received record state" do
-    # TODO Implement
-  end
+#   cross_test "transformed ids in foreign key columns are handled correctly" do
+#     # TODO Implement
+#   end
+#   
+#   cross_test "mirror files do not include unchanged records" do
+#     # TODO Implement
+#   end
+#   
+#   cross_test "mirror files do not include deletion requests for records known to be deleted on remote system" do
+#     # TODO Implement
+#   end
+#   
+#   cross_test "deleting received records also deletes received record state" do
+#     # TODO Implement
+#   end
 end

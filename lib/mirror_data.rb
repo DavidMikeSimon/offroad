@@ -49,7 +49,7 @@ module OfflineMirror
           OfflineMirror::SystemState::create(
             :current_mirror_version => 1,
             :offline_group_id => @cs.first_cargo_element(group_cargo_name).id
-          ) or raise PluginError.new("Cannot create valid system state from initial down mirror file")
+          ) or raise PluginError.new("Couldn't create valid system state from initial down mirror file")
           import_global_cargo # Global cargo must be done first because group data might belong_to global data
           import_group_specific_cargo
         elsif SystemState.count == 0
@@ -151,6 +151,7 @@ module OfflineMirror
         if @initial_mode && @group
           # In initial mode the remote app will create records with the same id's as the corresponding records here
           # We need to keep track of this to later notice updates to those records vs. creation of new records
+          # So we'll create RRSes indicating that we 'received' the data we're about to send
           rrs_source = OfflineMirror::ReceivedRecordState.for_model(model).for_group(@group)
           batch.each do |rec|
             existing_rrs = rrs_source.find_by_remote_record_id(rec.id)

@@ -11,10 +11,6 @@ class ModuleFuncsTest < Test::Unit::TestCase
     assert_equal false, OfflineMirror::app_online?, "App is not online"
   end
   
-  double_test "app reports correct version" do
-    # TODO Implement
-  end
-  
   online_test "cannot call offline_group" do
     assert_raise OfflineMirror::PluginError do
       OfflineMirror::offline_group

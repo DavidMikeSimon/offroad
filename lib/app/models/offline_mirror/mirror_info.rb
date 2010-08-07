@@ -47,8 +47,7 @@ module OfflineMirror
     end
     
     def save
-      raise "Cannot save MirrorInfo records"
+      raise DataError.new("Cannot save MirrorInfo records")
     end
-    
   end
 end
