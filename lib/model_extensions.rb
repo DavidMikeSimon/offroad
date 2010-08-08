@@ -80,13 +80,6 @@ module OfflineMirror
       # However, making all of them private would make using them from elsewhere in the plugin troublesome
       
       #:nodoc:#
-      def offline_mirror_sendable_record_state
-        # Not all records will have a SendableRecordState, only those which belong to here and are mirrored to elsewhere
-        scope = SendableRecordState.for_record(self)
-        return scope.first || scope.new
-      end
-      
-      #:nodoc:#
       def bypass_offline_mirror_readonly_checks
         @offline_mirror_readonly_bypassed = true
       end

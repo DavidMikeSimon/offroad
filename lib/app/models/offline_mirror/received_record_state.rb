@@ -22,19 +22,15 @@ module OfflineMirror
       end
       
       if rec
-        if not rec.class.acts_as_mirrored_offline?
-          errors.add_to_base "Cannot create received record state for non-mirrored models"
-        else
-          if OfflineMirror::app_offline?
-            if rec.class.offline_mirror_group_data?
-              errors.add_to_base "Cannot create received record state for group data in offline app"
-            end
-          elsif OfflineMirror::app_online?
-            if rec.class.offline_mirror_global_data?
-              errors.add_to_base "Cannot create received record state for global records in online app"
-            elsif rec.group_online?
-              errors.add_to_base "Cannot create received record state for online group records in online app"
-            end
+        if OfflineMirror::app_offline?
+          if rec.class.offline_mirror_group_data?
+            errors.add_to_base "Cannot create received record state for group data in offline app"
+          end
+        elsif OfflineMirror::app_online?
+          if rec.class.offline_mirror_global_data?
+            errors.add_to_base "Cannot create received record state for global records in online app"
+          elsif rec.group_online?
+            errors.add_to_base "Cannot create received record state for online group records in online app"
           end
         end
       end

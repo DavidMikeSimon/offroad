@@ -22,14 +22,10 @@ module OfflineMirror
       end
       
       if rec
-        if not app_record.class.acts_as_mirrored_offline?
-          errors.add_to_base "Cannot create sendable record state for non-mirrored models"
-        else
-          if OfflineMirror::app_offline? && app_record.class.offline_mirror_global_data?
-            errors.add_to_base "Cannot create sendable record state for global data in offline app"
-          elsif OfflineMirror::app_online? && app_record.class.offline_mirror_group_data?
-            errors.add_to_base "Cannot create sendable record state for group data in online app"
-          end
+        if OfflineMirror::app_offline? && app_record.class.offline_mirror_global_data?
+          errors.add_to_base "Cannot create sendable record state for global data in offline app"
+        elsif OfflineMirror::app_online? && app_record.class.offline_mirror_group_data?
+          errors.add_to_base "Cannot create sendable record state for group data in online app"
         end
       end
     end

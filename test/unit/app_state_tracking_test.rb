@@ -32,11 +32,15 @@ class AppStateTrackingTest < Test::Unit::TestCase
   
   online_test "can change offline state of groups" do
     assert @online_group.group_online?
+    assert_equal false, @online_group.group_offline?
     @online_group.group_offline = true
+    assert @online_group.group_offline?
     assert_equal false, @online_group.group_online?
     
     assert @offline_group.group_offline?
+    assert_equal false, @offline_group.group_online?
     @offline_group.group_offline = false
+    assert @offline_group.group_online?
     assert_equal false, @offline_group.group_offline?
   end
   
@@ -160,17 +164,13 @@ class AppStateTrackingTest < Test::Unit::TestCase
   end
   
   double_test "cannot create valid received record state of records of unmirrored models" do
-    unmirrored_rec = UnmirroredRecord.new(:content => "Test")
-    rrs_scope = OfflineMirror::ReceivedRecordState.for_group(@offline_group).for_model(UnmirroredRecord)
-    rrs = rrs_scope.new(:local_record_id => unmirrored_rec.id, :remote_record_id => 1)
-    assert_equal false, rrs.valid?
+    unmirrored_rec = UnmirroredRecord.create!(:content => "Test")
+    assert_equal false, OfflineMirror::ReceivedRecordState.for_record(unmirrored_rec).new.valid?
   end
   
   double_test "cannot create valid sendable record state of records of unmirrored models" do
-    unmirrored_rec = UnmirroredRecord.new(:content => "Test")
-    srs_scope = OfflineMirror::SendableRecordState.for_model(UnmirroredRecord)
-    srs = srs_scope.new(:local_record_id => unmirrored_rec.id)
-    assert_equal false, srs.valid?
+    unmirrored_rec = UnmirroredRecord.create!(:content => "Test")
+    assert_equal false, OfflineMirror::SendableRecordState.for_record(unmirrored_rec).new.valid?
   end
   
   online_test "cannot create valid received record state of online group data records" do

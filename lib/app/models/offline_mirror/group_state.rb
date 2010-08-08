@@ -33,10 +33,6 @@ module OfflineMirror
       rec.destroy
     end
     
-    def online?
-      not offline?
-    end
-    
     private
     
     def self.valid_group_record?(rec)
