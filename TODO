@@ -1,3 +1,7 @@
+- Allow offline app to request group be made online in its up mirror file
+  - This is the best way to ensure we don't have un-sendable records left over in a newly-obsolete offline app
+- Assign a random number to group state when it is created, only accept mirror files with matching random number
+  - This is to prevent confusion if a group is made offline, then online, then offline again
 - Use transactions for mirror load operations
 - Creating/updating the installer (ideally, git on target platform, one rake task, then upload back to original server)
 - Intercept group deletions, drop corresponding group_state
@@ -46,5 +50,4 @@ Scenarios to deal with:
 	- Has newer version than online (this shouldn't require any special handling...)
 - Turning an online app into an offline app, then online again, then offline again, with data xfer happening at each stage
 - Online app receives a mirror file, then offline updates and sends another mirror file, without receiving confirmation of first
-- Online app can delete entire offline group, in which case offline should revert to pre-initial-down-mirror state
 - Offline app attempts to delete offline group on online app: this should not be possible

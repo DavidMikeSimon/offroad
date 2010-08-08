@@ -3,11 +3,6 @@ require File.expand_path(File.dirname(__FILE__) + '/../test_helper')
 # This is a unit test for all the OfflineMirror internal models whose names end with "State"
 
 class AppStateTrackingTest < Test::Unit::TestCase
-  def find_srs_from_record(rec)
-    model_state = OfflineMirror::ModelState::find_by_app_model_name(rec.class.name)
-    return OfflineMirror::SendableRecordState::find_by_model_state_id_and_local_record_id(model_state.id, rec.id)
-  end
-  
   agnostic_test "can increment current mirror version" do
     original_version = OfflineMirror::SystemState::current_mirror_version
     OfflineMirror::SystemState::increment_mirror_version
@@ -21,17 +16,12 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert_equal cur_version, rec_state.mirror_version, "SendableRecordState has correct mirror version"
   end
   
-  online_test "cannot create valid GroupState for online group" do
-    group_state = OfflineMirror::GroupState.find_or_create_by_group(@online_group)
-    assert_equal false, group_state.valid?
-  end
-  
   online_test "group state data is created when online group is made offline" do
     prior_group_state_count = OfflineMirror::GroupState::count
     rec = Group.create(:name => "Foo Bar")
     
     assert_nil OfflineMirror::GroupState::find_by_app_group_id(rec.id)
-    group.offline_group = true
+    rec.group_offline = true
     group_state = OfflineMirror::GroupState::find_by_app_group_id(rec.id)
     assert group_state
     assert_equal prior_group_state_count+1, OfflineMirror::GroupState::count, "GroupState was created on demand"
@@ -40,28 +30,39 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert_equal 0, group_state.down_mirror_version, "As-yet un-mirrored group has a down mirror version of 0"
   end
   
+  online_test "can change offline state of groups" do
+    assert @online_group.group_online?
+    @online_group.group_offline = true
+    assert_equal false, @online_group.group_online?
+    
+    assert @offline_group.group_offline?
+    @offline_group.group_offline = false
+    assert_equal false, @offline_group.group_offline?
+  end
+  
   online_test "state data is destroyed when offline group is made online" do
     rrs_scope = OfflineMirror::ReceivedRecordState.for_group(@offline_group)
     assert_not_equal 0, rrs_scope.count
     @offline_group.group_offline = false
+    assert_nil OfflineMirror::GroupState::find_by_app_group_id(@offline_group.id)
     assert_equal 0, rrs_scope.count
   end
   
   offline_test "creating group owned record causes creation of valid sendable record state" do
     rec = GroupOwnedRecord.create(:description => "Foo Bar", :group => @offline_group)
     
-    rec_state = find_srs_from_record(rec)
+    rec_state = OfflineMirror::SendableRecordState.for_record(rec).first
+    assert rec_state
     assert_equal "GroupOwnedRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
     assert_newly_created_record_matches_state(rec, rec_state)
   end
   
   online_test "creating group owned record does not cause creation of sendable record state" do
     rec = GroupOwnedRecord.create(:description => "Foo Bar", :group => @online_group)
-    assert_equal nil, find_srs_from_record(rec)
+    assert_equal nil, OfflineMirror::SendableRecordState.for_record(rec).first
   end
   
   online_test "creating global record causes creation of valid sendable record state data" do
-    # The setup routine didn't create any GlobalRecords, so there shouldn't be any GlobalRecord record states yet
     assert_nothing_raised "No pre-existing SendableRecordStates for GlobalRecord" do
       OfflineMirror::SendableRecordState::find(:all, :include => [ :model_state]).each do |rec|
         raise "Already a GlobalRecord state entry!" if rec.model_state.app_model_name == "GlobalRecord"
@@ -70,14 +71,14 @@ class AppStateTrackingTest < Test::Unit::TestCase
     
     rec = GlobalRecord.create(:title => "Foo Bar")
     
-    rec_state = find_srs_from_record(rec)
+    rec_state = OfflineMirror::SendableRecordState.for_record(rec).first
     assert rec_state, "SendableRecordState was created when record was created"
     assert_equal "GlobalRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
     assert_newly_created_record_matches_state(rec, rec_state)
   end
   
   def assert_only_changing_attribute_causes_version_change(model, attribute, rec)
-    rec_state = find_srs_from_record(rec)
+    rec_state = OfflineMirror::SendableRecordState.for_record(rec).first
     original_version = OfflineMirror::SystemState::current_mirror_version
     OfflineMirror::SystemState::increment_mirror_version
     
@@ -105,7 +106,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
   end
   
   def assert_deleting_record_correctly_updated_record_state(rec)
-    rec_state = find_srs_from_record(rec)
+    rec_state = OfflineMirror::SendableRecordState.for_record(rec).first
     assert_equal false, rec_state.deleted, "By default deleted flag is false"
     original_version = OfflineMirror::SystemState::current_mirror_version
     OfflineMirror::SystemState::increment_mirror_version
@@ -127,12 +128,6 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert_deleting_record_correctly_updated_record_state(@editable_group_data)
   end
   
-  online_test "deleting online group base record deletes corresponding group state" do
-    assert_not_nil OfflineMirror::GroupState::find_by_app_group_id(@online_group)
-    @online_group.destroy
-    assert_nil OfflineMirror::GroupState::find_by_app_group_id(@online_group)
-  end
-  
   online_test "deleting offline group base record deletes corresponding group state" do
     assert_not_nil OfflineMirror::GroupState::find_by_app_group_id(@offline_group)
     @offline_group.destroy
@@ -140,24 +135,27 @@ class AppStateTrackingTest < Test::Unit::TestCase
   end
   
   online_test "can only create valid group state of saved group records that are :group_base" do
-    assert_equal false, OfflineMirror::GroupState::find_or_create_by_group(@editable_group_data).valid?
+    assert_equal false, OfflineMirror::GroupState::for_group(@editable_group_data).new.valid?
     
     new_group = Group.new(:name => "Test")
-    assert_equal false, OfflineMirror::GroupState::find_or_create_by_group(new_group).valid?
+    assert_equal false, OfflineMirror::GroupState::for_group(new_group).new.valid?
     new_group.save!
-    assert OfflineMirror::GroupState::find_or_create_by_group(new_group).valid?
+    assert OfflineMirror::GroupState::for_group(new_group).new.valid?
   end
   
   double_test "cannot create valid model state of unmirrored models" do
-    model_state = OfflineMirror::ModelState::find_or_create_by_model(GlobalRecord)
+    model_state = OfflineMirror::ModelState::for_model(GlobalRecord).new
     assert model_state.valid?
     
-    model_state = OfflineMirror::ModelState::find_or_create_by_model(UnmirroredRecord)
+    model_state = OfflineMirror::ModelState::for_model(UnmirroredRecord).new
     assert_equal false, model_state.valid?
   end
   
   double_test "cannot create valid model state of non-existent models" do
-    model_state = OfflineMirror::ModelState::find_or_create_by_model(nil)
+    model_state = OfflineMirror::ModelState::for_model(nil).new
+    assert_equal false, model_state.valid?
+    
+    model_state = OfflineMirror::ModelState::new(:app_model_name => "this is not a constant name")
     assert_equal false, model_state.valid?
   end
   
@@ -166,6 +164,13 @@ class AppStateTrackingTest < Test::Unit::TestCase
     rrs_scope = OfflineMirror::ReceivedRecordState.for_group(@offline_group).for_model(UnmirroredRecord)
     rrs = rrs_scope.new(:local_record_id => unmirrored_rec.id, :remote_record_id => 1)
     assert_equal false, rrs.valid?
+  end
+  
+  double_test "cannot create valid sendable record state of records of unmirrored models" do
+    unmirrored_rec = UnmirroredRecord.new(:content => "Test")
+    srs_scope = OfflineMirror::SendableRecordState.for_model(UnmirroredRecord)
+    srs = srs_scope.new(:local_record_id => unmirrored_rec.id)
+    assert_equal false, srs.valid?
   end
   
   online_test "cannot create valid received record state of online group data records" do
@@ -203,14 +208,13 @@ class AppStateTrackingTest < Test::Unit::TestCase
   
   online_test "cannot create valid received record state of unsaved records" do
     group_data = GroupOwnedRecord.new(:description => "Test", :group => @offline_group)
-    rrs = OfflineMirror::ReceivedRecordState.create_by_record_and_remote_record_id(group_data, 1)
+    rrs = OfflineMirror::ReceivedRecordState.for_record(group_data).new(:remote_record_id => 1)
     assert_equal false, rrs.valid?
   end
   
   online_test "cannot create valid sendable record state of unsaved records" do
     global_data = GlobalRecord.new(:title => "Test")
-    force_save_and_reload(global_data)
-    srs = OfflineMirror::SendableRecordState.find_or_create_by_record(global_data)
+    srs = OfflineMirror::SendableRecordState.for_record(global_data).new
     assert_equal false, srs.valid?
   end
   

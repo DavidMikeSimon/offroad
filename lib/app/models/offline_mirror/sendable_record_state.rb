@@ -5,13 +5,45 @@ module OfflineMirror
     set_table_name "offline_mirror_sendable_record_states"
     
     belongs_to :model_state, :class_name => "::OfflineMirror::ModelState"
-    validates_presence_of :model_state
+    
+    def validate
+      unless model_state
+        errors.add_to_base "Cannot find associated model state"
+        return
+      end
+      
+      rec = nil
+      unless deleted
+        begin
+          rec = app_record
+        rescue ActiveRecord::RecordNotFound
+          errors.add_to_base "Cannot find associated app record"
+        end
+      end
+      
+      if rec
+        if not app_record.class.acts_as_mirrored_offline?
+          errors.add_to_base "Cannot create sendable record state for non-mirrored models"
+        else
+          if OfflineMirror::app_offline? && app_record.class.offline_mirror_global_data?
+            errors.add_to_base "Cannot create sendable record state for global data in offline app"
+          elsif OfflineMirror::app_online? && app_record.class.offline_mirror_group_data?
+            errors.add_to_base "Cannot create sendable record state for group data in online app"
+          end
+        end
+      end
+    end
     
     named_scope :for_model, lambda { |model| { :conditions => {
-      :model_state_id => ModelState::find_or_create_by_model(model).id
+      :model_state_id => model.offline_mirror_model_state.id
     } } }
     
     named_scope :for_deleted_records, :conditions => { :deleted => true }
+    
+    named_scope :for_record, lambda { |rec| { :conditions => {
+      :model_state_id => rec.class.offline_mirror_model_state.id,
+      :local_record_id => rec.id
+    } } }
     
     def app_record
       model_state.app_model.find(local_record_id)
@@ -32,29 +64,12 @@ module OfflineMirror
       mark_record_changes(record)
     end
     
-    def self.find_or_create_by_record(rec)
-      srs = find_or_initialize_by_record(rec)
-      srs.save! if srs.new_record?
-      return srs
-    end
-    
-    def self.find_or_initialize_by_record(rec)
-      if rec.new_record?
-        raise DataError.new("Cannot build record state for unsaved record")
-      end
-      
-      return find_or_initialize_by_model_state_id_and_local_record_id(
-        :model_state_id => rec.class.offline_mirror_model_state.id,
-        :local_record_id => rec.id
-      )
-    end
-    
     private
     
     def self.mark_record_changes(record)
       transaction do
-        rec_state = find_or_initialize_by_record(record)
-        # TODO Fail if rec_state isn't valid
+        scope = for_record(record)
+        rec_state = scope.first || scope.create
         rec_state.lock!
         yield(rec_state) if block_given?
         rec_state.mirror_version = SystemState::current_mirror_version

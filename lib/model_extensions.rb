@@ -44,7 +44,8 @@ module OfflineMirror
     end
     
     def offline_mirror_model_state
-      OfflineMirror::ModelState::find_or_create_by_model(self)
+      model_scope = OfflineMirror::ModelState::for_model(self)
+      return model_scope.first || model_scope.create
     end
     
     def acts_as_mirrored_offline?
@@ -55,14 +56,16 @@ module OfflineMirror
       acts_as_mirrored_offline?
     end
     
+    def offline_mirror_group_base?
+      acts_as_mirrored_offline? && offline_mirror_mode == :group_base
+    end
+    
     def offline_mirror_group_data?
-      raise ModelError.new("You must call acts_as_offline_mirror for this model") unless acts_as_mirrored_offline?
-      OFFLINE_MIRROR_GROUP_MODES.include?(offline_mirror_mode)
+      acts_as_mirrored_offline? && OFFLINE_MIRROR_GROUP_MODES.include?(offline_mirror_mode)
     end
     
     def offline_mirror_global_data?
-      raise ModelError.new("You must call acts_as_offline_mirror for this model") unless acts_as_mirrored_offline?
-      offline_mirror_mode == :global
+      acts_as_mirrored_offline? && offline_mirror_mode == :global
     end
     
     private
@@ -79,7 +82,8 @@ module OfflineMirror
       #:nodoc:#
       def offline_mirror_sendable_record_state
         # Not all records will have a SendableRecordState, only those which belong to here and are mirrored to elsewhere
-        SendableRecordState.find_or_initialize_by_record(self)
+        scope = SendableRecordState.for_record(self)
+        return scope.first || scope.new
       end
       
       #:nodoc:#
@@ -198,17 +202,16 @@ module OfflineMirror
       end
       
       def group_online?
-        return case offline_mirror_mode
-          when :group_owned then group_state.online?
-          # We cannot get group_state if the record isn't saved...
-          # But, we know that the default state of newly created groups is online
-          when :group_base then new_record? || group_state.online?
-        end
+        return group_state.nil?
       end
       
       def group_offline=(b)
         raise DataError.new("Unable to change a group's offline status in offline app") if OfflineMirror::app_offline?
-        group_state.update_attribute(:offline, b)
+        if b && !group_state
+          OfflineMirror::GroupState.for_group(owning_group).create
+        elsif group_state
+          group_state.destroy
+        end
       end
       
       def owning_group
@@ -280,15 +283,9 @@ module OfflineMirror
       
       #:nodoc#
       def after_mirrored_data_save
-        if offline_mirror_mode == :group_base
-          OfflineMirror::GroupState::find_or_create_by_group(self)
-        end
-        
-        if OfflineMirror::app_offline? && changed?
-          # Group records aren't sendable from the online app, so we only need to create SRSes in the offline app
+        if group_offline? && OfflineMirror::app_offline? && changed?
           OfflineMirror::SendableRecordState::note_record_created_or_updated(self)
         end
-        
         return true
       end
       
@@ -296,7 +293,7 @@ module OfflineMirror
       
       #:nodoc#
       def group_state
-        OfflineMirror::GroupState.find_or_create_by_group(owning_group)
+        OfflineMirror::GroupState.for_group(owning_group).first
       end
       
       #:nodoc:#

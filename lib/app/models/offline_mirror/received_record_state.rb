@@ -5,51 +5,57 @@ module OfflineMirror
     set_table_name "offline_mirror_received_record_states"
     
     belongs_to :model_state, :class_name => "::OfflineMirror::ModelState"
-    validates_presence_of :model_state
     
     belongs_to :group_state, :class_name => "::OfflineMirror::GroupState"
     
+    def validate
+      unless model_state
+        errors.add_to_base "Cannot find associated model state"
+        return
+      end
+      
+      rec = nil
+      begin
+        rec = app_record
+      rescue ActiveRecord::RecordNotFound
+        errors.add_to_base "Cannot find associated app record"
+      end
+      
+      if rec
+        if not rec.class.acts_as_mirrored_offline?
+          errors.add_to_base "Cannot create received record state for non-mirrored models"
+        else
+          if OfflineMirror::app_offline?
+            if rec.class.offline_mirror_group_data?
+              errors.add_to_base "Cannot create received record state for group data in offline app"
+            end
+          elsif OfflineMirror::app_online?
+            if rec.class.offline_mirror_global_data?
+              errors.add_to_base "Cannot create received record state for global records in online app"
+            elsif rec.group_online?
+              errors.add_to_base "Cannot create received record state for online group records in online app"
+            end
+          end
+        end
+      end
+    end
+    
     named_scope :for_model, lambda { |model| { :conditions => {
-      :model_state_id => model.offline_mirror_model_state
+      :model_state_id => model.offline_mirror_model_state.id
     } } }
     
     named_scope :for_group, lambda { |group| { :conditions => {
-      :group_state_id => group ? group.group_state : 0
+      :group_state_id => (group && group.group_state) ? group.group_state.id : 0
+    } } }
+    
+    named_scope :for_record, lambda { |rec| { :conditions => {
+      :model_state_id => rec.class.offline_mirror_model_state.id,
+      :group_state_id => rec.class.offline_mirror_group_data? ? rec.group_state.id : 0,
+      :local_record_id => rec.id
     } } }
     
     def app_record
       model_state.app_model.find(local_record_id)
-    end
-    
-    def self.create_by_record_and_remote_record_id(rec, remote_record_id)
-      ensure_record_is_acceptable(rec)
-      create(
-        :model_state_id => rec.class.offline_mirror_model_state.id,
-        :group_state_id => rec.class.offline_mirror_group_data? ? rec.group_state.id : 0,
-        :local_record_id => rec.id,
-        :remote_record_id => remote_record_id
-      )
-    end
-    
-    def self.find_by_record(rec)
-      ensure_record_is_acceptable(rec)
-      first(:conditions => {
-        :model_state_id => rec.class.offline_mirror_model_state.id,
-        :group_state_id => rec.class.offline_mirror_group_data? ? rec.group_state.id : 0,
-        :local_record_id => rec.id
-      })
-    end
-    
-    private
-    
-    def self.ensure_record_is_acceptable(rec)
-      if rec.new_record?
-        raise DataError.new("Cannot build record state for unsaved record")
-      end
-      
-      unless rec.class.acts_as_mirrored_offline?
-        raise ModelError.new("Cannot build record state for unmirrored record")
-      end
     end
   end
 end

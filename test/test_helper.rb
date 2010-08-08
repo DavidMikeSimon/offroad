@@ -220,19 +220,17 @@ class OnlineTestDatabase < VirtualTestDatabase
     
     OfflineMirror::SystemState::create(:current_mirror_version => 1) or raise "Unable to create testing SystemState"
     
-    offline_group = Group.new(:name => "An Offline Group")
-    online_group = Group.new(:name => "An Online Group")
-    force_save_and_reload(offline_group, online_group)
-    # Pretend data came from offline
+    offline_group = Group.create(:name => "An Offline Group")
+    online_group = Group.create(:name => "An Online Group")
     offline_group.group_offline = true
-    OfflineMirror::ReceivedRecordState.create_by_record_and_remote_record_id(offline_group, 1) # Data came from offline
+    OfflineMirror::ReceivedRecordState.for_record(offline_group).create(:remote_record_id => 1) # Data came from offline
     setup_ivar(:@offline_group, offline_group)
     setup_ivar(:@online_group, online_group)
     
     offline_data = GroupOwnedRecord.new( :description => "Sam", :group => offline_group)
     online_data = GroupOwnedRecord.new(:description => "Max", :group => online_group)
     force_save_and_reload(offline_data, online_data)
-    OfflineMirror::ReceivedRecordState.create_by_record_and_remote_record_id(offline_data, 1) # Data came from offline
+    OfflineMirror::ReceivedRecordState.for_record(offline_data).create(:remote_record_id => 1) # Data came from offline
     setup_ivar(:@offline_group_data, offline_data)
     setup_ivar(:@online_group_data, online_data)
     
@@ -258,6 +256,11 @@ class OfflineTestDatabase < VirtualTestDatabase
     
     offline_group = Group.new(:name => "An Offline Group")
     force_save_and_reload(offline_group)
+    
+    # Force the group to be considered offline
+    OfflineMirror::GroupState.for_group(offline_group).create
+    OfflineMirror::SendableRecordState.for_record(offline_group).create(:mirror_version => 1)
+    
     offline_group.id == OfflineMirror::SystemState::offline_group_id or raise("Test group id mismatch")
     offline_group.id == 1 or raise("Test group id not set correctly") # Must match remote_record_id of test online rec
     setup_ivar(:@offline_group, offline_group)
