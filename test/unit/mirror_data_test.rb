@@ -284,13 +284,13 @@ class MirrorDataTest < Test::Unit::TestCase
     in_offline_app(false, true) do
       assert_equal 0, Group.count
       assert_equal 0, GroupOwnedRecord.count
-      assert_equal 0, OfflineMirror::ReceivedRecordState.for_model(Group).count
-      assert_equal 0, OfflineMirror::ReceivedRecordState.for_model(GroupOwnedRecord).count
+      assert_equal 0, OfflineMirror::SendableRecordState.for_model(Group).count
+      assert_equal 0, OfflineMirror::SendableRecordState.for_model(GroupOwnedRecord).count
       OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
       assert_equal 1, Group.count
       assert_equal 1, GroupOwnedRecord.count
-      assert_equal 1, OfflineMirror::ReceivedRecordState.for_model(Group).count
-      assert_equal 1, OfflineMirror::ReceivedRecordState.for_model(GroupOwnedRecord).count
+      assert_equal 1, OfflineMirror::SendableRecordState.for_model(Group).count
+      assert_equal 1, OfflineMirror::SendableRecordState.for_model(GroupOwnedRecord).count
     end
   end
   
@@ -300,7 +300,7 @@ class MirrorDataTest < Test::Unit::TestCase
     
     in_offline_app(false, true) do
       assert_raise OfflineMirror::DataError do
-        OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+        OfflineMirror::MirrorData.new(nil).load_downwards_data(mirror_data)
       end
     end
   end
@@ -343,7 +343,8 @@ class MirrorDataTest < Test::Unit::TestCase
       
       OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
       
-      global_rec = GlobalRecord.create(:title => "Test")
+      global_rec = GlobalRecord.new(:title => "Test")
+      force_save_and_reload(global_rec)
       assert_equal 1, global_rec.id
     end
   end
@@ -441,35 +442,7 @@ class MirrorDataTest < Test::Unit::TestCase
       OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       rec = GroupOwnedRecord.find_by_description("One More")
       assert rec
-      assert_equal offline_id_of_new_rec, OfflineMirror::ReceivedRecordState.find_by_record(rec).remote_record_id
-    end
-  end
-  
-  cross_test "transformed ids are handled properly when loading a down mirror file" do
-    mirror_data = ""
-    online_id_of_new_offline_rec = nil
-    in_online_app do
-      another_online_record = GroupOwnedRecord.create(:description => "Yet Another", :group => @online_group)
-      another_offline_rec = GroupOwnedRecord.new(:description => "One More", :group => @offline_group)
-      force_save_and_reload(another_offline_rec)
-      online_id_of_offline_rec = another_offline_rec.id
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
-    end
-    
-    in_offline_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
-      rec = GroupOwnedRecord.find_by_description("One More")
-      assert rec
-      assert_equal online_id_of_new_offline_rec, rec.id
-      rec.description = "Back To The Future"
-      rec.save!
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
-    end
-    
-    in_online_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
-      assert_equal nil, GroupOwnedRecord.find_by_description("One More")
-      assert_equal "Back To The Future", GroupOwnedRecord.find(online_id_of_new_offline_rec).description
+      assert_equal offline_id_of_new_rec, OfflineMirror::ReceivedRecordState.for_record(rec).first.remote_record_id
     end
   end
   
@@ -523,6 +496,10 @@ class MirrorDataTest < Test::Unit::TestCase
 #   end
 #   
 #   cross_test "deleting received records also deletes received record state" do
+#     # TODO Implement
+#   end
+#   
+#   cross_test "records from other groups are not included in initial down mirror files" do
 #     # TODO Implement
 #   end
 end

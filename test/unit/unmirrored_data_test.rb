@@ -7,12 +7,8 @@ class UnmirroredDataTest < Test::Unit::TestCase
     assert_equal false, UnmirroredRecord.acts_as_mirrored_offline?
   end
   
-  agnostic_test "cannot call offline_mirror_*_data? on unmirrored data models" do
-    assert_raise OfflineMirror::ModelError, "Expect exception on check for *group* data" do
-      UnmirroredRecord.offline_mirror_group_data?
-    end
-    assert_raise OfflineMirror::ModelError, "Expect exception for check on *global* data" do
-      UnmirroredRecord.offline_mirror_global_data?
-    end
+  agnostic_test "offline_mirror_*_data? methods return false on unmirrored data models" do
+    assert_equal false, UnmirroredRecord.offline_mirror_group_data?
+    assert_equal false, UnmirroredRecord.offline_mirror_global_data?
   end
 end

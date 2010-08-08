@@ -238,7 +238,7 @@ module OfflineMirror
       
       #:nodoc#
       def before_mirrored_data_destroy
-        if offline_mirror_mode == :group_base
+        if group_offline? && offline_mirror_mode == :group_base
           group_state.update_attribute(:group_being_destroyed, true)
         end
         
@@ -257,7 +257,7 @@ module OfflineMirror
       #:nodoc#
       def after_mirrored_data_destroy
         OfflineMirror::SendableRecordState::note_record_destroyed(self) if OfflineMirror::app_offline?
-        OfflineMirror::GroupState::note_group_destroyed(self) if offline_mirror_mode == :group_base
+        OfflineMirror::GroupState::note_group_destroyed(self) if group_offline? && offline_mirror_mode == :group_base
         return true
       end
       
@@ -283,13 +283,16 @@ module OfflineMirror
       
       #:nodoc#
       def after_mirrored_data_save
-        if group_offline? && OfflineMirror::app_offline? && changed?
-          OfflineMirror::SendableRecordState::note_record_created_or_updated(self)
+        if OfflineMirror::app_offline?
+          # Make a GroupState if this is the group being loaded into the offline app from an initial down mirror file
+          if self.class.offline_mirror_group_base? && group_state == nil
+            GroupState.for_group(self).create!
+          end
+          
+          OfflineMirror::SendableRecordState::note_record_created_or_updated(self) if changed?
         end
         return true
       end
-      
-      # TODO Should probably prefix the below with "offline_mirror_" to avoid potential name collisions
       
       #:nodoc#
       def group_state
@@ -298,7 +301,7 @@ module OfflineMirror
       
       #:nodoc:#
       def group_being_destroyed
-        return true unless owning_group # If the group doesn't exist anymore, then it's pretty well "destroyed"
+        return true unless owning_group # If the group doesn't exist anymore, then it's pretty well destroyed
         return group_state.group_being_destroyed
       end
     end

@@ -46,9 +46,11 @@ module OfflineMirror
           # However, existing data is safe if there's a mid-import error; read_data_from puts us in a transaction
           delete_all_existing_database_records!
           
+          offline_group_id = @cs.first_cargo_element(group_cargo_name).id
+          
           OfflineMirror::SystemState::create(
             :current_mirror_version => 1,
-            :offline_group_id => @cs.first_cargo_element(group_cargo_name).id
+            :offline_group_id => offline_group_id
           ) or raise PluginError.new("Couldn't create valid system state from initial down mirror file")
           import_global_cargo # Global cargo must be done first because group data might belong_to global data
           import_group_specific_cargo
@@ -148,14 +150,15 @@ module OfflineMirror
       data_source = data_source.owned_by_offline_mirror_group(@group) if model.offline_mirror_group_data? && @group
       data_source.find_in_batches(:batch_size => 100) do |batch|
         @cs.write_cargo_section(MirrorData::data_cargo_name_for_model(model), batch)
-        if @initial_mode && @group
+        
+        if @initial_mode && model.offline_mirror_group_data?
           # In initial mode the remote app will create records with the same id's as the corresponding records here
-          # We need to keep track of this to later notice updates to those records vs. creation of new records
           # So we'll create RRSes indicating that we 'received' the data we're about to send
+          # Later when the remote app sends new information on those records, we'll know which ones it means
           rrs_source = OfflineMirror::ReceivedRecordState.for_model(model).for_group(@group)
           batch.each do |rec|
             existing_rrs = rrs_source.find_by_remote_record_id(rec.id)
-            ReceivedRecordState.create_by_record_and_remote_record_id(rec, rec.id) unless existing_rrs
+            ReceivedRecordState.for_record(rec).create!(:remote_record_id => rec.id) unless existing_rrs
           end
         end
       end
@@ -204,7 +207,7 @@ module OfflineMirror
           local_record.save!
           
           unless @initial_mode || rrs
-            x = ReceivedRecordState.create_by_record_and_remote_record_id(local_record, cargo_record.id)
+            x = ReceivedRecordState.for_record(local_record).create!(:remote_record_id => cargo_record.id)
           end
         end
       end

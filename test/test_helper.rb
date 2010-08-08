@@ -257,10 +257,6 @@ class OfflineTestDatabase < VirtualTestDatabase
     offline_group = Group.new(:name => "An Offline Group")
     force_save_and_reload(offline_group)
     
-    # Force the group to be considered offline
-    OfflineMirror::GroupState.for_group(offline_group).create
-    OfflineMirror::SendableRecordState.for_record(offline_group).create(:mirror_version => 1)
-    
     offline_group.id == OfflineMirror::SystemState::offline_group_id or raise("Test group id mismatch")
     offline_group.id == 1 or raise("Test group id not set correctly") # Must match remote_record_id of test online rec
     setup_ivar(:@offline_group, offline_group)
