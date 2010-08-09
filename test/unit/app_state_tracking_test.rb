@@ -233,4 +233,15 @@ class AppStateTrackingTest < Test::Unit::TestCase
       OfflineMirror::SystemState.instance_record
     end
   end
+  
+  agnostic_test "can find associated model for all the foreign key columns in a given model" do
+    foreign_keys = Group.offline_mirror_foreign_key_models
+    assert foreign_keys.has_key?("favorite_id")
+    assert foreign_keys.has_key?("global_record_id")
+    assert foreign_keys.has_key?("unmirrored_record_id")
+    assert_equal false, foreign_keys.has_key?("name")
+    assert_equal GroupOwnedRecord, foreign_keys["favorite_id"]
+    assert_equal GlobalRecord, foreign_keys["global_record_id"]
+    assert_equal UnmirroredRecord, foreign_keys["unmirrored_record_id"]
+  end
 end

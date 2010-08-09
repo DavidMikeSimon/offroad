@@ -41,6 +41,21 @@ module OfflineMirror
       after_destroy :after_mirrored_data_destroy
       before_save :before_mirrored_data_save
       after_save :after_mirrored_data_save
+      
+      set_internal_cattr :offline_mirror_foreign_key_models, {}
+      class << self
+        alias_method_chain :belongs_to, :offline_mirror_reflection
+      end
+    end
+    
+    def belongs_to_with_offline_mirror_reflection(association_id, options = {})
+      belongs_to_without_offline_mirror_reflection(association_id, options)
+      
+      if acts_as_mirrored_offline?
+        key_name = options.has_key?(:foreign_key) ? options[:foreign_key] : "#{association_id}_id"
+        model_name = options.has_key?(:class_name) ? options[:class_name] : association_id.to_s.classify
+        offline_mirror_foreign_key_models[key_name] = model_name.constantize
+      end
     end
     
     def offline_mirror_model_state
