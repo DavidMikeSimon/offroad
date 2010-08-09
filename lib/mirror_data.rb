@@ -237,7 +237,6 @@ module OfflineMirror
           
           local_record.bypass_offline_mirror_readonly_checks
           local_record.save_without_validation # Validation delayed because it might depend on as-yet unimported data
-          local_record.reload
           
           unless @initial_mode || rrs
             ReceivedRecordState.for_record(local_record).create!(:remote_record_id => cargo_record.id)
