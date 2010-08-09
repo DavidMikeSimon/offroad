@@ -578,10 +578,6 @@ class MirrorDataTest < Test::Unit::TestCase
 #     # TODO Implement
 #   end
 #   
-#   cross_test "deleting received records also deletes received record state" do
-#     # TODO Implement
-#   end
-#   
 #   cross_test "records from other groups are not included in initial down mirror files" do
 #     # TODO Implement
 #   end
