@@ -29,7 +29,7 @@ module OfflineMirror
         elsif OfflineMirror::app_online?
           if rec.class.offline_mirror_global_data?
             errors.add_to_base "Cannot create received record state for global records in online app"
-          elsif rec.group_online?
+          elsif group_state.nil?
             errors.add_to_base "Cannot create received record state for online group records in online app"
           end
         end
