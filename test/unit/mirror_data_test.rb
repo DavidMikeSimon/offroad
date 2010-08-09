@@ -483,7 +483,7 @@ class MirrorDataTest < Test::Unit::TestCase
     assert_equal false, cs.has_cargo_named?(deletion_cargo_name)
   end
   
-  cross_test "cannot import mirror files with invalid records" do
+  cross_test "cannot import up mirror files with invalid records" do
     mirror_data = ""
     in_offline_app do
       group_rec = GroupOwnedRecord.new(:description => "Invalid record", :group => @offline_group, :should_be_even => 3)
@@ -498,8 +498,36 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
+  cross_test "cannot import down mirror files with invalid records" do
+    mirror_data = ""
+    in_online_app do
+      global_rec = GlobalRecord.new(:title => "Invalid record", :should_be_odd => 2)
+      global_rec.save_without_validation
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :skip_write_validation => true).write_downwards_data
+    end
+    
+    in_offline_app do
+      assert_raise OfflineMirror::DataError do
+        OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      end
+    end
+  end
+  
   cross_test "cannot import initial down mirror files with invalid records" do
-    flunk
+    mirror_data = ""
+    in_online_app do
+      group_rec = GroupOwnedRecord.new(:description => "Invalid record", :group => @online_group, :should_be_even => 3)
+      group_rec.save_without_validation
+      @online_group.group_offline = true
+      writer = OfflineMirror::MirrorData.new(@online_group, :skip_write_validation => true, :initial_mode => true)
+      mirror_data = writer.write_downwards_data
+    end
+    
+    in_offline_app(false, true) do
+      assert_raise OfflineMirror::DataError do
+        OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      end
+    end
   end
   
 #   cross_test "transformed ids in foreign key columns are handled correctly" do

@@ -22,6 +22,7 @@ class CreateTables < ActiveRecord::Migration
     create_table :global_records do |t|
       t.string :title
       t.boolean :some_boolean
+      t.integer :should_be_odd, :default => 1
       t.integer :unmirrored_record_id
       t.integer :friend_id
       t.integer :some_group_id
