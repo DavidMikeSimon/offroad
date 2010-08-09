@@ -349,9 +349,9 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-  cross_test "cannot affect group records using a non-initial down mirror file" do
-    # TODO Implement
-  end
+#   cross_test "cannot affect group records in offline app using a non-initial down mirror file" do
+#     # TODO Implement
+#   end
   
   cross_test "cannot upload an initial down mirror file unless passed :initial_mode => true to MirrorData.new" do
     mirror_data = ""
@@ -360,7 +360,7 @@ class MirrorDataTest < Test::Unit::TestCase
     end
     
     in_offline_app do
-      assert_raise OfflineMirror::PluginError do
+      assert_raise OfflineMirror::DataError do
         OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
       end
     end
@@ -371,7 +371,7 @@ class MirrorDataTest < Test::Unit::TestCase
     in_online_app { mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data }
     
     in_offline_app do
-      assert_raise OfflineMirror::PluginError do
+      assert_raise OfflineMirror::DataError do
         OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).load_downwards_data(mirror_data)
       end
     end
@@ -481,6 +481,21 @@ class MirrorDataTest < Test::Unit::TestCase
     cs = OfflineMirror::CargoStreamer.new(str, "r")
     deletion_cargo_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, GlobalRecord)
     assert_equal false, cs.has_cargo_named?(deletion_cargo_name)
+  end
+  
+  cross_test "cannot import mirror files with invalid records" do
+    mirror_data = ""
+    in_offline_app do
+      group_rec = GroupOwnedRecord.new(:description => "Invalid record", :group => @offline_group, :should_be_even => 3)
+      group_rec.save_without_validation
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :skip_write_validation => true).write_upwards_data
+    end
+    
+    in_online_app do
+      assert_raise OfflineMirror::DataError do
+        OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      end
+    end
   end
   
 #   cross_test "transformed ids in foreign key columns are handled correctly" do

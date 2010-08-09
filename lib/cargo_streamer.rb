@@ -50,8 +50,11 @@ module OfflineMirror
       unless value.all? { |e| e.class.respond_to?(:safe_to_load_from_cargo_stream?) && e.class.safe_to_load_from_cargo_stream? }
         raise CargoStreamerError.new("All element classes must be models which are safe_to_load_from_cargo_stream")
       end
-      unless value.all? { |e| e.valid? }
-        raise CargoStreamerError.new("All elements must be valid")
+      
+      unless options[:skip_validation]
+        unless value.all? { |e| e.valid? }
+          raise CargoStreamerError.new("All elements must be valid")
+        end
       end
       
       if options[:human_readable]

@@ -6,6 +6,7 @@ class GroupOwnedRecord < ActiveRecord::Base
   belongs_to :global_record
   has_many :children, :class_name => "GroupOwnedRecord"
   validates_presence_of :description, :group
+  validates_numericality_of :should_be_even, :even => true
   
   def to_s
     description

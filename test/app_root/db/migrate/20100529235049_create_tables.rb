@@ -11,6 +11,7 @@ class CreateTables < ActiveRecord::Migration
     create_table :group_owned_records do |t|
       t.string :description
       t.integer :some_integer
+      t.integer :should_be_even, :default => 0
       t.integer :group_id
       t.integer :parent_id
       t.integer :unmirrored_record_id

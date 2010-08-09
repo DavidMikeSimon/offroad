@@ -7,6 +7,7 @@ module OfflineMirror
     def initialize(group, options = {})
       @group = group
       @initial_mode = options[:initial_mode] || false
+      @skip_write_validation = options[:skip_write_validation] || false
       @cs = nil #CargoStreamer, set by write_data and read_data_from
     end
     
@@ -37,7 +38,7 @@ module OfflineMirror
       raise PluginError.new("Can only load downwards data in offline mode") unless OfflineMirror.app_offline?
       
       read_data_from("online", src) do |mirror_info|
-        raise PluginError.new("Unexpected initial file value") unless mirror_info.initial_file == @initial_mode
+        raise DataError.new("Unexpected initial file value") unless mirror_info.initial_file == @initial_mode
         
         group_cargo_name = MirrorData::data_cargo_name_for_model(OfflineMirror::group_base_model)
         if mirror_info.initial_file
@@ -149,7 +150,7 @@ module OfflineMirror
       data_source = model
       data_source = data_source.owned_by_offline_mirror_group(@group) if model.offline_mirror_group_data? && @group
       data_source.find_in_batches(:batch_size => 100) do |batch|
-        @cs.write_cargo_section(MirrorData::data_cargo_name_for_model(model), batch)
+        @cs.write_cargo_section(MirrorData::data_cargo_name_for_model(model), batch, :skip_validation => @skip_write_validation)
         
         if @initial_mode && model.offline_mirror_group_data?
           # In initial mode the remote app will create records with the same id's as the corresponding records here
@@ -204,7 +205,11 @@ module OfflineMirror
           
           local_record.bypass_offline_mirror_readonly_checks
           local_record.attributes = cargo_record.attributes
-          local_record.save!
+          begin
+            local_record.save!
+          rescue ActiveRecord::RecordInvalid
+            raise DataError.new("Invalid record data in mirror file")
+          end
           
           unless @initial_mode || rrs
             x = ReceivedRecordState.for_record(local_record).create!(:remote_record_id => cargo_record.id)
