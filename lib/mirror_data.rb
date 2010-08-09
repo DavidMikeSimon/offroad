@@ -9,6 +9,8 @@ module OfflineMirror
       @initial_mode = options[:initial_mode] || false
       @skip_write_validation = options[:skip_write_validation] || false
       @cs = nil #CargoStreamer, set by write_data and read_data_from
+      
+      @imported_models_to_validate = []
     end
     
     def write_upwards_data(tgt = nil)
@@ -44,7 +46,7 @@ module OfflineMirror
         if mirror_info.initial_file
           raise DataError.new("No group data in initial down mirror file") unless @cs.has_cargo_named?(group_cargo_name)
           # This is an initial mirror file, so we want it to determine the entirety of the database's new state
-          # However, existing data is safe if there's a mid-import error; read_data_from puts us in a transaction
+          # However, existing data is safe if there's a mid-import error; read_data_from places us in a transaction
           delete_all_existing_database_records!
           
           offline_group_id = @cs.first_cargo_element(group_cargo_name).id
@@ -127,6 +129,7 @@ module OfflineMirror
       
       OfflineMirror::group_base_model.connection.transaction do
         yield mirror_info
+        validate_imported_models
       end
     ensure
       @cs = nil
@@ -187,6 +190,8 @@ module OfflineMirror
     end
     
     def import_model_cargo(model)
+      @imported_models_to_validate.push model
+      
       rrs_source = OfflineMirror::ReceivedRecordState.for_model(model)
       rrs_source = rrs_source.for_group(@group) if model.offline_mirror_group_data?
       
@@ -205,11 +210,8 @@ module OfflineMirror
           
           local_record.bypass_offline_mirror_readonly_checks
           local_record.attributes = cargo_record.attributes
-          begin
-            local_record.save!
-          rescue ActiveRecord::RecordInvalid
-            raise DataError.new("Invalid record data in mirror file")
-          end
+          local_record.save_without_validation # Validation delayed, because it might depend on as-yet unimported data
+          local_record.reload
           
           unless @initial_mode || rrs
             x = ReceivedRecordState.for_record(local_record).create!(:remote_record_id => cargo_record.id)
@@ -227,6 +229,33 @@ module OfflineMirror
             local_record.bypass_offline_mirror_readonly_checks
             local_record.destroy
             rrs.destroy
+          end
+        end
+      end
+    end
+    
+    def validate_imported_models
+      while @imported_models_to_validate.size > 0
+        model = @imported_models_to_validate.pop
+        
+        rrs_source = nil
+        unless @initial_mode
+          rrs_source = OfflineMirror::ReceivedRecordState.for_model(model)
+          rrs_source = rrs_source.for_group(@group) if model.offline_mirror_group_data?
+        end
+        
+        @cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
+          batch.each do |cargo_record|
+            rec = nil
+            if @initial_mode
+              rec = model.find_by_id(cargo_record.id) # Not using find because that raises exception on not-found
+            else
+              rec = rrs_source.find_by_remote_record_id(cargo_record.id).app_record
+            end
+            
+            unless rec && rec.valid?
+              raise OfflineMirror::DataError.new("Invalid record found in mirror data")
+            end
           end
         end
       end

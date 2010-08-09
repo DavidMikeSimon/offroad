@@ -26,7 +26,7 @@
 - An emergency mirror file generation mode, which includes all records instead of just updates (and has no deletion records)
 - Should split MirrorData into MirrorDataWriter and MirrorDataReader
 - Remove offline_group_id system setting; don't really need it, since there should only be one group record
-- When loading records, add higher records first (that is, the records that lower records belong_to)
+- Perhaps cut off batch writing early if we've added enough bytes (i.e. to keep from trying to pack dozens of MB of screencasts into one batch)
 
 Scenarios to deal with:
 

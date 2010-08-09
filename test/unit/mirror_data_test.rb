@@ -498,6 +498,10 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
+  cross_test "cannot import initial down mirror files with invalid records" do
+    flunk
+  end
+  
 #   cross_test "transformed ids in foreign key columns are handled correctly" do
 #     # TODO Implement
 #   end
