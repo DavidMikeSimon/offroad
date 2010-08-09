@@ -1,3 +1,4 @@
+- Get the plugin installer to work well
 - Allow offline app to request group be made online in its up mirror file
   - This is the best way to ensure we don't have un-sendable records left over in a newly-obsolete offline app
 - Assign a random number to group state when it is created, only accept mirror files with matching random number
@@ -29,6 +30,7 @@
 - Mirror file imports in the down mirror app should happen through GUI, and GUI should delete files once succesfully imported
 - If offline app attempts to import an initial down mirror file using the regular down mirror file mechanism, it should:
   - Delete the down mirror file as usual, but explain that it wasn't imported and a regular down mirror file is needed
+- Figure out which activerecord methods skip the save callbacks, and wrap them to update the mirror version
 
 Scenarios to deal with:
 
