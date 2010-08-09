@@ -192,7 +192,7 @@ module OfflineMirror
     def import_model_cargo(model)
       @imported_models_to_validate.push model
       
-      rrs_source = OfflineMirror::ReceivedRecordState.for_model(model)
+      rrs_source = ReceivedRecordState.for_model(model)
       rrs_source = rrs_source.for_group(@group) if model.offline_mirror_group_data?
       
       # Update/create records
@@ -208,13 +208,39 @@ module OfflineMirror
             local_record = rrs ? rrs.app_record : model.new
           end
           
-          local_record.bypass_offline_mirror_readonly_checks
           local_record.attributes = cargo_record.attributes
-          local_record.save_without_validation # Validation delayed, because it might depend on as-yet unimported data
+          
+          # Update foreign key associations so they point to the same actual records as they did on the remote system
+          unless @initial_mode
+            model.offline_mirror_foreign_key_models.each_pair do |column_name, foreign_model|
+              remote_foreign_id = local_record.send(column_name.to_sym)
+              if remote_foreign_id && remote_foreign_id != 0
+                foreign_rrs_source = ReceivedRecordState.for_model(foreign_model)
+                foreign_rrs_source = foreign_rrs_source.for_group(@group) if foreign_model.offline_mirror_group_data?
+                foreign_rrs = foreign_rrs_source.find_by_remote_record_id(remote_foreign_id)
+                if !foreign_rrs
+                  # If the remote record doesn't already exist, then it hasn't yet been imported
+                  # Just create an empty one for now to be filled in later, so we have a known id to point at
+                  # Later when it's imported, the import process will update it based on the RRS we'll create for it
+                  foreign_rec_placeholder = foreign_model.new
+                  foreign_rec_placeholder.bypass_offline_mirror_readonly_checks
+                  foreign_rec_placeholder.save_without_validation
+                  foreign_rrs = foreign_rrs_source.create!(
+                    :local_record_id => foreign_rec_placeholder.id,
+                    :remote_record_id => remote_foreign_id
+                  )
+                end
+                local_record.send("#{column_name}=".to_sym, foreign_rrs.local_record_id)
+              end
+            end
+          end
+          
+          local_record.bypass_offline_mirror_readonly_checks
+          local_record.save_without_validation # Validation delayed because it might depend on as-yet unimported data
           local_record.reload
           
           unless @initial_mode || rrs
-            x = ReceivedRecordState.for_record(local_record).create!(:remote_record_id => cargo_record.id)
+            ReceivedRecordState.for_record(local_record).create!(:remote_record_id => cargo_record.id)
           end
         end
       end

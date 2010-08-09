@@ -530,10 +530,46 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-#   cross_test "transformed ids in foreign key columns are handled correctly" do
-#     # TODO Implement
-#   end
-#   
+  cross_test "transformed ids in foreign key columns are handled correctly" do
+    in_online_app do
+      # Perturb the autoincrement a bit
+      GroupOwnedRecord.create(:description => "Alice", :group => @online_group)
+      GroupOwnedRecord.create(:description => "Bob", :group => @online_group)
+    end
+    
+    mirror_data = ""
+    in_offline_app do
+      parent = GroupOwnedRecord.create(:description => "Celia", :group => @offline_group)
+      child_a = GroupOwnedRecord.create(:description => "Daniel", :parent => parent, :group => @offline_group)
+      child_b = GroupOwnedRecord.create(:description => "Eric", :parent => parent, :group => @offline_group)
+      grandchild = GroupOwnedRecord.create(:description => "Fran", :parent => child_b, :group => @offline_group)
+      @offline_group.favorite = grandchild
+      @offline_group.save!
+      @offline_group_data.parent = grandchild
+      @offline_group_data.save!
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+    end
+    
+    in_online_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      
+      @offline_group.reload
+      @offline_group_data.reload
+      parent = GroupOwnedRecord.find_by_description("Celia")
+      child_a = GroupOwnedRecord.find_by_description("Daniel")
+      child_b = GroupOwnedRecord.find_by_description("Eric")
+      grandchild = GroupOwnedRecord.find_by_description("Fran")
+      
+      assert_equal parent, child_a.parent
+      assert_equal parent, child_b.parent
+      assert_equal child_b, grandchild.parent
+      assert_equal grandchild, child_b.children.first
+      assert_equal grandchild, @offline_group.favorite
+      assert_equal @offline_group_data, grandchild.children.first
+      assert_equal grandchild, @offline_group_data.parent
+    end
+  end
+  
 #   cross_test "mirror files do not include unchanged records" do
 #     # TODO Implement
 #   end
