@@ -208,7 +208,7 @@ module OfflineMirror
             local_record = rrs ? rrs.app_record : model.new
           end
           
-          local_record.attributes = cargo_record.attributes
+          local_record.send(:attributes=, cargo_record.attributes.reject{|k,v| k == "id"}, false)
           
           # Update foreign key associations so they point to the same actual records as they did on the remote system
           unless @initial_mode
@@ -219,9 +219,9 @@ module OfflineMirror
                 foreign_rrs_source = foreign_rrs_source.for_group(@group) if foreign_model.offline_mirror_group_data?
                 foreign_rrs = foreign_rrs_source.find_by_remote_record_id(remote_foreign_id)
                 if !foreign_rrs
-                  # If the remote record doesn't already exist, then it hasn't yet been imported
-                  # Just create an empty one for now to be filled in later, so we have a known id to point at
-                  # Later when it's imported, the import process will update it based on the RRS we'll create for it
+                  # If the foreign record doesn't already exist, then it hasn't yet been imported
+                  # Just create an empty one for now to be filled in later, so we have a known local id to point at
+                  # Later when it's imported, we will update the same record based on this RRS
                   foreign_rec_placeholder = foreign_model.new
                   foreign_rec_placeholder.bypass_offline_mirror_readonly_checks
                   foreign_rec_placeholder.save_without_validation
