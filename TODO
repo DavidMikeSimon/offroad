@@ -14,8 +14,8 @@
 - At offline app: When an up-mirror of a given version is confirmed, increment current_mirror_version. Complain if confirmation is not on current version.
 - At online app: When a down-mirror of a given version is confirmed, delete all sendable record state entries for deletions older than min(down_version)
 - Only update current_mirror_version after a confirmed transfer; that way, if 1st mirror file generated is lost, no big deal
-- In online app, increment current_mirror_version whenever anyone confirms that they received a down mirror
-- In offline app, increment current_mirror_version whenever a down mirror indicates that an up-mirror is confirmed
+- In online app, increment current_mirror_version whenever a down mirror is created
+- In offline app, increment current_mirror_version whenever an up mirror is created
 - In documentation, note that migrations which alter records' primary keys, or change model names, will break synchronization. Table name changes are fine.
 - Try to gather some kind of machine identifier to put in up-mirror information, so admins can know when there's more than one offline setup for a group
 - Add a comment to generated migrations letting the app developer know about stuff they need to be careful of due to Offline Mirror

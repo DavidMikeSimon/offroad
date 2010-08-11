@@ -570,15 +570,116 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-#   cross_test "mirror files do not include unchanged records" do
-#     # TODO Implement
-#   end
-#   
+  cross_test "loading up mirror file loads group state information" do
+    in_online_app do
+      assert_equal "Unknown", @offline_group.group_state.operating_system
+    end
+    
+    mirror_data = ""
+    offline_os = ""
+    in_offline_app do
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      offline_os = @offline_group.group_state.operating_system
+    end
+    
+    in_online_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_equal offline_os, @offline_group.group_state.operating_system
+    end
+  end
+  
+  offline_test "creating up mirror file increments offline_data_version, not online_data_version" do
+    prior_offline_version = @offline_group.group_state.offline_data_version
+    prior_online_version = OfflineMirror::SystemState::online_data_version
+    OfflineMirror::MirrorData.new(@offline_group).write_upwards_data(mirror_data)
+    assert_equal prior_offline_version+1, @offline_group.group_state.offline_data_version
+    assert_equal prior_online_version, OfflineMirror::SystemState::online_data_version
+  end
+  
+  online_test "creating down mirror file increments online_data_version, not offline_data_version" do
+    prior_offline_version = @offline_group.group_state.offline_data_version
+    prior_online_version = OfflineMirror::SystemState::online_data_version
+    OfflineMirror::MirrorData.new(@offline_group).write_downwards_data(mirror_data)
+    assert_equal prior_offline_version, @offline_group.group_state.offline_data_version
+    assert_equal prior_online_version+1, OfflineMirror::SystemState::online_data_version
+  end
+  
+  online_test "creating initial down mirror file increments online_data_version, not offline_data_version" do
+    prior_offline_version = @offline_group.group_state.offline_data_version
+    prior_online_version = OfflineMirror::SystemState::online_data_version
+    OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data(mirror_data)
+    assert_equal prior_offline_version, @offline_group.group_state.offline_data_version
+    assert_equal prior_online_version+1, OfflineMirror::SystemState::online_data_version
+  end
+  
+  cross_test "receiving an up mirror file increments group version to the indicated value if larger" do
+    flunk
+  end
+  
+  cross_test "receiving a down mirror file increments online_data_version to the indicated value if larger" do
+    flunk
+  end
+  
+  cross_test "receiving an initial down mirror file causes current_mirror_version to be set as it was online" do
+    mirror_data = ""
+    online_version = nil
+    in_online_app do
+      OfflineMirror::SystemState::increment_mirror_version
+      OfflineMirror::SystemState::increment_mirror_version
+      online_version = OfflineMirror::SystemState::online_data_version
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+    end
+    
+    in_offline_app(false, true) do
+      OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      assert_equal online_version, OfflineMirror::SystemState::online_data_version
+    end
+  end
+  
+  cross_test "down mirror files do not include records which offline is known to already have the latest version of" do
+    mirror_data = ""
+    in_online_app do
+      GlobalRecord.create!(:title => "Record A", :some_boolean => false)
+      GlobalRecord.create!(:title => "Record B", :some_boolean => false)
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+    end
+    
+    in_offline_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+    end
+    
+    in_online_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      rec_a = GlobalRecord.find_by_title("Record A")
+      rec_a.some_boolean = true
+      rec_a.save!
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+    end
+    
+    cs = OfflineMirror::CargoStreamer.new(mirror_data, "r")
+    recs = []
+    cs.each_cargo_section(OfflineMirror::MirrorData.send(:data_cargo_name_for_model, GlobalRecord)) do |batch|
+      recs += batch
+    end
+    assert_equal 1, recs.size
+    assert_equal "Record A", recs[0].title
+    assert_equal true, recs[0].some_boolean
+  end
+  
+  cross_test "up mirror files do not include records which online is known to already have the latest version of" do
+    flunk
+  end
+
 #   cross_test "mirror files do not include deletion requests for records known to be deleted on remote system" do
 #     # TODO Implement
 #   end
 #   
 #   cross_test "records from other groups are not included in initial down mirror files" do
+#     # TODO Implement
+#   end
+#
+#   cross_test "protected attributes can still be loaded from mirror files" do
 #     # TODO Implement
 #   end
 end

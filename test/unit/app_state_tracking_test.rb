@@ -6,8 +6,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
   agnostic_test "can increment current mirror version" do
     original_version = OfflineMirror::SystemState::current_mirror_version
     OfflineMirror::SystemState::increment_mirror_version
-    new_version = OfflineMirror::SystemState::current_mirror_version
-    assert_equal original_version+1, new_version
+    assert_equal original_version+1, OfflineMirror::SystemState::current_mirror_version
   end
   
   def assert_newly_created_record_matches_state(rec, rec_state)
