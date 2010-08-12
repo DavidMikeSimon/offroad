@@ -349,10 +349,6 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-#   cross_test "cannot affect group records in offline app using a non-initial down mirror file" do
-#     # TODO Implement
-#   end
-  
   cross_test "cannot upload an initial down mirror file unless passed :initial_mode => true to MirrorData.new" do
     mirror_data = ""
     in_online_app do
@@ -412,18 +408,6 @@ class MirrorDataTest < Test::Unit::TestCase
       end
     end
   end
-  
-#   cross_test "cannot use an up mirror file to create or update or delete records not owned by the given group" do
-#     # TODO Implement
-#   end
-#   
-#   cross_test "cannot use an up mirror file to delete the group record itself" do
-#     # TODO Implement
-#   end
-#   
-#   cross_test "cannot use a down mirror file to delete the group record itself" do
-#     # TODO Implement
-#   end
   
   cross_test "transformed ids are handled properly when loading an up mirror file" do
     in_online_app do
@@ -713,7 +697,7 @@ class MirrorDataTest < Test::Unit::TestCase
 #   cross_test "up mirror files do not include deletion requests for records known to be deleted on online system" do
 #     # TODO Implement
 #   end
-#
+#   
 #   cross_test "down mirror files do not include deletion requests for records known to be deleted on offline system" do
 #     # TODO Implement
 #   end
@@ -721,12 +705,28 @@ class MirrorDataTest < Test::Unit::TestCase
 #   cross_test "records from other groups are not included in initial down mirror files" do
 #     # TODO Implement
 #   end
-#
+#   
 #   cross_test "protected attributes can still be loaded from mirror files" do
 #     # TODO Implement
 #   end
 #   
 #   cross_test "foreign keys that lead to non-existant records cause error on load" do
+#     # TODO Implement
+#   end
+#    
+#   cross_test "cannot use an up mirror file to create or update or delete records not owned by the given group" do
+#     # TODO Implement
+#   end
+#   
+#   cross_test "cannot use an up mirror file to delete the group record itself" do
+#     # TODO Implement
+#   end
+#   
+#   cross_test "cannot use a down mirror file to delete the group record itself" do
+#     # TODO Implement
+#   end
+#
+#   cross_test "cannot affect group records in offline app using a non-initial down mirror file" do
 #     # TODO Implement
 #   end
 end
