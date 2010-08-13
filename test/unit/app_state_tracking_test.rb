@@ -84,9 +84,13 @@ class AppStateTrackingTest < Test::Unit::TestCase
     rec_state = OfflineMirror::SendableRecordState.for_record(rec).first
     original_version = rec_state.mirror_version
     if rec.class.offline_mirror_group_data?
-      rec.group_state.increment!(:group_data_version)
+      group_state = rec.group_state
+      group_state.group_data_version = original_version + 42
+      group_state.save
     else
-      OfflineMirror::SystemState::instance_record.increment!(:global_data_version)
+      system_state = OfflineMirror::SystemState::instance_record
+      system_state.global_data_version = original_version + 42
+      system_state.save
     end
       
     rec.save!
@@ -96,7 +100,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
     rec.send((attribute.to_s + "=").to_sym, "Narf Bork")
     rec.save!
     rec_state.reload
-    assert_equal original_version+1, rec_state.mirror_version, "Save with changes updated record's version"
+    assert_equal original_version+42, rec_state.mirror_version, "Save with changes updated record's version"
   end
   
   online_test "saving global record updates mirror version only on changed records" do
