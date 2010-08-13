@@ -92,7 +92,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
       system_state.global_data_version = original_version + 42
       system_state.save
     end
-      
+    
     rec.save!
     rec_state.reload
     assert_equal original_version, rec_state.mirror_version, "Save without changes did not affect record version"

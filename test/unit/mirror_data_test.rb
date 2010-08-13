@@ -813,11 +813,11 @@ class MirrorDataTest < Test::Unit::TestCase
     assert_equal "Changed Again", recs[0].title
   end
   
-  cross_test "records are included in new up mirror files if their reception is not confirmed" do
+  cross_test "changed records are re-included in new up mirror files if their reception is not confirmed" do
     flunk
   end
   
-  cross_test "records are included in new down mirror files if their reception is not confirmed" do
+  cross_test "changed records are re-included in new down mirror files if their reception is not confirmed" do
     flunk
   end
 
