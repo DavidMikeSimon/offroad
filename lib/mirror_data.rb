@@ -37,6 +37,10 @@ module OfflineMirror
       raise PluginError.new("Can only load upwards data in online mode") unless OfflineMirror.app_online?
       
       read_data_from("offline", src) do |cs, mirror_info, group_state|
+        unless group_state.group_data_version > @group.group_state.group_data_version
+          raise OldDataError.new("File contains old up-mirror data")
+        end
+        
         import_group_specific_cargo(cs)
         
         # Load information into our group state that the offline app is in a better position to know about
@@ -49,6 +53,10 @@ module OfflineMirror
       
       read_data_from("online", src) do |cs, mirror_info, group_state|
         raise DataError.new("Unexpected initial file value") unless mirror_info.initial_file == @initial_mode
+        
+        unless @initial_mode || group_state.global_data_version > @group.group_state.global_data_version
+          raise OldDataError.new("File contains old down-mirror data")
+        end
         
         group_cargo_name = MirrorData::data_cargo_name_for_model(OfflineMirror::group_base_model)
         if mirror_info.initial_file

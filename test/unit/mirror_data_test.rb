@@ -410,7 +410,7 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-  offline_test "cannot pass an up mirror file to load_downwards_data" do
+  cross_test "cannot pass an up mirror file to load_downwards_data" do
     mirror_data = ""
     
     in_offline_app do
@@ -667,7 +667,29 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   cross_test "received up mirror files are rejected if their version is equal to or lower than current version" do
-    flunk
+    [42, 41].each do |sending_version|
+      mirror_data = ""
+      in_offline_app(true) do
+        @offline_group_data.description = "New Name"
+        @offline_group_data.save!
+        
+        group_state = @offline_group.group_state
+        group_state.group_data_version = sending_version
+        group_state.save!
+        
+        mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      end
+      
+      in_online_app do
+        group_state = @offline_group.group_state
+        group_state.group_data_version = 42
+        group_state.save!
+        
+        assert_raise OfflineMirror::OldDataError do
+          OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+        end
+      end
+    end
   end
   
   cross_test "receiving a down mirror file increments global_data_version to the indicated value if larger" do
@@ -690,7 +712,28 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   cross_test "received down mirror files are rejected if their version is equal to or lower than current version" do
-    flunk
+    [42, 41].each do |sending_version|
+      mirror_data = ""
+      in_online_app do
+        GlobalRecord.create(:title => "Testing")
+        
+        system_state = OfflineMirror::SystemState::instance_record
+        system_state.global_data_version = sending_version
+        system_state.save!
+        
+        mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      end
+      
+      in_offline_app do
+        group_state = @offline_group.group_state
+        group_state.global_data_version = 42
+        group_state.save!
+        
+        assert_raise OfflineMirror::OldDataError do
+          OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+        end
+      end
+    end
   end
   
   cross_test "after loading initial down mirror file global_data_version is as online and group_data_version is 1" do
@@ -768,6 +811,14 @@ class MirrorDataTest < Test::Unit::TestCase
     end
     assert_equal 1, recs.size
     assert_equal "Changed Again", recs[0].title
+  end
+  
+  cross_test "records are included in new up mirror files if their reception is not confirmed" do
+    flunk
+  end
+  
+  cross_test "records are included in new down mirror files if their reception is not confirmed" do
+    flunk
   end
 
 #   cross_test "up mirror files do not include deletion requests for records known to be deleted on online system" do

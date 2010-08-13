@@ -2,6 +2,9 @@ module OfflineMirror
   class DataError < RuntimeError
   end
   
+  class OldDataError < DataError
+  end
+  
   class ModelError < RuntimeError
   end
   

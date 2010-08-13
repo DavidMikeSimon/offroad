@@ -13,8 +13,8 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
       # This is NOT used to propogate group deletion through mirror files.
       t.column :group_being_destroyed, :boolean, :default => false, :null => false
       
-      t.column :group_data_version, :integer, :default => 0, :null => false
-      t.column :global_data_version, :integer, :default => 0, :null => false
+      t.column :group_data_version, :integer, :null => false
+      t.column :global_data_version, :integer, :null => false
       t.column :last_installer_downloaded_at, :datetime
       t.column :last_installation_at, :datetime
       t.column :last_down_mirror_created_at, :datetime
