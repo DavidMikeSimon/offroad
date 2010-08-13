@@ -43,7 +43,7 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
     # This index is for locating the SRS for any given local app record
     add_index :offline_mirror_sendable_record_states, [:local_record_id, :model_state_id], :unique => true
     # This index is for generating mirror files: for a given model need to find everything above a given mirror_version
-    add_index :offline_mirror_sendable_record_states, [:model_state_id, :mirror_version]
+    add_index :offline_mirror_sendable_record_states, [:model_state_id, :deleted, :mirror_version]
     
     create_table :offline_mirror_received_record_states do |t|
       t.column :model_state_id, :integer, :null => false

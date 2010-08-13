@@ -35,6 +35,9 @@ module OfflineMirror
     } } }
     
     named_scope :for_deleted_records, :conditions => { :deleted => true }
+    named_scope :for_non_deleted_records, :conditions => { :deleted => false }
+    
+    named_scope :with_version_greater_than, lambda { |v| { :conditions => ["mirror_version > ?", v] } }
     
     named_scope :for_record, lambda { |rec| { :conditions => {
       :model_state_id => rec.class.offline_mirror_model_state.id,
