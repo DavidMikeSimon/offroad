@@ -647,7 +647,23 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   cross_test "receiving an up mirror file increments group_data_version to the indicated value if larger" do
-    flunk
+    mirror_data = ""
+    in_offline_app do
+      @offline_group_data.description = "New Name"
+      @offline_group_data.save!
+      
+      group_state = @offline_group.group_state
+      group_state.group_data_version = 42
+      group_state.save!
+      
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+    end
+    
+    in_online_app do
+      assert_equal 0, @offline_group.group_state.group_data_version
+      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_equal 42, @offline_group.group_state.group_data_version
+    end
   end
   
   cross_test "received up mirror files are rejected if their version is equal to or lower than current version" do
@@ -655,7 +671,22 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   cross_test "receiving a down mirror file increments global_data_version to the indicated value if larger" do
-    flunk
+    mirror_data = ""
+    in_online_app do
+      GlobalRecord.create(:title => "Testing")
+      
+      system_state = OfflineMirror::SystemState::instance_record
+      system_state.global_data_version = 42
+      system_state.save!
+      
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+    end
+    
+    in_offline_app do
+      assert_equal 1, @offline_group.group_state.global_data_version
+      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      assert_equal 42, @offline_group.group_state.global_data_version
+    end
   end
   
   cross_test "received down mirror files are rejected if their version is equal to or lower than current version" do
