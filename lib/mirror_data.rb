@@ -8,24 +8,23 @@ module OfflineMirror
       @group = group
       @initial_mode = options[:initial_mode] || false
       @skip_write_validation = options[:skip_write_validation] || false
-      @cs = nil #CargoStreamer, set by write_data and read_data_from
       
-      raise PluginError.new("Require group") unless @group || (OfflineMirror::app_offline? && @initial_mode)
+      raise PluginError.new("Group required") unless @group || (OfflineMirror::app_offline? && @initial_mode)
       
       @imported_models_to_validate = []
     end
     
     def write_upwards_data(tgt = nil)
-      write_data(tgt) do
-        add_group_specific_cargo
+      write_data(tgt) do |cs|
+        add_group_specific_cargo(cs)
       end
     end
     
     def write_downwards_data(tgt = nil)
-      write_data(tgt) do
-        add_global_cargo
+      write_data(tgt) do |cs|
+        add_global_cargo(cs)
         if @initial_mode
-          add_group_specific_cargo
+          add_group_specific_cargo(cs)
         end
       end
     end
@@ -33,8 +32,8 @@ module OfflineMirror
     def load_upwards_data(src)
       raise PluginError.new("Can only load upwards data in online mode") unless OfflineMirror.app_online?
       
-      read_data_from("offline", src) do |mirror_info, group_state|
-        import_group_specific_cargo
+      read_data_from("offline", src) do |cs, mirror_info, group_state|
+        import_group_specific_cargo(cs)
         
         # Load information into our group state that the offline app is in a better position to know about
         @group.group_state.update_from_remote_group_state!(group_state)
@@ -44,29 +43,29 @@ module OfflineMirror
     def load_downwards_data(src)
       raise PluginError.new("Can only load downwards data in offline mode") unless OfflineMirror.app_offline?
       
-      read_data_from("online", src) do |mirror_info, group_state|
+      read_data_from("online", src) do |cs, mirror_info, group_state|
         raise DataError.new("Unexpected initial file value") unless mirror_info.initial_file == @initial_mode
         
         group_cargo_name = MirrorData::data_cargo_name_for_model(OfflineMirror::group_base_model)
         if mirror_info.initial_file
-          raise DataError.new("No group data in initial down mirror file") unless @cs.has_cargo_named?(group_cargo_name)
+          raise DataError.new("No group data in initial down mirror file") unless cs.has_cargo_named?(group_cargo_name)
           # This is an initial mirror file, so we want it to determine the entirety of the database's new state
           # However, existing data is safe if there's a mid-import error; read_data_from places us in a transaction
           delete_all_existing_database_records!
           
-          offline_group_id = @cs.first_cargo_element(group_cargo_name).id
+          offline_group_id = cs.first_cargo_element(group_cargo_name).id
           
           OfflineMirror::SystemState::create(
             :offline_group_id => offline_group_id
           ) or raise PluginError.new("Couldn't create valid system state from initial down mirror file")
-          import_global_cargo # Global cargo must be done first because group data might belong_to global data
-          import_group_specific_cargo
+          import_global_cargo(cs) # Global cargo must be done first because group data might belong_to global data
+          import_group_specific_cargo(cs)
         elsif SystemState.count == 0
           # If there's no SystemState, then we can't accept non-initial down mirror files
           raise DataError.new("Initial down mirror file required")
         else
           # Regular, non-initial down mirror file
-          import_global_cargo
+          import_global_cargo(cs)
         end
         
         # If we've just set up a new offline group, do some initialization work on the group state
@@ -105,77 +104,74 @@ module OfflineMirror
     end
     
     def write_data(tgt)
+      cs = nil
       temp_sio = nil
       case tgt
         when CargoStreamer
-          @cs = tgt
+          cs = tgt
         when nil
           temp_sio = StringIO.new("", "w")
-          @cs = CargoStreamer.new(temp_sio, "w")
+          cs = CargoStreamer.new(temp_sio, "w")
         else
-          @cs = CargoStreamer.new(tgt, "w")
+          cs = CargoStreamer.new(tgt, "w")
       end
       
       # TODO : See if this whole thing can be done in some kind of read transaction
       
       mirror_info = MirrorInfo.new_from_group(@group, OfflineMirror::app_online? ? "online" : "offline", @initial_mode)
-      @cs.write_cargo_section("mirror_info", [mirror_info], :human_readable => true)
+      cs.write_cargo_section("mirror_info", [mirror_info], :human_readable => true)
       
       group_state = @group.group_state
       if OfflineMirror::app_online?
         # Let the offline app know what global data version it's being updated to
         group_state.global_data_version = SystemState::global_data_version
       end
-      @cs.write_cargo_section("group_state", [group_state], :human_readable => true)
+      cs.write_cargo_section("group_state", [group_state], :human_readable => true)
       
-      yield
+      yield cs
       
       return temp_sio.string if temp_sio
-    ensure
-      @cs = nil
     end
     
     def read_data_from(expected_source_app_mode, src)
-      @cs = case src
+      cs = case src
         when CargoStreamer then src
         when String then CargoStreamer.new(StringIO.new(src, "r"), "r")
         else CargoStreamer.new(src, "r")
       end
       
-      raise DataError.new("Invalid mirror file, no info section found") unless @cs.has_cargo_named?("mirror_info")
-      mirror_info = @cs.first_cargo_element("mirror_info")
+      raise DataError.new("Invalid mirror file, no info section found") unless cs.has_cargo_named?("mirror_info")
+      mirror_info = cs.first_cargo_element("mirror_info")
       unless mirror_info.app_mode.downcase == expected_source_app_mode.downcase
         raise DataError.new "Mirror file was generated by app in wrong mode; was expecting #{expected_source_app_mode}"
       end
-      group_state = @cs.first_cargo_element("group_state")
+      group_state = cs.first_cargo_element("group_state")
       
       OfflineMirror::group_base_model.connection.transaction do
-        yield mirror_info, group_state
-        validate_imported_models
-      end
-    ensure
-      @cs = nil
-    end
-    
-    def add_group_specific_cargo
-      OfflineMirror::group_owned_models.each do |name, cls|
-        add_model_cargo(cls)
-      end
-      add_model_cargo(OfflineMirror::group_base_model)
-    end
-    
-    def add_global_cargo
-      OfflineMirror::global_data_models.each do |name, cls|
-        add_model_cargo(cls)
+        yield cs, mirror_info, group_state
+        validate_imported_models(cs)
       end
     end
     
-    def add_model_cargo(model)
+    def add_group_specific_cargo(cs)
+      OfflineMirror::group_owned_models.each do |name, model|
+        add_model_cargo(cs, model)
+      end
+      add_model_cargo(cs, OfflineMirror::group_base_model)
+    end
+    
+    def add_global_cargo(cs)
+      OfflineMirror::global_data_models.each do |name, model|
+        add_model_cargo(cs, model)
+      end
+    end
+    
+    def add_model_cargo(cs, model)
       # Include the data for relevant records in this model
       data_source = model
       data_source = data_source.owned_by_offline_mirror_group(@group) if model.offline_mirror_group_data? && @group
       data_source.find_in_batches(:batch_size => 100) do |batch|
-        @cs.write_cargo_section(MirrorData::data_cargo_name_for_model(model), batch, :skip_validation => @skip_write_validation)
+        cs.write_cargo_section(MirrorData::data_cargo_name_for_model(model), batch, :skip_validation => @skip_write_validation)
         
         if @initial_mode && model.offline_mirror_group_data?
           # In initial mode the remote app will create records with the same id's as the corresponding records here
@@ -193,32 +189,32 @@ module OfflineMirror
         # Also need to include information about records that have been destroyed
         deletion_source = SendableRecordState.for_model(model).for_deleted_records
         deletion_source.find_in_batches(:batch_size => 100) do |batch|
-          @cs.write_cargo_section(MirrorData::deletion_cargo_name_for_model(model), batch)
+          cs.write_cargo_section(MirrorData::deletion_cargo_name_for_model(model), batch)
         end
       end
     end
     
-    def import_group_specific_cargo
-      import_model_cargo(OfflineMirror::group_base_model)
-      OfflineMirror::group_owned_models.each do |name, cls|
-        import_model_cargo(cls)
+    def import_group_specific_cargo(cs)
+      import_model_cargo(cs, OfflineMirror::group_base_model)
+      OfflineMirror::group_owned_models.each do |name, model|
+        import_model_cargo(cs, model)
       end
     end
     
-    def import_global_cargo
-      OfflineMirror::global_data_models.each do |name, cls|
-        import_model_cargo(cls)
+    def import_global_cargo(cs)
+      OfflineMirror::global_data_models.each do |name, model|
+        import_model_cargo(cs, model)
       end
     end
     
-    def import_model_cargo(model)
+    def import_model_cargo(cs, model)
       @imported_models_to_validate.push model
       
       rrs_source = ReceivedRecordState.for_model(model)
       rrs_source = rrs_source.for_group(@group) if model.offline_mirror_group_data?
       
       # Update/create records
-      @cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
+      cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
         batch.each do |cargo_record|
           # Update the record if we're not in initial mode and can find it by the RRS, create a new record otherwise
           rrs, local_record = nil, nil
@@ -273,7 +269,7 @@ module OfflineMirror
       
       # Destroy records here which were destroyed there
       unless @initial_mode
-        @cs.each_cargo_section(MirrorData::deletion_cargo_name_for_model(model)) do |batch|
+        cs.each_cargo_section(MirrorData::deletion_cargo_name_for_model(model)) do |batch|
           batch.each do |deletion_srs|
             rrs = rrs_source.find_by_remote_record_id(deletion_srs.local_record_id)
             raise DataError.new("Invalid id for deletion: #{model.name} #{deletion_srs.local_record_id}") unless rrs
@@ -286,7 +282,7 @@ module OfflineMirror
       end
     end
     
-    def validate_imported_models
+    def validate_imported_models(cs)
       while @imported_models_to_validate.size > 0
         model = @imported_models_to_validate.pop
         
@@ -296,7 +292,7 @@ module OfflineMirror
           rrs_source = rrs_source.for_group(@group) if model.offline_mirror_group_data?
         end
         
-        @cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
+        cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
           batch.each do |cargo_record|
             rec = nil
             if @initial_mode
