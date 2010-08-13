@@ -294,6 +294,25 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
+  cross_test "can insert global records using an initial down mirror file" do
+    mirror_data = ""
+    in_online_app do
+      GlobalRecord.create(:title => "Something")
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+    end
+    
+    in_offline_app(false, true) do
+      assert_equal 0, GlobalRecord.count
+      assert_equal 0, OfflineMirror::SendableRecordState.for_model(GlobalRecord).count
+      assert_equal 0, OfflineMirror::ReceivedRecordState.for_model(GlobalRecord).count
+      OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      assert_equal 1, GlobalRecord.count
+      assert_not_nil GlobalRecord.find_by_title("Something")
+      assert_equal 0, OfflineMirror::SendableRecordState.for_model(GlobalRecord).count
+      assert_equal 1, OfflineMirror::ReceivedRecordState.for_model(GlobalRecord).count
+    end
+  end
+  
   cross_test "if no SystemState is present an initial down mirror file is required" do
     mirror_data = ""
     in_online_app { mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data }

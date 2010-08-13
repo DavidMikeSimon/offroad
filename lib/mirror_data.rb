@@ -202,6 +202,8 @@ module OfflineMirror
           rrs, local_record = nil, nil
           if @initial_mode
             local_record = model.new
+            # Conveniently, SQLite's autoincrement columns keep track of manually set values.
+            # So, below is safe on the offline app; newly created group records will have next biggest ID.
             local_record.id = cargo_record.id
           else
             rrs = rrs_source.find_by_remote_record_id(cargo_record.id)
@@ -241,7 +243,7 @@ module OfflineMirror
           local_record.bypass_offline_mirror_readonly_checks
           local_record.save_without_validation # Validation delayed because it might depend on as-yet unimported data
           
-          unless @initial_mode || rrs
+          unless (@initial_mode && model.offline_mirror_group_data?) || rrs
             ReceivedRecordState.for_record(local_record).create!(:remote_record_id => cargo_record.id)
           end
         end
