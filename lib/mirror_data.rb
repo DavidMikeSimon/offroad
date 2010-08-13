@@ -180,13 +180,21 @@ module OfflineMirror
     end
     
     def add_model_cargo(cs, model)
+      if @initial_mode
+        add_initial_model_cargo(cs, model)
+      else
+        add_non_initial_model_cargo(cs, model)
+      end
+    end
+    
+    def add_initial_model_cargo(cs, model)
       # Include the data for relevant records in this model
       data_source = model
       data_source = data_source.owned_by_offline_mirror_group(@group) if model.offline_mirror_group_data? && @group
       data_source.find_in_batches(:batch_size => 100) do |batch|
         cs.write_cargo_section(MirrorData::data_cargo_name_for_model(model), batch, :skip_validation => @skip_write_validation)
         
-        if @initial_mode && model.offline_mirror_group_data?
+        if model.offline_mirror_group_data?
           # In initial mode the remote app will create records with the same id's as the corresponding records here
           # So we'll create RRSes indicating that we 'received' the data we're about to send
           # Later when the remote app sends new information on those records, we'll know which ones it means
@@ -197,13 +205,32 @@ module OfflineMirror
           end
         end
       end
+    end
+    
+    def add_non_initial_model_cargo(cs, model)
+      # Include the data for relevant records in this model that are newer than the remote side's known latest version
+      # TODO TODO TODO Blargh blargh blargh need to use current_mirror_version in offline after all,
+      # otherwise can't keep version for new records separate from online app's latest confirmed version.
+      gs = @group.group_state
+      remote_version = model.offline_mirror_group_data? ? gs.group_data_version : gs.global_data_version
+      srs_source = SendableRecordState.for_model(model)
+      #srs_source = SendableRecordState.for_model(model).with_version_greater_than(remote_version)
       
-      unless @initial_mode
-        # Also need to include information about records that have been destroyed
-        deletion_source = SendableRecordState.for_model(model).for_deleted_records
-        deletion_source.find_in_batches(:batch_size => 100) do |batch|
-          cs.write_cargo_section(MirrorData::deletion_cargo_name_for_model(model), batch)
-        end
+      srs_source.for_non_deleted_records.find_in_batches(:batch_size => 100) do |srs_batch|
+        # TODO Might be able to optimize this to one query using a join on app model and SRS tables
+        record_ids = srs_batch.map { |srs| srs.local_record_id }
+        data_batch = model.find(:all, :conditions => {:id => record_ids})
+        raise PluginError.new("Invalid SRS ids") if data_batch.size != srs_batch.size
+        cs.write_cargo_section(
+          MirrorData::data_cargo_name_for_model(model),
+          data_batch,
+          :skip_validation => @skip_write_validation
+        )
+      end
+      
+      # Also need to include information about records that have been destroyed
+      srs_source.for_deleted_records.find_in_batches(:batch_size => 100) do |deletion_batch|
+        cs.write_cargo_section(MirrorData::deletion_cargo_name_for_model(model), deletion_batch)
       end
     end
     
