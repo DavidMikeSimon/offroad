@@ -13,8 +13,19 @@ module OfflineMirror
     for column in columns
       sym = column.name.to_sym
       next if sym == :id
-      validates_presence_of sym
       def_delegator :instance_record, sym
+    end
+    
+    # Do not allow use of global_data_version in SystemState in offline app
+    # It needs to exclusively use the global_data_version in its GroupState record
+    def global_data_version
+      raise PluginError.new("Offline app not to use SystemState::global_data_version") unless OfflineMirror::app_online?
+      super
+    end
+    
+    def global_data_version=(new_val)
+      raise PluginError.new("Offline app not to use SystemState::global_data_version") unless OfflineMirror::app_online?
+      super(new_val)
     end
     
     # Returns the singleton record, first creating it if necessary

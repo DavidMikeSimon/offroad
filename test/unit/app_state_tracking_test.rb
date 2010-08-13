@@ -249,4 +249,15 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert_equal GlobalRecord, foreign_keys["global_record_id"]
     assert_equal UnmirroredRecord, foreign_keys["unmirrored_record_id"]
   end
+  
+  offline_test "cannot set or access SystemState::global_data_version from offline" do
+    assert_raise OfflineMirror::PluginError do
+      OfflineMirror::SystemState::global_data_version
+    end
+    
+    assert_raise OfflineMirror::PluginError do
+      rec = OfflineMirror::SystemState::instance_record
+      rec.global_data_version = 42
+    end
+  end
 end

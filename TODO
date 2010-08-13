@@ -31,6 +31,7 @@
 - If offline app attempts to import an initial down mirror file using the regular down mirror file mechanism, it should:
   - Delete the down mirror file as usual, but explain that it wasn't imported and a regular down mirror file is needed
 - Figure out which activerecord methods skip the save callbacks, and wrap them to update the mirror version
+- Check foreign id stuff in functional mirror operations test
 
 Scenarios to deal with:
 

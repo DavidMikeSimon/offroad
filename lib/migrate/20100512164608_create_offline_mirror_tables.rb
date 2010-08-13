@@ -1,7 +1,7 @@
 class CreateOfflineMirrorTables < ActiveRecord::Migration
   def self.up
     create_table :offline_mirror_system_state do |t|
-      t.column :global_data_version, :integer, :null => false
+      t.column :global_data_version, :integer
       t.column :offline_group_id, :integer
     end
     
@@ -14,7 +14,7 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
       t.column :group_being_destroyed, :boolean, :default => false, :null => false
       
       t.column :group_data_version, :integer, :default => 0, :null => false
-      t.column :global_data_version, :integer, :null => false
+      t.column :global_data_version, :integer, :default => 0, :null => false
       t.column :last_installer_downloaded_at, :datetime
       t.column :last_installation_at, :datetime
       t.column :last_down_mirror_created_at, :datetime
