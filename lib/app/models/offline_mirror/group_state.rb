@@ -28,6 +28,33 @@ module OfflineMirror
       end
     end
     
+    def setup_as_new_offline_group!
+      raise PluginError.new("Cannot setup new offline group in online app") unless OfflineMirror::app_offline?
+      self.group_data_version = 1
+      save!
+    end
+    
+    def update_from_remote_group_state!(remote_gs)
+      online_owned_columns = [
+        'global_data_version',
+        'last_installer_downloaded_at',
+        'last_down_mirror_created_at',
+        'last_up_mirror_loaded_at'
+      ]
+      
+      if OfflineMirror::app_offline?
+        online_owned_columns.each do |col|
+          self.send("#{col}=", remote_gs.send(col))
+        end
+      else
+        self.class.column_names.each do |col|
+          self.send("#{col}=", remote_gs.send(col)) unless online_owned_columns.include?(col)
+        end
+      end
+      
+      save!
+    end
+    
     def self.safe_to_load_from_cargo_stream?
       true
     end
