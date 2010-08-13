@@ -47,7 +47,7 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
     
     create_table :offline_mirror_received_record_states do |t|
       t.column :model_state_id, :integer, :null => false
-      t.column :group_state_id, :integer, :null => false # If 0, is a global record
+      t.column :group_state_id, :integer, :default => 0, :null => false # If 0, is a global record
       t.column :local_record_id, :integer, :null => false
       t.column :remote_record_id, :integer, :null => false
     end

@@ -546,6 +546,9 @@ class MirrorDataTest < Test::Unit::TestCase
       child_a = GroupOwnedRecord.create(:description => "Daniel", :parent => parent, :group => @offline_group)
       child_b = GroupOwnedRecord.create(:description => "Eric", :parent => parent, :group => @offline_group)
       grandchild = GroupOwnedRecord.create(:description => "Fran", :parent => child_b, :group => @offline_group)
+      time_traveler = GroupOwnedRecord.create(:description => "Philip J. Fry", :group => @offline_group)
+      time_traveler.parent = time_traveler
+      time_traveler.save!
       @offline_group.favorite = grandchild
       @offline_group.save!
       @offline_group_data.parent = grandchild
@@ -562,6 +565,7 @@ class MirrorDataTest < Test::Unit::TestCase
       child_a = GroupOwnedRecord.find_by_description("Daniel")
       child_b = GroupOwnedRecord.find_by_description("Eric")
       grandchild = GroupOwnedRecord.find_by_description("Fran")
+      time_traveler = GroupOwnedRecord.find_by_description("Philip J. Fry")
       
       assert_equal parent, child_a.parent
       assert_equal parent, child_b.parent
@@ -570,11 +574,30 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_equal grandchild, @offline_group.favorite
       assert_equal @offline_group_data, grandchild.children.first
       assert_equal grandchild, @offline_group_data.parent
+      assert_equal time_traveler, time_traveler.parent
     end
   end
   
   cross_test "foreign keys are transformed correctly on down mirror" do
-    flunk
+    mirror_data = ""
+    in_online_app do
+      alice = GlobalRecord.create(:title => "Alice")
+      alice.friend = alice
+      alice.save!
+      bob = GlobalRecord.create(:title => "Bob", :friend => alice)
+      claire = GlobalRecord.create(:title => "Claire", :friend => bob)
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+    end
+    
+    in_offline_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      alice = GlobalRecord.find_by_title("Alice")
+      bob = GlobalRecord.find_by_title("Bob")
+      claire = GlobalRecord.find_by_title("Claire")
+      assert_equal alice, alice.friend
+      assert_equal alice, bob.friend
+      assert_equal bob, claire.friend
+    end
   end
   
   cross_test "loading up mirror file loads group state information" do

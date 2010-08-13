@@ -236,29 +236,39 @@ module OfflineMirror
           local_record.send(:attributes=, cargo_record.attributes.reject{|k,v| k == "id"}, false)
           
           # Update foreign key associations so they point to the same actual records as they did on the remote system
+          delayed_self_reference_cols = []
           unless @initial_mode
             model.offline_mirror_foreign_key_models.each_pair do |column_name, foreign_model|
               remote_foreign_id = local_record.send(column_name.to_sym)
               if remote_foreign_id && remote_foreign_id != 0
-                foreign_rrs_source = ReceivedRecordState.for_model(foreign_model)
-                foreign_rrs_source = foreign_rrs_source.for_group(@group) if foreign_model.offline_mirror_group_data?
-                foreign_rrs = foreign_rrs_source.find_by_remote_record_id(remote_foreign_id)
-                if !foreign_rrs
-                  # If the foreign record doesn't already exist, then it hasn't yet been imported.
-                  # Just create an empty one for now to be filled in later, so we have a known local id to point at.
-                  # Later when it's imported, we will update the same record based on this RRS.
-                  # FIXME: If we never end up importing the record, the placeholder should be deleted.
-                  # However, need to leave the RRS in case it is imported in another mirror file later.
-                  # Alternate idea: simply create then immediately destroy record, just to get an autoincremented id
-                  foreign_rec_placeholder = foreign_model.new
-                  foreign_rec_placeholder.bypass_offline_mirror_readonly_checks
-                  foreign_rec_placeholder.save_without_validation
-                  foreign_rrs = foreign_rrs_source.create!(
-                    :local_record_id => foreign_rec_placeholder.id,
-                    :remote_record_id => remote_foreign_id
-                  )
+                if foreign_model == model && remote_foreign_id == cargo_record.id
+                  # If the record is new, self-references will have to wait until after we have the record's own id
+                  if rrs
+                    local_record.send("#{column_name}=".to_sym, rrs.local_record_id)
+                  else
+                    delayed_self_reference_cols << column_name
+                  end
+                else
+                  foreign_rrs_source = ReceivedRecordState.for_model(foreign_model)
+                  foreign_rrs_source = foreign_rrs_source.for_group(@group) if foreign_model.offline_mirror_group_data?
+                  foreign_rrs = foreign_rrs_source.find_by_remote_record_id(remote_foreign_id)
+                  if !foreign_rrs
+                    # If the foreign record doesn't already exist, then it hasn't yet been imported.
+                    # Just create an empty one for now to be filled in later, so we have a known local id to point at.
+                    # Later when it's imported, we will update the same record based on this RRS.
+                    # FIXME: If we never end up importing the record, the placeholder should be deleted.
+                    # However, need to leave the RRS in case it is imported in another mirror file later.
+                    # Alternate idea: simply create then immediately destroy record, just to get an autoincremented id
+                    foreign_rec_placeholder = foreign_model.new
+                    foreign_rec_placeholder.bypass_offline_mirror_readonly_checks
+                    foreign_rec_placeholder.save_without_validation
+                    foreign_rrs = foreign_rrs_source.create!(
+                      :local_record_id => foreign_rec_placeholder.id,
+                      :remote_record_id => remote_foreign_id
+                    )
+                  end
+                  local_record.send("#{column_name}=".to_sym, foreign_rrs.local_record_id)
                 end
-                local_record.send("#{column_name}=".to_sym, foreign_rrs.local_record_id)
               end
             end
           end
@@ -268,6 +278,15 @@ module OfflineMirror
           
           unless (@initial_mode && model.offline_mirror_group_data?) || rrs
             ReceivedRecordState.for_record(local_record).create!(:remote_record_id => cargo_record.id)
+          end
+          
+          # If the record is new and must reference itself, we now have an id it can use for that reference
+          if delayed_self_reference_cols.size > 0
+            local_record.bypass_offline_mirror_readonly_checks
+            delayed_self_reference_cols.each do |column_name|
+              local_record.send("#{column_name}=".to_sym, local_record.id)
+            end
+            local_record.save_without_validation
           end
         end
       end
