@@ -313,12 +313,12 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-  cross_test "if no SystemState is present an initial down mirror file is required" do
+  cross_test "cannot load regular down mirror file in empty offline app" do
     mirror_data = ""
     in_online_app { mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data }
     
     in_offline_app(false, true) do
-      assert_raise OfflineMirror::DataError do
+      assert_raise OfflineMirror::PluginError do
         OfflineMirror::MirrorData.new(nil).load_downwards_data(mirror_data)
       end
     end

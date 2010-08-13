@@ -9,7 +9,9 @@ module OfflineMirror
       @initial_mode = options[:initial_mode] || false
       @skip_write_validation = options[:skip_write_validation] || false
       
-      raise PluginError.new("Group required") unless @group || (OfflineMirror::app_offline? && @initial_mode)
+      unless OfflineMirror::app_offline? && @initial_mode
+        raise PluginError.new("Need group") unless @group.is_a?(OfflineMirror::group_base_model) && !@group.new_record?
+      end
       
       @imported_models_to_validate = []
     end
