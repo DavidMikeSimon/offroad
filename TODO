@@ -27,6 +27,7 @@
 - Should split MirrorData into MirrorDataWriter and MirrorDataReader
 - Remove offline_group_id system setting; don't really need it, since there should only be one group record
 - Perhaps cut off batch writing early if we've added enough bytes (i.e. to keep from trying to pack dozens of MB of screencasts into one batch)
+  - Alternately, allow app to optionally specify batch sizes on a model-by-model basis
 - Mirror file imports in the down mirror app should happen through GUI, and GUI should delete files once succesfully imported
 - If offline app attempts to import an initial down mirror file using the regular down mirror file mechanism, it should:
   - Delete the down mirror file as usual, but explain that it wasn't imported and a regular down mirror file is needed
