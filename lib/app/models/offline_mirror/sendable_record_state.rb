@@ -67,8 +67,16 @@ module OfflineMirror
         scope = for_record(record)
         rec_state = scope.first || scope.create
         rec_state.lock!
+        
+        tgt_version = nil
+        if record.class.offline_mirror_group_data?
+          tgt_version = record.group_state.group_data_version
+        elsif record.class.offline_mirror_global_data?
+          tgt_version = SystemState::global_data_version
+        end
+        rec_state.mirror_version = tgt_version
+        
         yield(rec_state) if block_given?
-        rec_state.mirror_version = SystemState::current_mirror_version
         rec_state.save!
       end
     end

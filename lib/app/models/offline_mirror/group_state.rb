@@ -20,8 +20,11 @@ module OfflineMirror
     def before_create
       if OfflineMirror::app_offline?
         # FIXME : Fill in last_installation_at, launcher_version, app_version, etc
-        last_known_offline_os = RUBY_PLATFORM
+        self.operating_system ||= RUBY_PLATFORM
       end
+      
+      # When first setting a group offline, assume it starts out with current global data
+      self.global_data_version ||= SystemState::global_data_version
     end
     
     def self.safe_to_load_from_cargo_stream?

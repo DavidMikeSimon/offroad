@@ -1,7 +1,7 @@
 class CreateOfflineMirrorTables < ActiveRecord::Migration
   def self.up
     create_table :offline_mirror_system_state do |t|
-      t.column :current_mirror_version, :integer, :null => false
+      t.column :global_data_version, :integer, :null => false
       t.column :offline_group_id, :integer
     end
     
@@ -13,8 +13,8 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
       # This is NOT used to propogate group deletion through mirror files.
       t.column :group_being_destroyed, :boolean, :default => false, :null => false
       
-      t.column :up_mirror_version, :integer, :default => 0, :null => false
-      t.column :down_mirror_version, :integer, :default => 0, :null => false
+      t.column :group_data_version, :integer, :default => 0, :null => false
+      t.column :global_data_version, :integer, :null => false
       t.column :last_installer_downloaded_at, :datetime
       t.column :last_installation_at, :datetime
       t.column :last_down_mirror_created_at, :datetime
@@ -23,11 +23,11 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
       t.column :last_up_mirror_loaded_at, :datetime
       t.column :launcher_version, :integer
       t.column :app_version, :integer
-      t.column :last_known_offline_os, :string, :default => "Unknown", :null => false
+      t.column :operating_system, :string, :default => "Unknown", :null => false
     end
     add_index :offline_mirror_group_states, :app_group_id, :unique => true
-    # This lets us quickly find min(down_mirror_version) for clearing old global record deletions
-    add_index :offline_mirror_group_states, :down_mirror_version
+    # This lets us quickly find min(global_mirror_version) for clearing old deleted global record SRSes
+    add_index :offline_mirror_group_states, :global_data_version
     
     create_table :offline_mirror_model_states do |t|
       t.column :app_model_name, :string, :null => false
@@ -36,7 +36,7 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
     
     create_table :offline_mirror_sendable_record_states do |t|
       t.column :model_state_id, :integer, :null => false
-      t.column :local_record_id, :integer, :null => false # If 0, record doesn't exist in this app (it has been deleted)
+      t.column :local_record_id, :integer, :null => false
       t.column :mirror_version, :integer, :default => 0, :null => false
       t.column :deleted, :boolean, :default => false, :null => false
     end

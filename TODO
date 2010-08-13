@@ -42,3 +42,6 @@ Scenarios to deal with:
 - Turning an online app into an offline app, then online again, then offline again, with data xfer happening at each stage
 - Online app receives a mirror file, then offline updates and sends another mirror file, without receiving confirmation of first
 - Offline app attempts to delete offline group on online app: this should not be possible
+- App creates a record then deletes it then sends mirror; does a deletion srs still get sent?
+  - For any fix to this: make sure that if app updates record then deletes it then sends mirror that deletion gets sent
+  - Maybe that means we need both create_version and update_version on srs?

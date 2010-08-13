@@ -3,16 +3,16 @@ require File.expand_path(File.dirname(__FILE__) + '/../test_helper')
 # This is a unit test for all the OfflineMirror internal models whose names end with "State"
 
 class AppStateTrackingTest < Test::Unit::TestCase
-  agnostic_test "can increment current mirror version" do
-    original_version = OfflineMirror::SystemState::current_mirror_version
-    OfflineMirror::SystemState::increment_mirror_version
-    assert_equal original_version+1, OfflineMirror::SystemState::current_mirror_version
-  end
-  
-  def assert_newly_created_record_matches_state(rec, rec_state)
-    assert_equal rec.id, rec_state.local_record_id, "SendableRecordState has correct record id"
-    cur_version = OfflineMirror::SystemState::current_mirror_version
-    assert_equal cur_version, rec_state.mirror_version, "SendableRecordState has correct mirror version"
+  def assert_newly_created_record_matches_srs(rec, rec_srs)
+    assert_equal rec.id, rec_srs.local_record_id, "SendableRecordState has correct record id"
+    
+    cur_version = nil
+    if rec.class.offline_mirror_group_data?
+      cur_version = rec.group_state.group_data_version
+    elsif rec.class.offline_mirror_global_data?
+      cur_version = OfflineMirror::SystemState::global_data_version
+    end
+    assert_equal cur_version, rec_srs.mirror_version, "SendableRecordState has correct mirror version"
   end
   
   online_test "group state data is created when online group is made offline" do
@@ -25,8 +25,8 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert group_state
     assert_equal prior_group_state_count+1, OfflineMirror::GroupState::count, "GroupState was created on demand"
     assert_equal rec.id, group_state.app_group_id, "GroupState has correct app group id"
-    assert_equal 0, group_state.up_mirror_version, "As-yet un-mirrored group has an up mirror version of 0"
-    assert_equal 0, group_state.down_mirror_version, "As-yet un-mirrored group has a down mirror version of 0"
+    assert_equal 0, group_state.group_data_version, "Newly offline group has an group data version of 1"
+    assert_equal OfflineMirror::SystemState::global_data_version, group_state.global_data_version
   end
   
   online_test "can change offline state of groups" do
@@ -57,7 +57,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
     rec_state = OfflineMirror::SendableRecordState.for_record(rec).first
     assert rec_state
     assert_equal "GroupOwnedRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
-    assert_newly_created_record_matches_state(rec, rec_state)
+    assert_newly_created_record_matches_srs(rec, rec_state)
   end
   
   online_test "creating group owned record does not cause creation of sendable record state" do
@@ -77,14 +77,18 @@ class AppStateTrackingTest < Test::Unit::TestCase
     rec_state = OfflineMirror::SendableRecordState.for_record(rec).first
     assert rec_state, "SendableRecordState was created when record was created"
     assert_equal "GlobalRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
-    assert_newly_created_record_matches_state(rec, rec_state)
+    assert_newly_created_record_matches_srs(rec, rec_state)
   end
   
   def assert_only_changing_attribute_causes_version_change(model, attribute, rec)
     rec_state = OfflineMirror::SendableRecordState.for_record(rec).first
-    original_version = OfflineMirror::SystemState::current_mirror_version
-    OfflineMirror::SystemState::increment_mirror_version
-    
+    original_version = rec_state.mirror_version
+    if rec.class.offline_mirror_group_data?
+      rec.group_state.increment!(:group_data_version)
+    else
+      OfflineMirror::SystemState::instance_record.increment!(:global_data_version)
+    end
+      
     rec.save!
     rec_state.reload
     assert_equal original_version, rec_state.mirror_version, "Save without changes did not affect record version"
@@ -111,15 +115,17 @@ class AppStateTrackingTest < Test::Unit::TestCase
   def assert_deleting_record_correctly_updated_record_state(rec)
     rec_state = OfflineMirror::SendableRecordState.for_record(rec).first
     assert_equal false, rec_state.deleted, "By default deleted flag is false"
-    original_version = OfflineMirror::SystemState::current_mirror_version
-    OfflineMirror::SystemState::increment_mirror_version
+    original_version = rec_state.mirror_version
+    if rec.class.offline_mirror_group_data?
+      rec.group_state.increment!(:group_data_version)
+    else
+      OfflineMirror::SystemState::instance_record.increment!(:global_data_version)
+    end
     
     rec.destroy
     rec_state.reload
     assert_equal original_version+1, rec_state.mirror_version, "Deleting record updated version"
     assert_equal true, rec_state.deleted, "Deleting record deleted flag to true"
-    # TODO If a srs is of the current version, just destroy the srs as well on record destruction
-    # This implies that we need a test here that involves creating a fake mirror file
   end
   
   online_test "deleting global record updates mirror version" do

@@ -200,7 +200,7 @@ module OfflineMirror
           :last_up_mirror_loaded_at,
           :launcher_version,
           :app_version,
-          :last_known_offline_os
+          :operating_system
         ]
         return fields_of_interest.map {|field_name| s.send(field_name)}
       end
@@ -216,7 +216,7 @@ module OfflineMirror
       def group_offline=(b)
         raise DataError.new("Unable to change a group's offline status in offline app") if OfflineMirror::app_offline?
         if b && !group_state
-          OfflineMirror::GroupState.for_group(owning_group).create
+          OfflineMirror::GroupState.for_group(owning_group).create!
         elsif group_state
           group_state.destroy
         end

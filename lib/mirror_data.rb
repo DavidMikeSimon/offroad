@@ -52,7 +52,7 @@ module OfflineMirror
           offline_group_id = @cs.first_cargo_element(group_cargo_name).id
           
           OfflineMirror::SystemState::create(
-            :current_mirror_version => 1,
+            :global_data_version => 1,
             :offline_group_id => offline_group_id
           ) or raise PluginError.new("Couldn't create valid system state from initial down mirror file")
           import_global_cargo # Global cargo must be done first because group data might belong_to global data

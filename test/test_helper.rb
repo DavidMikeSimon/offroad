@@ -218,7 +218,7 @@ class OnlineTestDatabase < VirtualTestDatabase
   def setup
     super
     
-    OfflineMirror::SystemState::create(:current_mirror_version => 1) or raise "Unable to create testing SystemState"
+    OfflineMirror::SystemState::create(:global_data_version => 1) or raise "Unable to create testing SystemState"
     
     offline_group = Group.create(:name => "An Offline Group")
     online_group = Group.create(:name => "An Online Group")
@@ -250,7 +250,7 @@ class OfflineTestDatabase < VirtualTestDatabase
     super
     
     OfflineMirror::SystemState::create(
-      :current_mirror_version => 1,
+      :global_data_version => 1,
       :offline_group_id => 1
     ) or raise "Unable to create testing SystemState"
     

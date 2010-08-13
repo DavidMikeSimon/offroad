@@ -26,17 +26,7 @@ module OfflineMirror
         if OfflineMirror::app_offline?
           raise OfflineMirror::DataError.new("Cannot auto-generate system settings on offline app")
         end
-        return create(:current_mirror_version => 1, :offline_group_id => 0)
-      end
-    end
-    
-    # Increment current_mirror_version by 1
-    # This should be done whenever a mirror file is created
-    def self.increment_mirror_version
-      transaction do
-        r = instance_record
-        r.increment :current_mirror_version
-        r.save!
+        return create(:global_data_version => 1, :offline_group_id => 0)
       end
     end
   end
