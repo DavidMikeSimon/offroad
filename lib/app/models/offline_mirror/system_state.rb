@@ -28,6 +28,11 @@ module OfflineMirror
       super(new_val)
     end
     
+    def self.increment_global_data_version
+      raise PluginError.new("Offline app not to use SystemState::global_data_version") unless OfflineMirror::app_online?
+      self.increment_counter(:global_data_version, first.id)
+    end
+    
     # Returns the singleton record, first creating it if necessary
     def self.instance_record
       sys_state = first

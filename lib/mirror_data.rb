@@ -17,6 +17,7 @@ module OfflineMirror
     def write_upwards_data(tgt = nil)
       write_data(tgt) do |cs|
         add_group_specific_cargo(cs)
+        @group.group_state.increment!(:group_data_version)
       end
     end
     
@@ -26,6 +27,7 @@ module OfflineMirror
         if @initial_mode
           add_group_specific_cargo(cs)
         end
+        SystemState::increment_global_data_version
       end
     end
     
@@ -116,19 +118,20 @@ module OfflineMirror
           cs = CargoStreamer.new(tgt, "w")
       end
       
-      # TODO : See if this whole thing can be done in some kind of read transaction
-      
-      mirror_info = MirrorInfo.new_from_group(@group, OfflineMirror::app_online? ? "online" : "offline", @initial_mode)
-      cs.write_cargo_section("mirror_info", [mirror_info], :human_readable => true)
-      
-      group_state = @group.group_state
-      if OfflineMirror::app_online?
-        # Let the offline app know what global data version it's being updated to
-        group_state.global_data_version = SystemState::global_data_version
+      # TODO: Figure out if this transaction ensures we get a consistent read state
+      OfflineMirror::group_base_model.connection.transaction do
+        mirror_info = MirrorInfo.new_from_group(@group, OfflineMirror::app_online? ? "online" : "offline", @initial_mode)
+        cs.write_cargo_section("mirror_info", [mirror_info], :human_readable => true)
+        
+        group_state = @group.group_state
+        if OfflineMirror::app_online?
+          # Let the offline app know what global data version it's being updated to
+          group_state.global_data_version = SystemState::global_data_version
+        end
+        cs.write_cargo_section("group_state", [group_state], :human_readable => true)
+        
+        yield cs
       end
-      cs.write_cargo_section("group_state", [group_state], :human_readable => true)
-      
-      yield cs
       
       return temp_sio.string if temp_sio
     end
