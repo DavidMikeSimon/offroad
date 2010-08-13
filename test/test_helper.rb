@@ -189,7 +189,10 @@ class VirtualTestDatabase
       else
         restored_val = value.dup
       end
-      restored_val = value.is_a?(ActiveRecord::Base) ? value.class.find(value.id) : value.dup
+      
+      # Using find_by_id so that if the record was destroyed earlier in the test, RecordNotFound isn't raised here
+      restored_val = value.is_a?(ActiveRecord::Base) ? value.class.find_by_id(value.id) : value.dup
+      
       @@test_instance.instance_variable_set(varname.to_sym, restored_val)
     end
   end
