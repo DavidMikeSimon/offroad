@@ -36,12 +36,14 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   def assert_single_model_cargo_entry_matches(cs, record)
+    record.reload
     data_name = "data_#{record.class.name}"
     assert_single_cargo_section_named cs, data_name
     assert_equal record.attributes, cs.first_cargo_element(data_name).attributes
   end
   
   def assert_record_not_present(cs, record)
+    record.reload
     data_name = "data_#{record.class.name}"
     assert_nothing_raised do
       cs.each_cargo_section(data_name) do |batch|
@@ -813,12 +815,23 @@ class MirrorDataTest < Test::Unit::TestCase
     assert_equal "Changed Again", recs[0].title
   end
   
-  cross_test "changed records are re-included in new up mirror files if their reception is not confirmed" do
-    flunk
+  offline_test "changed records are re-included in new up mirror files if their reception is not confirmed" do
+    @offline_group_data.description = "Changed"
+    @offline_group_data.save!
+    
+    2.times do
+      cs = OfflineMirror::CargoStreamer.new(OfflineMirror::MirrorData.new(@offline_group).write_upwards_data, "r")
+      assert_single_model_cargo_entry_matches(cs, @offline_group_data)
+    end
   end
   
-  cross_test "changed records are re-included in new down mirror files if their reception is not confirmed" do
-    flunk
+  online_test "changed records are re-included in new down mirror files if their reception is not confirmed" do
+    global_rec = GlobalRecord.create(:title => "Testing")
+    
+    2.times do
+      cs = OfflineMirror::CargoStreamer.new(OfflineMirror::MirrorData.new(@offline_group).write_downwards_data, "r")
+      assert_single_model_cargo_entry_matches(cs, global_rec)
+    end
   end
 
 #   cross_test "up mirror files do not include deletion requests for records known to be deleted on online system" do
