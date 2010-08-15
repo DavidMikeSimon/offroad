@@ -31,6 +31,8 @@
   - Delete the down mirror file as usual, but explain that it wasn't imported and a regular down mirror file is needed
 - Figure out which activerecord methods skip the save callbacks, and wrap them to update the mirror version
 - Load all the other informational values in GroupState
+- Use ActiveRecord reflections to find belongs_to associations, not the currenty hacky belongs_to wrapper
+- Use save(false) to skip validations, not save_without_validations
 
 Scenarios to deal with:
 
