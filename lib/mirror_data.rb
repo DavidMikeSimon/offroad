@@ -19,12 +19,15 @@ module OfflineMirror
     end
     
     def write_upwards_data(tgt = nil)
+      raise PluginError.new("Can only write upwards data in offline mode") unless OfflineMirror.app_offline?
+      raise PluginError.new("No such thing as initial upwards data") if @initial_mode
       write_data(tgt) do |cs|
         add_group_specific_cargo(cs)
       end
     end
     
     def write_downwards_data(tgt = nil)
+      raise PluginError.new("Can only write downwards data in online mode") unless OfflineMirror.app_online?
       write_data(tgt) do |cs|
         add_global_cargo(cs)
         if @initial_mode
@@ -35,6 +38,7 @@ module OfflineMirror
     
     def load_upwards_data(src)
       raise PluginError.new("Can only load upwards data in online mode") unless OfflineMirror.app_online?
+      raise PluginError.new("No such thing as initial upwards data") if @initial_mode
       
       read_data_from("offline", src) do |cs, mirror_info, cargo_group_state|
         unless cargo_group_state.confirmed_group_data_version > @group.group_state.confirmed_group_data_version

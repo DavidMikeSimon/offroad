@@ -94,6 +94,9 @@ module OfflineMirror
       # Methods below this point are only to be used internally by OfflineMirror
       # However, making all of them private would make using them from elsewhere in the plugin troublesome
       
+      # TODO Should put common save and destroy wrappers in here, with access to a method that checks if SRS needed
+      # TODO That method should also be used in import_model_cargo instead of explicitly trying to find the srs
+      
       #:nodoc:#
       def bypass_offline_mirror_readonly_checks
         @offline_mirror_readonly_bypassed = true
@@ -141,9 +144,6 @@ module OfflineMirror
     module GlobalDataInstanceMethods
       # Methods below this point are only to be used internally by OfflineMirror
       # However, marking all of them private would make using them from elsewhere in the plugin troublesome
-      
-      # TODO Should put common save and destroy wrappers in here, with access to a method that checks if SRS needed
-      # TODO That method should also be used in import_model_cargo instead of explicitly tryin to find the srs
       
       #:nodoc#
       def before_mirrored_data_destroy
