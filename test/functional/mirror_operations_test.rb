@@ -7,6 +7,7 @@ class MirrorOperationsTest < ActionController::TestCase
     mirror_data = ""
     in_online_app do
       Group.create(:name => "Some Other Group")
+      Group.create(:name => "Some Other Offline Group").group_offline = true
       test_group = Group.create(:name => "Test Group")
       
       grec_a = GlobalRecord.create(:title => "Important Announcement", :some_boolean => true)
