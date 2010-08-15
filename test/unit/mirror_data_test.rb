@@ -928,7 +928,15 @@ class MirrorDataTest < Test::Unit::TestCase
 #     # TODO Implement
 #   end
 #    
-#   cross_test "cannot use an up mirror file to create or update or delete records not owned by the given group" do
+#   cross_test "cannot use an up mirror file to create records not owned by the given group" do
+#     # TODO Implement
+#   end
+#   
+#   cross_test "cannot use an up mirror file to update records not owned by the given group" do
+#     # TODO Implement
+#   end
+#   
+#   cross_test "cannot use an up mirror file to delete records not owned by the given group" do
 #     # TODO Implement
 #   end
 #   
