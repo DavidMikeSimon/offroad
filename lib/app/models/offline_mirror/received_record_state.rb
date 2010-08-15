@@ -53,5 +53,15 @@ module OfflineMirror
     def app_record
       model_state.app_model.find(local_record_id)
     end
+    
+    def app_record_find_or_initialize
+      begin
+        return app_record
+      rescue ActiveRecord::RecordNotFound
+        rec = model_state.app_model.new
+        rec.id = local_record_id
+        return rec
+      end
+    end
   end
 end
