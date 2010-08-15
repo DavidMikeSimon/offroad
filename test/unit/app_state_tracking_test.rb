@@ -212,15 +212,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert_equal false, srs.valid?
   end
   
-  offline_test "cannot auto-generate system settings" do
-    OfflineMirror::SystemState.instance_record.destroy
-    
-    assert_raise OfflineMirror::DataError do
-      OfflineMirror::SystemState.instance_record
-    end
-  end
-  
-  online_test "can auto-generate system settings" do
+  double_test "can auto-generate system settings" do
     OfflineMirror::SystemState.instance_record.destroy
     
     assert_nothing_raised do
