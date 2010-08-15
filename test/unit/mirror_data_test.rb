@@ -37,14 +37,14 @@ class MirrorDataTest < Test::Unit::TestCase
   
   def assert_single_model_cargo_entry_matches(cs, record)
     record.reload
-    data_name = "data_#{record.class.name}"
+    data_name = OfflineMirror::MirrorData.send(:data_cargo_name_for_model, record.class)
     assert_single_cargo_section_named cs, data_name
     assert_equal record.attributes, cs.first_cargo_element(data_name).attributes
   end
   
   def assert_record_not_present(cs, record)
     record.reload
-    data_name = "data_#{record.class.name}"
+    data_name = OfflineMirror::MirrorData.send(:data_cargo_name_for_model, record.class)
     assert_nothing_raised do
       cs.each_cargo_section(data_name) do |batch|
         batch.each do |cargo_record|
