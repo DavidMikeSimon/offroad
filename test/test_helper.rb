@@ -225,6 +225,10 @@ class OnlineTestDatabase < VirtualTestDatabase
   def setup
     super
     
+    unused_offline_group = Group.create(:name => "Unused Offline Group")
+    unused_online_group = Group.create(:name => "Unused Online Group")
+    unused_offline_group.group_offline = true
+    
     offline_group = Group.create(:name => "An Offline Group")
     online_group = Group.create(:name => "An Online Group")
     offline_group.group_offline = true
