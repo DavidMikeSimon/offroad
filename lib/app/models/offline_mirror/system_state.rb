@@ -16,21 +16,8 @@ module OfflineMirror
       def_delegator :instance_record, sym
     end
     
-    # Do not allow use of global_data_version in SystemState in offline app
-    # It needs to exclusively use the global_data_version in its GroupState record
-    def global_data_version
-      raise PluginError.new("Offline app not to use SystemState::global_data_version") unless OfflineMirror::app_online?
-      super
-    end
-    
-    def global_data_version=(new_val)
-      raise PluginError.new("Offline app not to use SystemState::global_data_version") unless OfflineMirror::app_online?
-      super(new_val)
-    end
-    
-    def self.increment_global_data_version
-      raise PluginError.new("Offline app not to use SystemState::global_data_version") unless OfflineMirror::app_online?
-      self.increment_counter(:global_data_version, first.id)
+    def self.increment_mirror_version
+      self.increment_counter(:current_mirror_version, first.id)
     end
     
     # Returns the singleton record, first creating it if necessary
@@ -42,7 +29,7 @@ module OfflineMirror
         if OfflineMirror::app_offline?
           raise OfflineMirror::DataError.new("Cannot auto-generate system settings on offline app")
         end
-        return create(:global_data_version => 1, :offline_group_id => 0)
+        return create(:current_mirror_version => 1, :offline_group_id => 0)
       end
     end
   end

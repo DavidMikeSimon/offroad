@@ -222,8 +222,8 @@ class OnlineTestDatabase < VirtualTestDatabase
     super
     
     # We pick 2 because the default global_data_version in the offline system's group_state will be 1.
-    # This simulates the online app incrementing its global_data_version after creating an initial down mirror file.
-    OfflineMirror::SystemState::create!(:global_data_version => 2) or raise "Unable to create testing SystemState"
+    # This simulates the online app incrementing its current_mirror_version after creating an initial down mirror file.
+    OfflineMirror::SystemState::create!(:current_mirror_version => 2) or raise "Can't create testing SystemState"
     
     offline_group = Group.create(:name => "An Offline Group")
     online_group = Group.create(:name => "An Online Group")
@@ -254,7 +254,7 @@ class OfflineTestDatabase < VirtualTestDatabase
   def setup
     super
     
-    OfflineMirror::SystemState::create!(:offline_group_id => 1)
+    OfflineMirror::SystemState::create!(:current_mirror_version => 1, :offline_group_id => 1)
     
     offline_group = Group.new(:name => "An Offline Group")
     force_save_and_reload(offline_group)

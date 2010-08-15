@@ -19,7 +19,6 @@ module OfflineMirror
     def write_upwards_data(tgt = nil)
       write_data(tgt) do |cs|
         add_group_specific_cargo(cs)
-        @group.group_state.increment!(:group_data_version)
       end
     end
     
@@ -29,7 +28,6 @@ module OfflineMirror
         if @initial_mode
           add_group_specific_cargo(cs)
         end
-        SystemState::increment_global_data_version
       end
     end
     
@@ -37,7 +35,7 @@ module OfflineMirror
       raise PluginError.new("Can only load upwards data in online mode") unless OfflineMirror.app_online?
       
       read_data_from("offline", src) do |cs, mirror_info, group_state|
-        unless group_state.group_data_version > @group.group_state.group_data_version
+        unless group_state.confirmed_group_data_version > @group.group_state.confirmed_group_data_version
           raise OldDataError.new("File contains old up-mirror data")
         end
         
@@ -54,7 +52,7 @@ module OfflineMirror
       read_data_from("online", src) do |cs, mirror_info, group_state|
         raise DataError.new("Unexpected initial file value") unless mirror_info.initial_file == @initial_mode
         
-        unless @initial_mode || group_state.global_data_version > @group.group_state.global_data_version
+        unless @initial_mode || group_state.confirmed_global_data_version > @group.group_state.confirmed_global_data_version
           raise OldDataError.new("File contains old down-mirror data")
         end
         
@@ -136,11 +134,16 @@ module OfflineMirror
         group_state = @group.group_state
         if OfflineMirror::app_online?
           # Let the offline app know what global data version it's being updated to
-          group_state.global_data_version = SystemState::global_data_version
+          group_state.confirmed_global_data_version = SystemState::current_mirror_version
+        else
+          # Let the online app know what group data version the online mirror of this group is being updated to
+          group_state.confirmed_group_data_version = SystemState::current_mirror_version
         end
         cs.write_cargo_section("group_state", [group_state], :human_readable => true)
         
         yield cs
+        
+        SystemState::increment_mirror_version
       end
       
       return temp_sio.string if temp_sio
@@ -212,9 +215,13 @@ module OfflineMirror
       # TODO TODO TODO Blargh blargh blargh need to use current_mirror_version in offline after all,
       # otherwise can't keep version for new records separate from online app's latest confirmed version.
       gs = @group.group_state
-      remote_version = model.offline_mirror_group_data? ? gs.group_data_version : gs.global_data_version
-      srs_source = SendableRecordState.for_model(model)
-      #srs_source = SendableRecordState.for_model(model).with_version_greater_than(remote_version)
+      remote_version = nil
+      if model.offline_mirror_group_data?
+        remote_version = gs.confirmed_group_data_version
+      else
+        remote_version = gs.confirmed_global_data_version
+      end
+      srs_source = SendableRecordState.for_model(model).with_version_greater_than(remote_version)
       
       srs_source.for_non_deleted_records.find_in_batches(:batch_size => 100) do |srs_batch|
         # TODO Might be able to optimize this to one query using a join on app model and SRS tables

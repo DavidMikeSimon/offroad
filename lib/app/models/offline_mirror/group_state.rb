@@ -23,22 +23,26 @@ module OfflineMirror
         self.operating_system ||= RUBY_PLATFORM
       end
       
-      self.group_data_version ||= OfflineMirror::app_online? ? 0 : 1
+      self.confirmed_group_data_version ||= 0
       
-      # When first setting a group offline, assume it will start out with at least current global data.
-      # It should, since that's the earlier version which might be loaded into the initial down mirror file.
-      self.global_data_version ||= OfflineMirror::app_online? ? SystemState::global_data_version : 1
+      # When first setting a group offline at online app, assume it will start out with at least current global data.
+      # It should, since that's the earliest version that could be loaded into the initial down mirror file.
+      self.confirmed_global_data_version ||= OfflineMirror::app_online? ? SystemState::current_mirror_version : 1
     end
     
     def setup_as_new_offline_group!
       raise PluginError.new("Cannot setup new offline group in online app") unless OfflineMirror::app_offline?
-      self.group_data_version = 1
+      self.confirmed_group_data_version = 1
       save!
     end
     
     def update_from_remote_group_state!(remote_gs)
+      versioning_columns = [
+        'confirmed_global_data_version',
+        'confirmed_group_data_version'
+      ]
+      
       online_owned_columns = [
-        'global_data_version',
         'last_installer_downloaded_at',
         'last_down_mirror_created_at',
         'last_up_mirror_loaded_at'
@@ -50,8 +54,13 @@ module OfflineMirror
         end
       else
         self.class.column_names.each do |col|
-          self.send("#{col}=", remote_gs.send(col)) unless online_owned_columns.include?(col)
+          self.send("#{col}=", remote_gs.send(col)) unless (online_owned_columns + versioning_columns).include?(col)
         end
+      end
+      
+      # If the remote side says they have a newer version of something than we currently think they have, update
+      versioning_columns.each do |col|
+        self.send("#{col}=", [self.send(col), remote_gs.send(col)].max)
       end
       
       save!
