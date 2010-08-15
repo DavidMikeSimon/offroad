@@ -66,6 +66,7 @@ module OfflineMirror
           offline_group_id = cs.first_cargo_element(group_cargo_name).id
           
           OfflineMirror::SystemState::create(
+            :current_mirror_version => 1,
             :offline_group_id => offline_group_id
           ) or raise PluginError.new("Couldn't create valid system state from initial down mirror file")
           import_global_cargo(cs) # Global cargo must be done first because group data might belong_to global data
@@ -78,13 +79,8 @@ module OfflineMirror
           import_global_cargo(cs)
         end
         
-        # If we've just set up a new offline group, do some initialization work on the group state
-        if @initial_mode
-          @group = OfflineMirror::offline_group
-          @group.group_state.setup_as_new_offline_group!
-        end
-        
         # Load information into our group state that the online app is in a better position to know about
+        @group = OfflineMirror::offline_group if @initial_mode
         @group.group_state.update_from_remote_group_state!(group_state)
       end
     end
@@ -221,7 +217,8 @@ module OfflineMirror
       else
         remote_version = gs.confirmed_global_data_version
       end
-      srs_source = SendableRecordState.for_model(model).with_version_greater_than(remote_version)
+      srs_source = SendableRecordState.for_model(model)
+      #srs_source = SendableRecordState.for_model(model).with_version_greater_than(remote_version)
       
       srs_source.for_non_deleted_records.find_in_batches(:batch_size => 100) do |srs_batch|
         # TODO Might be able to optimize this to one query using a join on app model and SRS tables

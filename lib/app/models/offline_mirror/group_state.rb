@@ -30,12 +30,6 @@ module OfflineMirror
       self.confirmed_global_data_version ||= OfflineMirror::app_online? ? SystemState::current_mirror_version : 1
     end
     
-    def setup_as_new_offline_group!
-      raise PluginError.new("Cannot setup new offline group in online app") unless OfflineMirror::app_offline?
-      self.confirmed_group_data_version = 1
-      save!
-    end
-    
     def update_from_remote_group_state!(remote_gs)
       versioning_columns = [
         'confirmed_global_data_version',

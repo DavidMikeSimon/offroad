@@ -620,51 +620,39 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-  offline_test "creating up mirror file increments group_data_version, not global_data_version" do
-    prior_offline_version = @offline_group.group_state.group_data_version
-    prior_online_version = @offline_group.group_state.global_data_version
+  offline_test "creating up mirror file increments current_mirror_version" do
+    prior_version = OfflineMirror::SystemState::current_mirror_version
     OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
-    assert_equal prior_offline_version+1, @offline_group.group_state.group_data_version
-    assert_equal prior_online_version, @offline_group.group_state.global_data_version
+    assert_equal prior_version+1, OfflineMirror::SystemState::current_mirror_version
   end
   
-  online_test "creating down mirror file increments global_data_version, not group_data_version" do
-    prior_offline_group_version = @offline_group.group_state.group_data_version
-    prior_offline_global_version = @offline_group.group_state.global_data_version
-    prior_online_version = OfflineMirror::SystemState::global_data_version
+  online_test "creating down mirror file increments current_mirror_version" do
+    prior_version = OfflineMirror::SystemState::current_mirror_version
     OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
-    assert_equal prior_offline_group_version, @offline_group.group_state.group_data_version
-    assert_equal prior_offline_global_version, @offline_group.group_state.global_data_version
-    assert_equal prior_online_version+1, OfflineMirror::SystemState::global_data_version
+    assert_equal prior_version+1, OfflineMirror::SystemState::current_mirror_version
   end
   
-  online_test "creating initial down mirror file increments global_data_version, not group_data_version" do
-    prior_offline_group_version = @offline_group.group_state.group_data_version
-    prior_offline_global_version = @offline_group.group_state.global_data_version
-    prior_online_version = OfflineMirror::SystemState::global_data_version
-    OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
-    assert_equal prior_offline_group_version, @offline_group.group_state.group_data_version
-    assert_equal prior_offline_global_version, @offline_group.group_state.global_data_version
-    assert_equal prior_online_version+1, OfflineMirror::SystemState::global_data_version
+  online_test "creating initial down mirror file increments current_mirror_version" do
+    prior_version = OfflineMirror::SystemState::current_mirror_version
+    OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+    assert_equal prior_version+1, OfflineMirror::SystemState::current_mirror_version
   end
   
-  cross_test "receiving an up mirror file increments group_data_version to the indicated value if larger" do
+  cross_test "receiving an up mirror file increments confirmed_group_data_version to the indicated value if larger" do
     mirror_data = ""
     in_offline_app do
       @offline_group_data.description = "New Name"
       @offline_group_data.save!
       
-      group_state = @offline_group.group_state
-      group_state.group_data_version = 42
-      group_state.save!
+      OfflineMirror::SystemState::instance_record.update_attribute(:current_mirror_version, 42)
       
       mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
     end
     
     in_online_app do
-      assert_equal 0, @offline_group.group_state.group_data_version
+      assert_equal 0, @offline_group.group_state.confirmed_group_data_version
       OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
-      assert_equal 42, @offline_group.group_state.group_data_version
+      assert_equal 42, @offline_group.group_state.confirmed_group_data_version
     end
   end
   
@@ -675,16 +663,14 @@ class MirrorDataTest < Test::Unit::TestCase
         @offline_group_data.description = "New Name"
         @offline_group_data.save!
         
-        group_state = @offline_group.group_state
-        group_state.group_data_version = sending_version
-        group_state.save!
+        OfflineMirror::SystemState::instance_record.update_attribute(:current_mirror_version, sending_version)
         
         mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
       end
       
       in_online_app do
         group_state = @offline_group.group_state
-        group_state.group_data_version = 42
+        group_state.confirmed_group_data_version = 42
         group_state.save!
         
         assert_raise OfflineMirror::OldDataError do
@@ -694,22 +680,20 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-  cross_test "receiving a down mirror file increments global_data_version to the indicated value if larger" do
+  cross_test "receiving a down mirror file increments confirmed_global_data_version to the indicated value if larger" do
     mirror_data = ""
     in_online_app do
       GlobalRecord.create(:title => "Testing")
       
-      system_state = OfflineMirror::SystemState::instance_record
-      system_state.global_data_version = 42
-      system_state.save!
+      OfflineMirror::SystemState::instance_record.update_attribute(:current_mirror_version, 42)
       
       mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
     end
     
     in_offline_app do
-      assert_equal 1, @offline_group.group_state.global_data_version
+      assert_equal 1, @offline_group.group_state.confirmed_global_data_version
       OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
-      assert_equal 42, @offline_group.group_state.global_data_version
+      assert_equal 42, @offline_group.group_state.confirmed_global_data_version
     end
   end
   
@@ -719,16 +703,14 @@ class MirrorDataTest < Test::Unit::TestCase
       in_online_app do
         GlobalRecord.create(:title => "Testing")
         
-        system_state = OfflineMirror::SystemState::instance_record
-        system_state.global_data_version = sending_version
-        system_state.save!
+        OfflineMirror::SystemState::instance_record.update_attribute(:current_mirror_version, sending_version)
         
         mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
       end
       
       in_offline_app do
         group_state = @offline_group.group_state
-        group_state.global_data_version = 42
+        group_state.confirmed_global_data_version = 42
         group_state.save!
         
         assert_raise OfflineMirror::OldDataError do
@@ -738,19 +720,18 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
   
-  cross_test "after loading initial down mirror file global_data_version is as online and group_data_version is 1" do
+  cross_test "after loading initial down mirror file global_data_version matches online prior current_mirror_version" do
     mirror_data = ""
     online_version = nil
     in_online_app do
-      OfflineMirror::SystemState::instance_record.update_attribute(:global_data_version, 3)
-      online_version = OfflineMirror::SystemState::global_data_version
+      OfflineMirror::SystemState::instance_record.update_attribute(:current_mirror_version, 3)
+      online_version = OfflineMirror::SystemState::current_mirror_version
       mirror_data = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
     end
     
     in_offline_app(false, true) do
       OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
-      assert_equal online_version, @offline_group.group_state.global_data_version
-      assert_equal 1, @offline_group.group_state.group_data_version
+      assert_equal online_version, @offline_group.group_state.confirmed_global_data_version
     end
   end
   
@@ -812,7 +793,7 @@ class MirrorDataTest < Test::Unit::TestCase
       recs += batch
     end
     assert_equal 1, recs.size
-    assert_equal "Changed Again", recs[0].title
+    assert_equal "Changed Again", recs[0].description
   end
   
   offline_test "changed records are re-included in new up mirror files if their reception is not confirmed" do
