@@ -1,6 +1,14 @@
 require File.expand_path(File.dirname(__FILE__) + '/../test_helper')
 
 class MirrorDataTest < Test::Unit::TestCase
+  def all_records_from_section_named(cs, name)
+    recs = []
+    cs.each_cargo_section(name) do |batch|
+      recs += batch
+    end
+    return recs
+  end
+  
   def assert_single_cargo_section_named(cs, name)
     count = 0
     cs.each_cargo_section(name) do |data|
@@ -814,16 +822,67 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_single_model_cargo_entry_matches(cs, global_rec)
     end
   end
-
-#   cross_test "up mirror files do not include deletion requests for records known to be deleted on online system" do
-#     # TODO Implement
-#   end
-#   
-#   cross_test "down mirror files do not include deletion requests for records known to be deleted on offline system" do
-#     # TODO Implement
-#   end
-#   
-#   cross_test "records from other groups are not included in initial down mirror files" do
+  
+  cross_test "up mirror files do not include deletion requests for records known to be deleted on online system" do
+    sec_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, GroupOwnedRecord)
+    
+    mirror_data = ""
+    in_offline_app do
+      @offline_group_data.destroy
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+    end
+    
+    assert_equal 1, all_records_from_section_named(OfflineMirror::CargoStreamer.new(mirror_data, "r"), sec_name).size
+    
+    in_online_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+    end
+    
+    in_offline_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+    end
+    
+    assert_equal 0, all_records_from_section_named(OfflineMirror::CargoStreamer.new(mirror_data, "r"), sec_name).size
+  end
+  
+  cross_test "down mirror files do not include deletion requests for records known to be deleted on offline system" do
+    sec_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, GlobalRecord)
+    
+    mirror_data = ""
+    in_online_app do
+      GlobalRecord.create(:title => "Testing")
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+    end
+    
+    in_offline_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+    end
+    
+    in_online_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      GlobalRecord.find_by_title("Testing").destroy
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+    end
+    
+    assert_equal 1, all_records_from_section_named(OfflineMirror::CargoStreamer.new(mirror_data, "r"), sec_name).size
+    
+    in_offline_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+    end
+    
+    in_online_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+    end
+    
+    assert_equal 0, all_records_from_section_named(OfflineMirror::CargoStreamer.new(mirror_data, "r"), sec_name).size
+  end
+  
+#   cross_test "records from other offline groups are not included in initial down mirror files" do
 #     # TODO Implement
 #   end
 #   
