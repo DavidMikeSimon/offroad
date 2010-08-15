@@ -9,12 +9,15 @@ class MirrorOperationsTest < ActionController::TestCase
       Group.create(:name => "Some Other Group")
       test_group = Group.create(:name => "Test Group")
       
-      GlobalRecord.create(:title => "Important Announcement", :some_boolean => true)
-      GlobalRecord.create(:title => "Trivial Announcement", :some_boolean => true)
+      grec_a = GlobalRecord.create(:title => "Important Announcement", :some_boolean => true)
+      GlobalRecord.create(:title => "Trivial Announcement", :some_boolean => true, :friend => grec_a)
       
       GroupOwnedRecord.create(:description => "First Item", :group => test_group)
       GroupOwnedRecord.create(:description => "Second Item", :group => test_group)
       GroupOwnedRecord.create(:description => "Third Item", :group => test_group)
+      
+      test_group.favorite = GroupOwnedRecord.find_by_description("Third Item")
+      test_group.save
       
       test_group.group_offline = true
       get :download_initial_down_mirror, "id" => test_group.id
@@ -29,16 +32,22 @@ class MirrorOperationsTest < ActionController::TestCase
       post :upload_initial_down_mirror, "mirror_data" => mirror_data
       
       assert_equal 1, Group.count
-      assert_not_nil Group.find_by_name("Test Group")
+      test_group = Group.find_by_name("Test Group")
+      assert_not_nil test_group
       
       assert_equal 3, GroupOwnedRecord.count
       assert_not_nil GroupOwnedRecord.find_by_description("First Item")
       assert_not_nil GroupOwnedRecord.find_by_description("Second Item")
       assert_not_nil GroupOwnedRecord.find_by_description("Third Item")
       
+      assert_equal GroupOwnedRecord.find_by_description("Third Item"), test_group.favorite
+      
       assert_equal 2, GlobalRecord.count
-      assert_not_nil GlobalRecord.find_by_title("Important Announcement")
-      assert_not_nil GlobalRecord.find_by_title("Trivial Announcement")
+      grec_a = GlobalRecord.find_by_title("Important Announcement")
+      grec_b = GlobalRecord.find_by_title("Trivial Announcement")
+      assert_not_nil grec_a
+      assert_not_nil grec_b
+      assert_equal grec_a, grec_b.friend
       
       group = Group.first
       group.name = "Renamed Group"
