@@ -6,8 +6,10 @@ module OfflineMirror
     
     def initialize(group, options = {})
       @group = group
-      @initial_mode = options[:initial_mode] || false
-      @skip_write_validation = options[:skip_write_validation] || false
+      @initial_mode = options.delete(:initial_mode) || false
+      @skip_write_validation = options.delete(:skip_write_validation) || false
+      
+      raise PluginError.new("Invalid option keys") unless options.size == 0
       
       unless OfflineMirror::app_offline? && @initial_mode
         raise PluginError.new("Need group") unless @group.is_a?(OfflineMirror::group_base_model) && !@group.new_record?
@@ -256,57 +258,65 @@ module OfflineMirror
       rrs_source = ReceivedRecordState.for_model(model)
       rrs_source = rrs_source.for_group(@group) if model.offline_mirror_group_data?
       
+      if @initial_mode && model.offline_mirror_group_data?
+        import_initial_model_cargo(cs, model)
+      else
+        import_non_initial_model_cargo(cs, model, rrs_source)
+      end
+    end
+    
+    def import_initial_model_cargo(cs, model)
+      cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
+        batch.each do |cargo_record|
+          local_record = model.new
+          local_record.id = cargo_record.id # Safe, SQLite's autoincrement columns keep track of manually set values
+          local_record.send(:attributes=, cargo_record.attributes.reject{|k,v| k == "id"}, false)          
+          local_record.bypass_offline_mirror_readonly_checks
+          local_record.save_without_validation # Validation delayed because it might depend on as-yet unimported data
+        end
+      end
+    end
+    
+    def import_non_initial_model_cargo(cs, model, rrs_source)
       # Update/create records
       cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
         batch.each do |cargo_record|
-          # Update the record if we're not in initial mode and can find it by the RRS, create a new record otherwise
-          rrs, local_record = nil, nil
-          if @initial_mode
-            local_record = model.new
-            # Conveniently, SQLite's autoincrement columns keep track of manually set values.
-            # So, below is safe on the offline app; newly created group records will have next biggest ID.
-            local_record.id = cargo_record.id
-          else
-            rrs = rrs_source.find_by_remote_record_id(cargo_record.id)
-            local_record = rrs ? rrs.app_record : model.new
-          end
-          
+          rrs = rrs_source.find_by_remote_record_id(cargo_record.id)
+          local_record = rrs ? rrs.app_record : model.new
           local_record.send(:attributes=, cargo_record.attributes.reject{|k,v| k == "id"}, false)
           
           # Update foreign key associations so they point to the same actual records as they did on the remote system
           delayed_self_reference_cols = []
-          unless @initial_mode
-            model.offline_mirror_foreign_key_models.each_pair do |column_name, foreign_model|
-              remote_foreign_id = local_record.send(column_name.to_sym)
-              if remote_foreign_id && remote_foreign_id != 0
-                if foreign_model == model && remote_foreign_id == cargo_record.id
-                  # If the record is new, self-references will have to wait until after we have the record's own id
-                  if rrs
-                    local_record.send("#{column_name}=".to_sym, rrs.local_record_id)
-                  else
-                    delayed_self_reference_cols << column_name
-                  end
+          model.offline_mirror_foreign_key_models.each_pair do |column_name, foreign_model|
+            remote_foreign_id = local_record.send(column_name.to_sym)
+            if remote_foreign_id && remote_foreign_id != 0
+              if foreign_model == model && remote_foreign_id == cargo_record.id
+                # If the record is new, self-references will have to wait until after we have the record's own id
+                if rrs
+                  local_record.send("#{column_name}=".to_sym, rrs.local_record_id)
                 else
-                  foreign_rrs_source = ReceivedRecordState.for_model(foreign_model)
-                  foreign_rrs_source = foreign_rrs_source.for_group(@group) if foreign_model.offline_mirror_group_data?
-                  foreign_rrs = foreign_rrs_source.find_by_remote_record_id(remote_foreign_id)
-                  if !foreign_rrs
-                    # If the foreign record doesn't already exist, then it hasn't yet been imported.
-                    # Just create an empty one for now to be filled in later, so we have a known local id to point at.
-                    # Later when it's imported, we will update the same record based on this RRS.
-                    # FIXME: If we never end up importing the record, the placeholder should be deleted.
-                    # However, need to leave the RRS in case it is imported in another mirror file later.
-                    # Alternate idea: simply create then immediately destroy record, just to get an autoincremented id
-                    foreign_rec_placeholder = foreign_model.new
-                    foreign_rec_placeholder.bypass_offline_mirror_readonly_checks
-                    foreign_rec_placeholder.save_without_validation
-                    foreign_rrs = foreign_rrs_source.create!(
-                      :local_record_id => foreign_rec_placeholder.id,
-                      :remote_record_id => remote_foreign_id
-                    )
-                  end
-                  local_record.send("#{column_name}=".to_sym, foreign_rrs.local_record_id)
+                  delayed_self_reference_cols << column_name
                 end
+              else
+                foreign_rrs_source = ReceivedRecordState.for_model(foreign_model)
+                foreign_rrs_source = foreign_rrs_source.for_group(@group) if foreign_model.offline_mirror_group_data?
+                foreign_rrs = foreign_rrs_source.find_by_remote_record_id(remote_foreign_id)
+                if !foreign_rrs
+                  # If the foreign record doesn't already exist, then it hasn't yet been imported.
+                  # Just create an empty one for now to be filled in later, so we have a known local id to point at.
+                  # Later when it's imported, we will update the same record based on this RRS.
+                  # FIXME: If we never end up importing the record, the placeholder should be deleted.
+                  # However, need to leave the RRS in case it is imported in another mirror file later.
+                  # Alternate idea: simply create then immediately destroy record, just to get an autoincremented id
+                  foreign_rec_placeholder = foreign_model.new
+                  foreign_rec_placeholder.bypass_offline_mirror_readonly_checks
+                  foreign_rec_placeholder.save_without_validation
+                  foreign_rrs = foreign_rrs_source.create!(
+                    :local_record_id => foreign_rec_placeholder.id,
+                    :remote_record_id => remote_foreign_id
+                  )
+                end
+                local_record.send("#{column_name}=".to_sym, foreign_rrs.local_record_id)
               end
             end
           end
@@ -314,9 +324,7 @@ module OfflineMirror
           local_record.bypass_offline_mirror_readonly_checks
           local_record.save_without_validation # Validation delayed because it might depend on as-yet unimported data
           
-          unless (@initial_mode && model.offline_mirror_group_data?) || rrs
-            ReceivedRecordState.for_record(local_record).create!(:remote_record_id => cargo_record.id)
-          end
+          ReceivedRecordState.for_record(local_record).create!(:remote_record_id => cargo_record.id) unless rrs
           
           # If the record is new and must reference itself, we now have an id it can use for that reference
           if delayed_self_reference_cols.size > 0
@@ -330,16 +338,14 @@ module OfflineMirror
       end
       
       # Destroy records here which were destroyed there
-      unless @initial_mode
-        cs.each_cargo_section(MirrorData::deletion_cargo_name_for_model(model)) do |batch|
-          batch.each do |deletion_srs|
-            rrs = rrs_source.find_by_remote_record_id(deletion_srs.local_record_id)
-            raise DataError.new("Invalid id for deletion: #{model.name} #{deletion_srs.local_record_id}") unless rrs
-            local_record = rrs.app_record
-            local_record.bypass_offline_mirror_readonly_checks
-            local_record.destroy
-            rrs.destroy
-          end
+      cs.each_cargo_section(MirrorData::deletion_cargo_name_for_model(model)) do |batch|
+        batch.each do |deletion_srs|
+          rrs = rrs_source.find_by_remote_record_id(deletion_srs.local_record_id)
+          raise DataError.new("Invalid id for deletion: #{model.name} #{deletion_srs.local_record_id}") unless rrs
+          local_record = rrs.app_record
+          local_record.bypass_offline_mirror_readonly_checks
+          local_record.destroy
+          rrs.destroy
         end
       end
     end
