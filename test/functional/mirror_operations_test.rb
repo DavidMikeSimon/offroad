@@ -84,6 +84,30 @@ class MirrorOperationsTest < ActionController::TestCase
       assert_not_nil GlobalRecord.find_by_title("Very Important Announcement")
       assert_nil GlobalRecord.find_by_title("Trivial Announcement")
       assert_not_nil GlobalRecord.find_by_title("Yet Another Announcement")
+      
+      group = Group.first
+      first_item = GroupOwnedRecord.find_by_description("Absolutely The First Item")
+      third_item = GroupOwnedRecord.find_by_description("Third Item")
+      group.favorite = first_item
+      group.save
+      first_item.parent = third_item
+      first_item.save
+      third_item.parent = third_item
+      third_item.save
+      
+      get :download_up_mirror, "id" => Group.first.id
+      mirror_data = @response.binary_content
+    end
+    
+    in_online_app do
+      post :upload_up_mirror, "id" => Group.find_by_name("Renamed Group").id, "mirror_data" => mirror_data
+      
+      group = Group.find_by_name("Renamed Group")
+      first_item = GroupOwnedRecord.find_by_description("Absolutely The First Item")
+      third_item = GroupOwnedRecord.find_by_description("Third Item")
+      assert_equal first_item, group.favorite
+      assert_equal third_item, first_item.parent
+      assert_equal third_item, third_item.parent
     end
   end
 end
