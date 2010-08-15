@@ -42,14 +42,18 @@ module OfflineMirror
         'last_up_mirror_loaded_at'
       ]
       
-      if OfflineMirror::app_offline?
-        online_owned_columns.each do |col|
-          self.send("#{col}=", remote_gs.send(col))
-        end
-      else
-        self.class.column_names.each do |col|
-          self.send("#{col}=", remote_gs.send(col)) unless (online_owned_columns + versioning_columns).include?(col)
-        end
+      offline_owned_columns = [
+        'last_installation_at',
+        'last_down_mirror_loaded_at',
+        'last_up_mirror_created_at',
+        'launcher_version',
+        'app_version',
+        'operating_system'
+      ]
+      
+      # Copy in values from columns owned by the remote environment that created remote_gs
+      (OfflineMirror::app_offline? ? online_owned_columns : offline_owned_columns).each do |col|
+        self.send("#{col}=", remote_gs.send(col))
       end
       
       # If the remote side says they have a newer version of something than we currently think they have, update
