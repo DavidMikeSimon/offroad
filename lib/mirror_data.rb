@@ -217,8 +217,7 @@ module OfflineMirror
       else
         remote_version = gs.confirmed_global_data_version
       end
-      srs_source = SendableRecordState.for_model(model)
-      #srs_source = SendableRecordState.for_model(model).with_version_greater_than(remote_version)
+      srs_source = SendableRecordState.for_model(model).with_version_greater_than(remote_version)
       
       srs_source.for_non_deleted_records.find_in_batches(:batch_size => 100) do |srs_batch|
         # TODO Might be able to optimize this to one query using a join on app model and SRS tables

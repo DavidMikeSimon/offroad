@@ -228,6 +228,7 @@ class OnlineTestDatabase < VirtualTestDatabase
     offline_group = Group.create(:name => "An Offline Group")
     online_group = Group.create(:name => "An Online Group")
     offline_group.group_offline = true
+    offline_group.group_state.update_attribute(:confirmed_global_data_version, 1)
     OfflineMirror::ReceivedRecordState.for_record(offline_group).create(:remote_record_id => 1) # Data came from offline
     setup_ivar(:@offline_group, offline_group)
     setup_ivar(:@online_group, online_group)
