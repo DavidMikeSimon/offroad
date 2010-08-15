@@ -21,20 +21,8 @@ class MirrorInfoTest < Test::Unit::TestCase
     assert rec.generator.downcase.include?("offline mirror")
   end
   
-  agnostic_test "cannot generate a MirrorInfo instance with an invalid mode" do
-    assert_raise OfflineMirror::PluginError do
-      OfflineMirror::MirrorInfo::new_from_group(@editable_group, "foobar")
-    end
-  end
-  
-  double_test "can generate a MirrorInfo instance with a mode that doesn't match app mode" do
-    assert_nothing_raised do
-      OfflineMirror::MirrorInfo::new_from_group(@editable_group, OfflineMirror::app_online? ? "offline" : "online")
-    end
-  end
-  
-  agnostic_test "cannot save a MirrorInfo instance" do
-    rec = OfflineMirror::MirrorInfo::new_from_group(@editable_group, "online")
+  double_test "cannot save a MirrorInfo instance" do
+    rec = OfflineMirror::MirrorInfo::new_from_group(@editable_group)
     assert rec.valid?
     assert_raise OfflineMirror::DataError do
       rec.save

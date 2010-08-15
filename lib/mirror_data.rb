@@ -119,7 +119,7 @@ module OfflineMirror
       
       # TODO: Figure out if this transaction ensures we get a consistent read state
       OfflineMirror::group_base_model.connection.transaction do
-        mirror_info = MirrorInfo.new_from_group(@group, OfflineMirror::app_online? ? "online" : "offline", @initial_mode)
+        mirror_info = MirrorInfo.new_from_group(@group, @initial_mode)
         cs.write_cargo_section("mirror_info", [mirror_info], :human_readable => true)
         
         group_state = @group.group_state
