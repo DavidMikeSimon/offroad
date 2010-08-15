@@ -65,11 +65,8 @@ module OfflineMirror
           # However, existing data is safe if there's a mid-import error; read_data_from places us in a transaction
           delete_all_existing_database_records!
           
-          offline_group_id = cs.first_cargo_element(group_cargo_name).id
-          
           OfflineMirror::SystemState::create(
-            :current_mirror_version => 1,
-            :offline_group_id => offline_group_id
+            :current_mirror_version => 1
           ) or raise PluginError.new("Couldn't create valid system state from initial down mirror file")
           import_global_cargo(cs) # Global cargo must be done first because group data might belong_to global data
           import_group_specific_cargo(cs)

@@ -255,12 +255,11 @@ class OfflineTestDatabase < VirtualTestDatabase
   def setup
     super
     
-    OfflineMirror::SystemState::create!(:current_mirror_version => 1, :offline_group_id => 1)
+    OfflineMirror::SystemState::create!(:current_mirror_version => 1)
     
     offline_group = Group.new(:name => "An Offline Group")
     force_save_and_reload(offline_group)
     
-    offline_group.id == OfflineMirror::SystemState::offline_group_id or raise("Test group id mismatch")
     offline_group.id == 1 or raise("Test group id not set correctly") # Must match remote_record_id of test online rec
     setup_ivar(:@offline_group, offline_group)
     

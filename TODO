@@ -11,24 +11,26 @@
 - Include recent log lines (for both Rails and the launcher) in generated up-mirror files, for debugging purposes
 - Use rails logger to note activity
 - Versioning the app : how to do this?
+- At offline app: When an up-mirror of a given version is confirmed, increment current_mirror_version. Complain if confirmation is not on current version.
 - At online app: When a down-mirror of a given version is confirmed, delete all sendable record state entries for deletions older than min(down_version)
 - Only update current_mirror_version after a confirmed transfer; that way, if 1st mirror file generated is lost, no big deal
+- In online app, increment current_mirror_version whenever a down mirror is created
+- In offline app, increment current_mirror_version whenever an up mirror is created
 - In documentation, note that migrations which alter records' primary keys, or change model names, will break synchronization. Table name changes are fine.
 - Try to gather some kind of machine identifier to put in up-mirror information, so admins can know when there's more than one offline setup for a group
 - Add a comment to generated migrations letting the app developer know about stuff they need to be careful of due to Offline Mirror
 - Try streaming out with large data sets and make sure it is sufficiently speedy, and is actually streaming (i.e. no Content-Length header)
+- When transforming primary keys, also transform foreign key columns
 - Change mime-type of mirror files to something that doesn't allow it to be accidentally viewed in-browser
 - Use md5sum on the entire cargo file instead of just each individual part, to protect against corruption outside the actual data segments
 - Consider using activerecord-import, if available, to speed up insertions
-- Should split MirrorData into MirrorDataWriter and MirrorDataReader
-- Remove offline_group_id system setting; don't really need it, since there should only be one group record
-- Allow app to optionally specify batch sizes on a model-by-model basis
-- Mirror file imports in the down mirror app should happen through GUI, and GUI should try to delete files once succesfully imported
+- Perhaps cut off batch writing early if we've added enough bytes (i.e. to keep from trying to pack dozens of MB of screencasts into one batch)
+  - Alternately, allow app to optionally specify batch sizes on a model-by-model basis
+- Mirror file imports in the down mirror app should happen through GUI, and GUI should delete files once succesfully imported
 - If offline app attempts to import an initial down mirror file using the regular down mirror file mechanism, it should:
   - Delete the down mirror file as usual, but explain that it wasn't imported and a regular down mirror file is needed
 - Figure out which activerecord methods skip the save callbacks, and wrap them to update the mirror version
 - Check foreign id stuff in functional mirror operations test
-- Use ActiveRecord::Reflection::reflect_on_all_associations instead of wrapping belongs_to
 
 Scenarios to deal with:
 
@@ -39,7 +41,7 @@ Scenarios to deal with:
 	- Has newer version than online (this shouldn't require any special handling...)
 - Turning an online app into an offline app, then online again, then offline again, with data xfer happening at each stage
 - Online app receives a mirror file, then offline updates and sends another mirror file, without receiving confirmation of first
-- Offline app attempts to send deletion SRS of offline group itself to online app: this should not be permitted
+- Offline app attempts to delete offline group on online app: this should not be possible
 - App creates a record then deletes it then sends mirror; does a deletion srs still get sent?
   - For any fix to this: make sure that if app updates record then deletes it then sends mirror that deletion gets sent
   - Maybe that means we need both create_version and update_version on srs?

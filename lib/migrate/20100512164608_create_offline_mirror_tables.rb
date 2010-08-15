@@ -2,7 +2,6 @@ class CreateOfflineMirrorTables < ActiveRecord::Migration
   def self.up
     create_table :offline_mirror_system_state do |t|
       t.column :current_mirror_version, :integer
-      t.column :offline_group_id, :integer
     end
     
     create_table :offline_mirror_group_states do |t|

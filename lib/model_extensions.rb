@@ -281,7 +281,7 @@ module OfflineMirror
           when :group_base
             raise DataError.new("Cannot create groups in offline mode") if new_record?
           when :group_owned
-            raise DataError.new("Owning group must be the offline group") if owning_group_id != OfflineMirror::SystemState::offline_group_id
+            raise DataError.new("Owning group must be the offline group") if owning_group_id != OfflineMirror::offline_group.id
           end
         end
         

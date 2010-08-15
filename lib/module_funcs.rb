@@ -42,7 +42,7 @@ module OfflineMirror
   # This is only applicable if the app is offline
   def self.offline_group
     raise PluginError.new("'Offline group' is only meaningful if the app is offline") unless app_offline?
-    @@group_base_model.find(OfflineMirror::SystemState::offline_group_id)
+    @@group_base_model.first
   end
   
   private
