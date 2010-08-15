@@ -216,32 +216,31 @@ class OnlineTestDatabase < VirtualTestDatabase
     super("online", test_class)
   end
   
+  def self.initial_mirror_data
+    @@initial_mirror_data
+  end
+  
   protected
   
   def setup
     super
     
-    # We pick 2 because the default global_data_version in the offline system's group_state will be 1.
-    # This simulates the online app incrementing its current_mirror_version after creating an initial down mirror file.
-    OfflineMirror::SystemState::create!(:current_mirror_version => 2) or raise "Can't create testing SystemState"
-    
     offline_group = Group.create(:name => "An Offline Group")
     online_group = Group.create(:name => "An Online Group")
     offline_group.group_offline = true
-    offline_group.group_state.update_attribute(:confirmed_global_data_version, 1)
-    OfflineMirror::ReceivedRecordState.for_record(offline_group).create(:remote_record_id => 1) # Data came from offline
     setup_ivar(:@offline_group, offline_group)
     setup_ivar(:@online_group, online_group)
     
     offline_data = GroupOwnedRecord.new( :description => "Sam", :group => offline_group)
     online_data = GroupOwnedRecord.new(:description => "Max", :group => online_group)
     force_save_and_reload(offline_data, online_data)
-    OfflineMirror::ReceivedRecordState.for_record(offline_data).create(:remote_record_id => 1) # Data came from offline
     setup_ivar(:@offline_group_data, offline_data)
     setup_ivar(:@online_group_data, online_data)
     
     setup_ivar(:@editable_group, online_group)
     setup_ivar(:@editable_group_data, online_data)
+    
+    @@initial_mirror_data ||= OfflineMirror::MirrorData.new(offline_group, :initial_mode => true).write_downwards_data
   end
 end
 
@@ -255,17 +254,14 @@ class OfflineTestDatabase < VirtualTestDatabase
   def setup
     super
     
-    OfflineMirror::SystemState::create!(:current_mirror_version => 1)
+    OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(
+      OnlineTestDatabase::initial_mirror_data
+    )
     
-    offline_group = Group.new(:name => "An Offline Group")
-    force_save_and_reload(offline_group)
+    offline_group = Group.first
+    offline_data = GroupOwnedRecord.first
     
-    offline_group.id == 1 or raise("Test group id not set correctly") # Must match remote_record_id of test online rec
     setup_ivar(:@offline_group, offline_group)
-    
-    offline_data = GroupOwnedRecord.new( :description => "Sam", :group => offline_group)
-    force_save_and_reload(offline_data)
-    offline_data.id == 1 or raise("Test group data id incorrect") # Must match remote_record_id of test online rec
     setup_ivar(:@offline_group_data, offline_data)
     
     setup_ivar(:@editable_group, offline_group)
