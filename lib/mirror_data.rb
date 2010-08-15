@@ -340,7 +340,7 @@ module OfflineMirror
       cs.each_cargo_section(MirrorData::deletion_cargo_name_for_model(model)) do |batch|
         batch.each do |deletion_srs|
           rrs = rrs_source.find_by_remote_record_id(deletion_srs.local_record_id)
-          raise DataError.new("Invalid id for deletion: #{model.name} #{deletion_srs.local_record_id}") unless rrs
+          next unless rrs # No problem if we can't find record, it means this deletion request duplicates an earlier one
           local_record = rrs.app_record
           local_record.bypass_offline_mirror_readonly_checks
           local_record.destroy
