@@ -23,7 +23,7 @@ module OfflineMirror
         self.operating_system ||= RUBY_PLATFORM
       end
       
-      self.confirmed_group_data_version ||= 0
+      self.confirmed_group_data_version ||= 1
       
       # When first setting a group offline at online app, assume it will start out with at least current global data.
       # It should, since that's the earliest version that could be loaded into the initial down mirror file.

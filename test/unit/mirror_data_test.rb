@@ -162,6 +162,12 @@ class MirrorDataTest < Test::Unit::TestCase
   end
   
   offline_test "can generate a valid up mirror file for the offline group" do
+    @offline_group.name = "Changed"
+    @offline_group.save!
+    @offline_group.reload
+    @offline_group_data.some_integer = 5551212
+    @offline_group_data.save!
+    @offline_group_data.reload
     str = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
     cs = OfflineMirror::CargoStreamer.new(str, "r")
     assert_common_mirror_elements_appear_valid cs, "offline"
@@ -658,7 +664,7 @@ class MirrorDataTest < Test::Unit::TestCase
     end
     
     in_online_app do
-      assert_equal 0, @offline_group.group_state.confirmed_group_data_version
+      assert_equal 1, @offline_group.group_state.confirmed_group_data_version
       OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       assert_equal 42, @offline_group.group_state.confirmed_group_data_version
     end
@@ -967,7 +973,54 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_equal 789, GlobalRecord.find_by_title("Testing").protected_integer
     end
   end
-
+  
+  cross_test "cannot use an up mirror file to delete the group record itself" do
+    mirror_data = nil
+    in_offline_app do
+      mirror_data = StringIO.open do |sio|
+        cs = OfflineMirror::CargoStreamer.new(sio, "w")
+        OfflineMirror::MirrorData.new(@offline_group).write_upwards_data(cs)
+        
+        sec_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, Group)
+        deletion_srs = OfflineMirror::SendableRecordState.for_record(@offline_group).first
+        deletion_srs.deleted = true
+        cs.write_cargo_section(sec_name, [deletion_srs])
+        
+        sec_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, GroupOwnedRecord)
+        deletion_srs = OfflineMirror::SendableRecordState.for_record(@offline_group_data).first
+        deletion_srs.deleted = true
+        cs.write_cargo_section(sec_name, [deletion_srs])
+        
+        sio.string
+      end
+    end
+    
+    in_online_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_nil GroupOwnedRecord.find_by_description("Sam") # Make sure the deletion faking method actually works...
+      assert_not_nil Group.find_by_name("An Offline Group") # Except on group base records
+    end
+  end
+  
+  cross_test "after loading an initial down mirror file only changed records appear in up mirror" do
+    mirror_data = nil
+    in_online_app do
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+    end
+    
+    in_offline_app(false, true) do
+      OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      group = Group.first
+      group.name = "Weird Al"
+      group.save!
+      group.reload
+      mirror_data = OfflineMirror::MirrorData.new(group).write_upwards_data
+      cs = OfflineMirror::CargoStreamer.new(mirror_data, "r")
+      assert_single_model_cargo_entry_matches(cs, group)
+      assert_record_not_present(cs, GroupOwnedRecord.first)
+    end
+  end
+  
 #   cross_test "cannot use an up mirror file to create records not owned by the given group" do
 #     # TODO Implement
 #   end
@@ -980,14 +1033,6 @@ class MirrorDataTest < Test::Unit::TestCase
 #     # TODO Implement
 #   end
 #   
-#   cross_test "cannot use an up mirror file to delete the group record itself" do
-#     # TODO Implement
-#   end
-#   
-#   cross_test "cannot use a down mirror file to delete the group record itself" do
-#     # TODO Implement
-#   end
-#
 #   cross_test "cannot affect group records in offline app using a non-initial down mirror file" do
 #     # TODO Implement
 #   end

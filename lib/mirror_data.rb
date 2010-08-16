@@ -46,9 +46,6 @@ module OfflineMirror
         end
         
         import_group_specific_cargo(cs)
-        
-        # Load information into our group state that the offline app is in a better position to know about
-        @group.group_state.update_from_remote_group_state!(cargo_group_state)
       end
     end
     
@@ -80,7 +77,6 @@ module OfflineMirror
         
         # Load information into our group state that the online app is in a better position to know about
         @group = OfflineMirror::offline_group if @initial_mode
-        @group.group_state.update_from_remote_group_state!(cargo_group_state)
       end
     end
     
@@ -166,7 +162,12 @@ module OfflineMirror
       OfflineMirror::group_base_model.connection.transaction do
         yield cs, mirror_info, group_state
         validate_imported_models(cs)
+                
+        # Load information into our group state that the remote app is in a better position to know about
+        @group.group_state.update_from_remote_group_state!(group_state) if @group
       end
+      
+      SystemState::increment_mirror_version if @initial_mode
     end
     
     def add_group_specific_cargo(cs)
@@ -336,15 +337,17 @@ module OfflineMirror
         end
       end
       
-      # Destroy records here which were destroyed there
-      cs.each_cargo_section(MirrorData::deletion_cargo_name_for_model(model)) do |batch|
-        batch.each do |deletion_srs|
-          rrs = rrs_source.find_by_remote_record_id(deletion_srs.local_record_id)
-          next unless rrs # No problem if we can't find record, it means this deletion request duplicates an earlier one
-          local_record = rrs.app_record
-          local_record.bypass_offline_mirror_readonly_checks
-          local_record.destroy
-          rrs.destroy
+      # Destroy records here which were destroyed there (except for group_base records, that would cause trouble)
+      unless model == OfflineMirror::group_base_model
+        cs.each_cargo_section(MirrorData::deletion_cargo_name_for_model(model)) do |batch|
+          batch.each do |deletion_srs|
+            rrs = rrs_source.find_by_remote_record_id(deletion_srs.local_record_id)
+            next unless rrs # No problem if we can't find record, it means this deletion request duplicates an earlier one
+            local_record = rrs.app_record
+            local_record.bypass_offline_mirror_readonly_checks
+            local_record.destroy
+            rrs.destroy
+          end
         end
       end
     end
