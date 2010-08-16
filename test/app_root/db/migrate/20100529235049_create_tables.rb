@@ -16,6 +16,7 @@ class CreateTables < ActiveRecord::Migration
       t.integer :parent_id
       t.integer :unmirrored_record_id
       t.integer :global_record_id
+      t.integer :protected_integer, :default => 1
       t.timestamps
     end
     
@@ -26,6 +27,7 @@ class CreateTables < ActiveRecord::Migration
       t.integer :unmirrored_record_id
       t.integer :friend_id
       t.integer :some_group_id
+      t.integer :protected_integer, :default => 1
       t.timestamps
     end
     

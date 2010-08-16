@@ -7,6 +7,7 @@ class GroupOwnedRecord < ActiveRecord::Base
   has_many :children, :foreign_key => "parent_id", :class_name => "GroupOwnedRecord"
   validates_presence_of :description, :group
   validates_numericality_of :should_be_even, :even => true
+  attr_protected :protected_integer
   
   def to_s
     description

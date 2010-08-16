@@ -925,14 +925,49 @@ class MirrorDataTest < Test::Unit::TestCase
     assert_record_not_present(cs, data)
   end
   
-#   cross_test "protected attributes can still be loaded from mirror files" do
-#     # TODO Implement
-#   end
-#   
-#   cross_test "foreign keys that lead to non-existant records cause error on load" do
-#     # TODO Implement
-#   end
-#    
+  cross_test "protected attributes can be updated from up mirror files" do
+    mirror_data = nil
+    in_offline_app do
+      @offline_group_data.protected_integer = 123
+      @offline_group_data.save!
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+    end
+    
+    in_online_app do
+      assert_not_equal 123, @offline_group_data.protected_integer
+      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      @offline_group_data.reload
+      assert_equal 123, @offline_group_data.protected_integer
+    end
+  end
+  
+  cross_test "protected attributes can be updated from down mirror files" do
+    mirror_data = nil
+    in_online_app do
+      GlobalRecord.create(:title => "Testing")
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+    end
+    
+    in_offline_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+    end
+    
+    in_online_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      grec = GlobalRecord.find_by_title("Testing")
+      grec.protected_integer = 789
+      grec.save!
+      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+    end
+    
+    in_offline_app do
+      assert_not_equal 789, GlobalRecord.find_by_title("Testing").protected_integer
+      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      assert_equal 789, GlobalRecord.find_by_title("Testing").protected_integer
+    end
+  end
+
 #   cross_test "cannot use an up mirror file to create records not owned by the given group" do
 #     # TODO Implement
 #   end

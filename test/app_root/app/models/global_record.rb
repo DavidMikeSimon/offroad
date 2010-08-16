@@ -5,4 +5,5 @@ class GlobalRecord < ActiveRecord::Base
   belongs_to :some_group, :class_name => "Group"
   belongs_to :friend, :class_name => "GlobalRecord"
   validates_numericality_of :should_be_odd, :odd => true
+  attr_protected :protected_integer
 end
