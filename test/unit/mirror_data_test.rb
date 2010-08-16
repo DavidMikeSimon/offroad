@@ -1020,6 +1020,43 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_record_not_present(cs, GroupOwnedRecord.first)
     end
   end
+    
+  cross_test "cannot affect group records in offline app using a non-initial down mirror file" do
+    mirror_data = nil
+    in_online_app do
+      mirror_data = StringIO.open do |sio|
+        cs = OfflineMirror::CargoStreamer.new(sio, "w")
+        OfflineMirror::MirrorData.new(@offline_group).write_downwards_data(cs)
+        
+        grec = GlobalRecord.create(:title => "Testing 123")
+        sec_name = OfflineMirror::MirrorData.send(:data_cargo_name_for_model, GlobalRecord)
+        cs.write_cargo_section(sec_name, [grec])
+        
+        sec_name = OfflineMirror::MirrorData.send(:data_cargo_name_for_model, GroupOwnedRecord)
+        new_rec = GroupOwnedRecord.new(:description => "Brand New Thing", :group => @offline_group)
+        new_rec.id = 1234
+        cs.write_cargo_section(sec_name, [new_rec])
+        
+        sec_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, GroupOwnedRecord)
+        deletion_srs = OfflineMirror::SendableRecordState.for_record(@offline_group_data).new
+        deletion_srs.deleted = true
+        cs.write_cargo_section(sec_name, [deletion_srs])
+        
+        sio.string
+      end
+    end
+    
+    in_offline_app do
+      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      
+      # Make sure the section faking method actually works...
+      assert_not_nil GlobalRecord.find_by_title("Testing 123")
+      
+      # Except on group records
+      assert_nil GroupOwnedRecord.find_by_description("Brand New Thing")
+      assert_not_nil GroupOwnedRecord.find_by_description("Sam")
+    end
+  end
   
 #   cross_test "cannot use an up mirror file to create records not owned by the given group" do
 #     # TODO Implement
@@ -1030,10 +1067,6 @@ class MirrorDataTest < Test::Unit::TestCase
 #   end
 #   
 #   cross_test "cannot use an up mirror file to delete records not owned by the given group" do
-#     # TODO Implement
-#   end
-#   
-#   cross_test "cannot affect group records in offline app using a non-initial down mirror file" do
 #     # TODO Implement
 #   end
 end
