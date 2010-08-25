@@ -18,7 +18,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert group_state
     assert_equal prior_group_state_count+1, OfflineMirror::GroupState::count, "GroupState was created on demand"
     assert_equal rec.id, group_state.app_group_id, "GroupState has correct app group id"
-    assert_equal 0, group_state.confirmed_group_data_version, "Newly offline group has an group data version of 0"
+    assert_equal 1, group_state.confirmed_group_data_version, "Newly offline group has an group data version of 1"
     assert_equal OfflineMirror::SystemState::current_mirror_version, group_state.confirmed_global_data_version
   end
   
