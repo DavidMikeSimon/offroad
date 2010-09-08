@@ -1,3 +1,4 @@
+- Figure out why the test app won't generate initial down mirror files with cache_classes = false
 - Get the plugin installer to work well
 - Allow offline app to request group be made online in its up mirror file
   - This is the best way to ensure we don't have un-sendable records left over in a newly-obsolete offline app
