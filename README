@@ -8,13 +8,28 @@ OFFLINE MIRROR PLUGIN
 OVERVIEW
 ======
 
-This plugin allows users without Internet access to still use your app. It requires that your application can be thought of in the following way:
+This plugin allows users without Internet access to still use your app. It requires that your application can
+be thought of in the following way:
 
-Your site is broken down into a set of "groups" or "organizations". Each group has their own distinct set of records, which are editable by only a distinct set of a users. Besides that, there are global records that can only be edited by overall site administrators, though they can possibly be viewed by regular users.
+Your site is broken down into a set of "groups" or "organizations". Each group has their own distinct set of
+records, which are editable by only a distinct set of a users. Besides that, there are global records that can
+only be edited by overall site administrators, though they can possibly be viewed by regular users.
 
-In order to make offline use of your app possible, the plugin will generate an installer bundle, which is an OS-specific executable that can install Ruby, Rails, and also a launcher which controls a local instance of WEBrick and manages imports and exports. The installer and launcher will be visually labelled everywhere with the name of the Rails app itself, making its function obvious to users. This launcher can generate up-mirror files, which are transported on a USB thumbdrive or some other medium to an online system, where they can be uploaded to the main app site. After having done an upload, the user is prompted to download a down-mirror file which contains any changes to the global records, and bring this back to the offline system, which completes the sneakernet round-trip.
+In order to make offline use of your app possible, the plugin will generate an installer bundle, which is an
+OS-specific executable that can install Ruby, Rails, and also a launcher which controls a local instance of
+WEBrick and manages imports and exports. The installer and launcher will be visually labelled everywhere with
+the name of the Rails app itself, making its function obvious to users. This launcher can generate up-mirror
+files, which are transported on a USB thumbdrive or some other medium to an online system, where they can be
+uploaded to the main app site. After having done an upload, the user is prompted to download a down-mirror
+file which contains any changes to the global records, and bring this back to the offline system, which
+completes the sneakernet round-trip.
 
-Rather than sending all data, only globally accessible records and updates to the app itself are transferred in the down-mirror (except for the first down-mirror, which also contains the initial set of records for the group). Furthermore, the offline version of the app is considered be the absolutely canonical source of that group's records; really, this is not a "sync", it's a "mirror". This means that no-one on the online site can make changes to an offline group's records, not even the administrator; any such changes would be lost on the next upload.
+Rather than sending all data, only globally accessible records and updates to the app itself are transferred
+in the down-mirror (except for the first down-mirror, which also contains the initial set of records for the
+group). Furthermore, the offline version of the app is considered be the absolutely canonical source of that
+group's records; really, this is not a "sync", it's a "mirror". This means that no-one on the online site can
+make changes to an offline group's records, not even the administrator; any such changes would be lost on the
+next upload.
 
 
 
@@ -22,21 +37,33 @@ Rather than sending all data, only globally accessible records and updates to th
 INSTALLATION/REINSTALLATION PROCEDURE
 =====
 
-The app will be distributed as an installer which simply creates/updates a directory for the app. This directory will include Rails and the app.
+The app will be distributed as an installer which simply creates/updates a directory for the app. This
+directory will include Rails and the app.
 
 1. User goes to the online app website. The website includes an obvious link for "Download Offline Installer"
-2. The user clicks on this link, and must authenticate themselves (since the procedure may involve them downloading sensitive data).
+2. The user clicks on this link, and must authenticate themselves (since the procedure may involve them
+downloading sensitive data).
 	(Alternately, they can authenticate first and then click on the link.)
 3. The user is shown to a wizard interface, to make it clear that multiple downloads are necessary:
 	Wizard Page 1: Download the installer program to the thumbdrive
 	Wizard Page 2: Download the first down-mirror file to the thumbdrive
-	Wizard Page 3: User is instructed to run the installer on the most reliable and/or most often powered-on local computer.
-4. This user's group/organization/etc. is then set to "offline mode", which means that online modification of offline-controlled records is not allowed.
-5. At the offline system, they run the installer. If an older version of the launcher is running, it is shut down (with the user's permission).
-6. If the installer can reach the online system (that is, user downloaded installer without realizing that it wasn't necessary), they are encouraged to use that instead. They can still choose to install the offline version.
-7. On Windows: If Firefox is not installed, or is an old version, it is installed (after user is asked permission). If Firefox doesn't have a toolbar bookmark for the local app server, one is created. If the bookmark is incorrect, it is updated.
-8. The exe file is installed/updated, and links in the Start Menu/etc. are created as necessary. The program is made to start automatically when the computer starts (TODO: figure out how to do this on OSX, and the best way to do this on Linux).
-9. Run any special scripts provided by the app (i.e. to uninstall/convert prior, pre-Offline-Mirror versions of the app)
+	Wizard Page 3: User is instructed to run the installer on the most reliable and/or most often powered-on
+	local computer.
+4. This user's group/organization/etc. is then set to "offline mode", which means that online modification of
+offline-controlled records is not allowed.
+5. At the offline system, they run the installer. If an older version of the launcher is running, it is shut
+down (with the user's permission).
+6. If the installer can reach the online system (that is, user downloaded installer without realizing that it
+wasn't necessary), they are encouraged to use that instead. They can still choose to install the offline
+version.
+7. On Windows: If Firefox is not installed, or is an old version, it is installed (after user is asked
+permission). If Firefox doesn't have a toolbar bookmark for the local app server, one is created. If the
+bookmark is incorrect, it is updated.
+8. The exe file is installed/updated, and links in the Start Menu/etc. are created as necessary. The program
+is made to start automatically when the computer starts (TODO: figure out how to do this on OSX, and the best
+way to do this on Linux).
+9. Run any special scripts provided by the app (i.e. to uninstall/convert prior, pre-Offline-Mirror versions
+of the app)
 10. As soon as the installer is finished, the launcher is started right away.
 
 
@@ -45,17 +72,38 @@ The app will be distributed as an installer which simply creates/updates a direc
 MIRROR PROCEDURE
 =====
 
-Users should be encouraged to up-mirror and down-mirror every so often (period determined by app). The launcher will remind them to do so if it has been longer than this since the last up-mirror file was created, or since the last down-mirror file was loaded.
+Users should be encouraged to up-mirror and down-mirror every so often (period determined by app). The
+launcher will remind them to do so if it has been longer than this since the last up-mirror file was created,
+or since the last down-mirror file was loaded.
 
 Here is how a sync is done:
-	1. On the offline server system, the "Export Uploadable <appname> Data File" button is pushed. (May need a better name for this concept).
-	2. This invites the user to select a place to save the file. If possible, automatically selects a plugged-in thumbdrive.
-	3. The user then takes this file to an Internet cafe or somewhere with net access, and logs onto the main app website. The app should direct them to the sync page. 
-	4. At the sync page, they upload the up-mirror file. If the up-mirror file came from the latest version of the offline launcher app, the system then offers them a down-mirror file with a corresponding name, and asks them to save it to their thumbdrive. If the up-mirror file is from an older version of the launcher, the system directs them to the installation wizard, which has them download both the latest installer and the down-mirror file. NOTE: Re-downloading the installer is only necessary if the Offline Mirror plugin or the bundled executables (Rails, Ruby, etc) need to be updated. If only the rails app is to be updated, that update (including new ruby scripts, templates, migrations, etc) is to be included in the down-mirror file.
-	5. In the background, the online system imports the up-mirror'd data into the database, making sure that it only contains records which that group has permission to write to. If the up-mirror'd data is from an older version of the app, it is first migrated. It also keeps a copy of the up-mirror'd data file for backup purposes.
-	6. Back at the offline system, the user brings back the down-mirror file and clicks on the "Import Downloaded <appname> Data File" button in the launcher (May need a better name for this concept).
-	7. The launcher opens the down-mirror file (finding it automatically based on the name of the last up-mirror file generated, if possible). If it matches the launcher's current version and is greater than the timestamp of the last down-mirror file to be loaded, the Rails app is stopped, a local backup is performed, and then the down-mirror file is imported. If it is of a newer version than the launcher, then the user is asked to run the installer first.
-	8. The down-mirror file is deleted. Also, any up-mirror and down-mirror files found are automatically deleted from the thumbdrive, Desktop, My Documents, and other usual places. This is to prevent the confusing scenario of having multiple sync files to choose from.
+	1. On the offline server system, the "Export Uploadable <appname> Data File" button is pushed. (May need a
+	better name for this concept).
+	2. This invites the user to select a place to save the file. If possible, automatically selects a plugged-in
+	thumbdrive.
+	3. The user then takes this file to an Internet cafe or somewhere with net access, and logs onto the main
+	app website. The app should direct them to the sync page. 
+	4. At the sync page, they upload the up-mirror file. If the up-mirror file came from the latest version of
+	the offline launcher app, the system then offers them a down-mirror file with a corresponding name, and asks
+	them to save it to their thumbdrive. If the up-mirror file is from an older version of the launcher, the
+	system directs them to the installation wizard, which has them download both the latest installer and the
+	down-mirror file. NOTE: Re-downloading the installer is only necessary if the Offline Mirror plugin or the
+	bundled executables (Rails, Ruby, etc) need to be updated. If only the rails app is to be updated, that
+	update (including new ruby scripts, templates, migrations, etc) is to be included in the down-mirror file.
+	5. In the background, the online system imports the up-mirror'd data into the database, making sure that it
+	only contains records which that group has permission to write to. If the up-mirror'd data is from an older
+	version of the app, it is first migrated. It also keeps a copy of the up-mirror'd data file for backup
+	purposes.
+	6. Back at the offline system, the user brings back the down-mirror file and clicks on the "Import
+	Downloaded <appname> Data File" button in the launcher (May need a better name for this concept).
+	7. The launcher opens the down-mirror file (finding it automatically based on the name of the last up-mirror
+	file generated, if possible). If it matches the launcher's current version and is greater than the timestamp
+	of the last down-mirror file to be loaded, the Rails app is stopped, a local backup is performed, and then
+	the down-mirror file is imported. If it is of a newer version than the launcher, then the user is asked to
+	run the installer first.
+	8. The down-mirror file is deleted. Also, any up-mirror and down-mirror files found are automatically
+	deleted from the thumbdrive, Desktop, My Documents, and other usual places. This is to prevent the confusing
+	scenario of having multiple sync files to choose from.
 	9. The Rails app is started up again.
 
 
@@ -64,12 +112,19 @@ Here is how a sync is done:
 UPGRADING FROM OFFLINE MODE TO ONLINE MODE
 =====
 
-If the launcher is able to reach the online server, an additional button is offered on the interface: Upgrade to Online Version. This does the following:
+If the launcher is able to reach the online server, an additional button is offered on the interface: Upgrade
+to Online Version. This does the following:
 
-	1. Asks the user if they're sure they want to do this; in particular, emphasize that it is a bad idea if the Internet connection is temporary or unreliable.
-	2. Turns off the Rails app, and creates an up-mirror file with a special flag indicating that the user is switching to up-mirror mode. The launcher itself logs into the website and uploads the up-mirror file. Once this is successfully done, the launcher then performs one final backup, adjusts the local Firefox link to point to the online server, and uninstalls the app.
+	1. Asks the user if they're sure they want to do this; in particular, emphasize that it is a bad idea if the
+	Internet connection is temporary or unreliable.
+	2. Turns off the Rails app, and creates an up-mirror file with a special flag indicating that the user is
+	switching to up-mirror mode. The launcher itself logs into the website and uploads the up-mirror file. Once
+	this is successfully done, the launcher then performs one final backup, adjusts the local Firefox link to
+	point to the online server, and uninstalls the app.
 	
-	POSSIBLE ISSUE: What about other computers on the local network whose app bookmarks are now invalid? Is it possible to make conditional bookmarks in Firefox (i.e. try to reach site 1, if you can't, then try site 2 instead)?
+	POSSIBLE ISSUE: What about other computers on the local network whose app bookmarks are now invalid? Is it
+	possible to make conditional bookmarks in Firefox (i.e. try to reach site 1, if you can't, then try site 2
+	instead)?
 
 
 
