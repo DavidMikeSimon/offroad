@@ -115,6 +115,18 @@ class MirrorDataTest < Test::Unit::TestCase
     assert_single_model_cargo_entry_matches cs, @offline_group
     assert_single_model_cargo_entry_matches cs, @offline_group_data
   end
+
+  online_test "can convert online group to an offline group and generate valid initial down mirror file" do
+    global_record = GlobalRecord.create(:title => "Foo Bar")
+    global_record.reload # To clear the high time precision that is lost in the database
+   
+    @online_group.group_offline = true
+    str = OfflineMirror::MirrorData.new(@online_group, :initial_mode => true).write_downwards_data
+    cs = OfflineMirror::CargoStreamer.new(str, "r")
+    assert_single_model_cargo_entry_matches cs, global_record
+    assert_single_model_cargo_entry_matches cs, @online_group
+    assert_single_model_cargo_entry_matches cs, @online_group_data
+  end
   
   online_test "can generate a valid down mirror file for the offline group" do
     global_record = GlobalRecord.create(:title => "Foo Bar")
