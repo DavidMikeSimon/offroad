@@ -3,6 +3,9 @@ module OfflineMirror
   VERSION_MINOR = 1
   
   @@app_online_flag = nil
+  @@group_base_model = nil
+  @@global_data_models = {}
+  @@group_owned_models = {}
   
   # Used in the environment configuration file to set the app to online or offline mode.
   # This should not be called from within the app.
@@ -42,7 +45,7 @@ module OfflineMirror
   # This is only applicable if the app is offline
   def self.offline_group
     raise PluginError.new("'Offline group' is only meaningful if the app is offline") unless app_offline?
-    @@group_base_model.first
+    group_base_model.first
   end
   
   private
@@ -56,32 +59,30 @@ module OfflineMirror
   end
   
   def self.note_global_data_model(cls)
-    @@global_data_models ||= {}
     @@global_data_models[cls.name] = cls
   end
   
   def self.global_data_models
-    @@global_data_models || {}
+    @@global_data_models
   end
   
   def self.note_group_base_model(cls)
-    if defined?(@@group_base_model) and @@group_base_model.to_s != cls.to_s
+    if @@group_base_model and @@group_base_model.to_s != cls.to_s
       raise ModelError.new("You can only define one group base model")
     end
     @@group_base_model = cls
   end
   
   def self.group_base_model
-    raise ModelError.new("No group base model was specified") unless defined?(@@group_base_model)
+    raise ModelError.new("No group base model was specified") unless @@group_base_model
     @@group_base_model
   end
   
   def self.note_group_owned_model(cls)
-    @@group_owned_models ||= {}
     @@group_owned_models[cls.name] = cls
   end
   
   def self.group_owned_models
-    @@group_owned_models || {}
+    @@group_owned_models
   end
 end
