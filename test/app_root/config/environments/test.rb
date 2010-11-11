@@ -16,4 +16,4 @@ config.action_controller.allow_forgery_protection    = false
 # ActionMailer::Base.deliveries array.
 config.action_mailer.delivery_method = :test
 
-OfflineMirror::config_app_online(true)
+Offroad::config_app_online(true)

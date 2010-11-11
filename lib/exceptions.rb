@@ -1,4 +1,4 @@
-module OfflineMirror
+module Offroad
   class DataError < RuntimeError
   end
   

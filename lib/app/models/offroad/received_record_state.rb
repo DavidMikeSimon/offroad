@@ -1,12 +1,12 @@
-module OfflineMirror
+module Offroad
   private
   
   class ReceivedRecordState < ActiveRecord::Base
-    set_table_name "offline_mirror_received_record_states"
+    set_table_name "offroad_received_record_states"
     
-    belongs_to :model_state, :class_name => "::OfflineMirror::ModelState"
+    belongs_to :model_state, :class_name => "::Offroad::ModelState"
     
-    belongs_to :group_state, :class_name => "::OfflineMirror::GroupState"
+    belongs_to :group_state, :class_name => "::Offroad::GroupState"
     
     def validate
       unless model_state
@@ -22,12 +22,12 @@ module OfflineMirror
       end
       
       if rec
-        if OfflineMirror::app_offline?
-          if rec.class.offline_mirror_group_data?
+        if Offroad::app_offline?
+          if rec.class.offroad_group_data?
             errors.add_to_base "Cannot create received record state for group data in offline app"
           end
-        elsif OfflineMirror::app_online?
-          if rec.class.offline_mirror_global_data?
+        elsif Offroad::app_online?
+          if rec.class.offroad_global_data?
             errors.add_to_base "Cannot create received record state for global records in online app"
           elsif group_state.nil?
             errors.add_to_base "Cannot create received record state for online group records in online app"
@@ -37,7 +37,7 @@ module OfflineMirror
     end
     
     named_scope :for_model, lambda { |model| { :conditions => {
-      :model_state_id => model.offline_mirror_model_state.id
+      :model_state_id => model.offroad_model_state.id
     } } }
     
     named_scope :for_group, lambda { |group| { :conditions => {
@@ -45,8 +45,8 @@ module OfflineMirror
     } } }
     
     named_scope :for_record, lambda { |rec| { :conditions => {
-      :model_state_id => rec.class.offline_mirror_model_state.id,
-      :group_state_id => rec.class.offline_mirror_group_data? ? rec.group_state.id : 0,
+      :model_state_id => rec.class.offroad_model_state.id,
+      :group_state_id => rec.class.offroad_group_data? ? rec.group_state.id : 0,
       :local_record_id => rec.id
     } } }
     

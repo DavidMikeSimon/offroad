@@ -12,7 +12,7 @@ class GroupControllerTest < ActionController::TestCase
     assert content.include?("downloaded from the Test App online system"), "testapp's down mirror view file used"
     
     StringIO.open(content) do |sio|
-      cs = OfflineMirror::CargoStreamer.new(sio, "r")
+      cs = Offroad::CargoStreamer.new(sio, "r")
       mirror_info = cs.first_cargo_element("mirror_info")
       assert mirror_info.app_mode.downcase.include?("online")
       assert_equal false, mirror_info.initial_file
@@ -27,7 +27,7 @@ class GroupControllerTest < ActionController::TestCase
     assert content.include?("downloaded from the Test App online system"), "testapp's down mirror view file used"
     
     StringIO.open(content) do |sio|
-      cs = OfflineMirror::CargoStreamer.new(sio, "r")
+      cs = Offroad::CargoStreamer.new(sio, "r")
       mirror_info = cs.first_cargo_element("mirror_info")
       assert mirror_info.app_mode.downcase.include?("online")
       assert mirror_info.initial_file
@@ -42,23 +42,23 @@ class GroupControllerTest < ActionController::TestCase
     assert content.include?("to the Test App online system"), "testapp's up mirror view file was used"
     
     # This tests ViewHelper::link_to_online_app, used from the testapp's up mirror view
-    assert content.include?(">" + OfflineMirror::online_url + "</a>")
-    assert content.include?("href=\"" + OfflineMirror::online_url + "\"")
+    assert content.include?(">" + Offroad::online_url + "</a>")
+    assert content.include?("href=\"" + Offroad::online_url + "\"")
     
     StringIO.open(content) do |sio|
-      cs = OfflineMirror::CargoStreamer.new(sio, "r")
+      cs = Offroad::CargoStreamer.new(sio, "r")
       assert cs.first_cargo_element("mirror_info").app_mode.downcase.include?("offline")
     end
   end
   
   online_test "cannot retrieve up mirror files" do
-    assert_raise OfflineMirror::PluginError do
+    assert_raise Offroad::PluginError do
       get :download_up_mirror, "id" => @offline_group.id
     end
   end
   
   online_test "cannot retrieve down mirror files for online groups" do
-    assert_raise OfflineMirror::PluginError do
+    assert_raise Offroad::PluginError do
       get :download_down_mirror, "id" => @online_group.id
     end
   end
@@ -111,7 +111,7 @@ class GroupControllerTest < ActionController::TestCase
   end
   
   offline_test "cannot retrieve down mirror files" do
-    assert_raise OfflineMirror::PluginError do
+    assert_raise Offroad::PluginError do
       get :download_down_mirror, {"id" => @offline_group.id}
     end
   end
@@ -120,7 +120,7 @@ class GroupControllerTest < ActionController::TestCase
     get :download_up_mirror, "id" => @offline_group.id
     mirror_data = @response.binary_content
     
-    assert_raise OfflineMirror::PluginError do
+    assert_raise Offroad::PluginError do
       post :upload_up_mirror, "id" => @offline_group.id, "mirror_data" => mirror_data
     end
   end
@@ -129,7 +129,7 @@ class GroupControllerTest < ActionController::TestCase
     get :download_down_mirror, "id" => @offline_group.id
     mirror_data = @response.binary_content
     
-    assert_raise OfflineMirror::PluginError do
+    assert_raise Offroad::PluginError do
       post :upload_down_mirror, "id" => @offline_group.id, "mirror_data" => mirror_data
     end
   end
@@ -143,7 +143,7 @@ class GroupControllerTest < ActionController::TestCase
     
     in_online_app do
       @offline_group.group_offline = false
-      assert_raise OfflineMirror::PluginError do
+      assert_raise Offroad::PluginError do
         post :upload_up_mirror, "id" => @online_group.id, "mirror_data" => mirror_data
       end
     end

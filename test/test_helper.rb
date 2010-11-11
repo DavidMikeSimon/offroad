@@ -29,7 +29,7 @@ end
 module Test::Unit::Util::BacktraceFilter
   def filter_backtrace(backtrace, prefix = nil)
     backtrace = backtrace.select do |e|
-      e.include?("offline-mirror") || !(e.include?("/ruby/") || e.include?("/gems/"))
+      e.include?("offroad") || !(e.include?("/ruby/") || e.include?("/gems/"))
     end
     
     common_prefix = nil
@@ -60,7 +60,7 @@ end
 
 def force_save_and_reload(*records)
   records.each do |record|
-    record.bypass_offline_mirror_readonly_checks
+    record.bypass_offroad_readonly_checks
     record.save!
     record.reload
   end
@@ -68,7 +68,7 @@ end
 
 def force_destroy(*records)
   records.each do |record|
-    record.bypass_offline_mirror_readonly_checks
+    record.bypass_offroad_readonly_checks
     record.destroy
   end
 end
@@ -244,7 +244,7 @@ class OnlineTestDatabase < VirtualTestDatabase
     setup_ivar(:@editable_group, online_group)
     setup_ivar(:@editable_group_data, online_data)
     
-    @@initial_mirror_data ||= OfflineMirror::MirrorData.new(offline_group, :initial_mode => true).write_downwards_data
+    @@initial_mirror_data ||= Offroad::MirrorData.new(offline_group, :initial_mode => true).write_downwards_data
   end
 end
 
@@ -258,7 +258,7 @@ class OfflineTestDatabase < VirtualTestDatabase
   def setup
     super
     
-    OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(
+    Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(
       OnlineTestDatabase::initial_mirror_data
     )
     
@@ -286,36 +286,36 @@ class Test::Unit::TestCase
       ActiveRecord::Migrator.migrate("#{Rails.root}/db/migrate") # Migrations for the testing pseudo-app
       ActiveRecord::Migrator.migrate("#{File.dirname(__FILE__)}/../lib/migrate/") # Plugin-internal tables
       
-      OfflineMirror::config_app_online(true)
+      Offroad::config_app_online(true)
       @@online_database = OnlineTestDatabase.new(self)
       
-      OfflineMirror::config_app_online(false)
+      Offroad::config_app_online(false)
       @@offline_database = OfflineTestDatabase.new(self)
       
-      OfflineMirror::config_app_online(nil)
+      Offroad::config_app_online(nil)
     end
   end
   
   def in_online_app(fresh_flag = false, &block)
     begin
-      OfflineMirror::config_app_online(true)
+      Offroad::config_app_online(true)
       @@online_database.bring_forward(self, fresh_flag)
       instance_eval &block
     ensure
-      OfflineMirror::config_app_online(nil)
+      Offroad::config_app_online(nil)
     end
   end
   
   def in_offline_app(fresh_flag = false, delete_all_rows = false, &block)
     begin
-      OfflineMirror::config_app_online(false)
+      Offroad::config_app_online(false)
       @@offline_database.bring_forward(self, fresh_flag)
       if delete_all_rows
         @@offline_database.delete_all_rows
       end
       instance_eval &block
     ensure
-      OfflineMirror::config_app_online(nil)
+      Offroad::config_app_online(nil)
     end
   end
   

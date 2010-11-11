@@ -34,7 +34,7 @@ class CargoStreamerTest < Test::Unit::TestCase
   
   def generate_cargo_string(hash)
     return StringIO.open do |sio|
-      writer = OfflineMirror::CargoStreamer.new(sio, "w")
+      writer = Offroad::CargoStreamer.new(sio, "w")
       hash.each do |key, arr|
         arr.each do |elem|
           writer.write_cargo_section(key, elem)
@@ -48,7 +48,7 @@ class CargoStreamerTest < Test::Unit::TestCase
   def retrieve_cargo_from_string(str)
     hash = {}
     
-    reader = OfflineMirror::CargoStreamer.new(str, "r")
+    reader = Offroad::CargoStreamer.new(str, "r")
     reader.cargo_section_names.each do |key|
       hash[key] = []
       reader.each_cargo_section(key) do |elem|
@@ -100,13 +100,13 @@ class CargoStreamerTest < Test::Unit::TestCase
     r2 = test_rec("XYZ") # Making sure we can also encode a model instance that doesn't have the assoc data
     
     str = StringIO.open do |sio|
-      writer = OfflineMirror::CargoStreamer.new(sio, "w")
+      writer = Offroad::CargoStreamer.new(sio, "w")
       writer.write_cargo_section("abc", [r1, r2], :include => [:fake_association])
       sio.string
     end
     
     decoded_rec = StringIO.open(str) do |sio|
-      cs = OfflineMirror::CargoStreamer.new(sio, "r")
+      cs = Offroad::CargoStreamer.new(sio, "r")
       cs.first_cargo_section("abc")[0]
     end
     
@@ -121,13 +121,13 @@ class CargoStreamerTest < Test::Unit::TestCase
   end
   
   agnostic_test "cannot encode and retrieve non-model data" do
-    assert_raise OfflineMirror::CargoStreamerError do
+    assert_raise Offroad::CargoStreamerError do
       generate_cargo_string "a" => [[1]]
     end
   end
   
   agnostic_test "cannot encode a model that is not in an array" do
-    assert_raise OfflineMirror::CargoStreamerError do
+    assert_raise Offroad::CargoStreamerError do
       # This is not "in an array" for CargoStreamer; look at how generate_cargo_string is implemented
       generate_cargo_string "a" => [test_rec("Test")]
     end
@@ -141,7 +141,7 @@ class CargoStreamerTest < Test::Unit::TestCase
   
   agnostic_test "can correctly identify the names of the cargo sections" do
     test_hash = {"abc" => [[test_rec("A")]], "xyz" => [[test_rec("X")]]}
-    cs = OfflineMirror::CargoStreamer.new(generate_cargo_string(test_hash), "r")
+    cs = Offroad::CargoStreamer.new(generate_cargo_string(test_hash), "r")
     assert_equal test_hash.keys, cs.cargo_section_names
     assert cs.has_cargo_named?("abc")
     assert_equal false, cs.has_cargo_named?("foobar")
@@ -151,7 +151,7 @@ class CargoStreamerTest < Test::Unit::TestCase
     test_data = [[test_rec("a"), test_rec("b")], [test_rec("c"), test_rec("d")], [test_rec("e"), test_rec("f")]]
    
     str = StringIO.open do |sio|
-      cs = OfflineMirror::CargoStreamer.new(sio, "w")
+      cs = Offroad::CargoStreamer.new(sio, "w")
       test_data.each do |dat|
         cs.write_cargo_section("xyz", dat)
       end
@@ -159,7 +159,7 @@ class CargoStreamerTest < Test::Unit::TestCase
     end
     
     result_data = []
-    cs = OfflineMirror::CargoStreamer.new(str, "r")
+    cs = Offroad::CargoStreamer.new(str, "r")
     cs.each_cargo_section "xyz" do |dat|
       result_data << dat
     end
@@ -169,28 +169,28 @@ class CargoStreamerTest < Test::Unit::TestCase
   
   agnostic_test "can use first_cargo_section to get only the first section with a given name" do
     result = StringIO.open do |sio|
-      cs = OfflineMirror::CargoStreamer.new(sio, "w")
+      cs = Offroad::CargoStreamer.new(sio, "w")
       for i in 1..3 do
         cs.write_cargo_section("testing", [test_rec("item number #{i}")])
       end
       sio.string
     end
     
-    cs = OfflineMirror::CargoStreamer.new(result, "r")
+    cs = Offroad::CargoStreamer.new(result, "r")
     assert_equal test_rec("item number 1").attributes, cs.first_cargo_section("testing")[0].attributes
     assert_equal nil, cs.first_cargo_section("no-such-section")
   end
   
   agnostic_test "can use first_cargo_element to get the first element of the first section with a given name" do
     result = StringIO.open do |sio|
-      cs = OfflineMirror::CargoStreamer.new(sio, "w")
+      cs = Offroad::CargoStreamer.new(sio, "w")
       [10, 20, 30].each do |i|
         cs.write_cargo_section("testing", [test_rec("item number #{i}"), test_rec("item number #{i+1}")])
       end
       sio.string
     end
     
-    cs = OfflineMirror::CargoStreamer.new(result, "r")
+    cs = Offroad::CargoStreamer.new(result, "r")
     assert_equal test_rec("item number 10").attributes, cs.first_cargo_element("testing").attributes
     assert_equal nil, cs.first_cargo_element("no-such-section")
   end
@@ -200,14 +200,14 @@ class CargoStreamerTest < Test::Unit::TestCase
     rec = test_rec(test_str)
     
     result = StringIO.open do |sio|
-      cs = OfflineMirror::CargoStreamer.new(sio, "w")
+      cs = Offroad::CargoStreamer.new(sio, "w")
       cs.write_cargo_section("test", [rec], :human_readable => false)
       sio.string
     end
     assert_equal false, result.include?(test_str)
     
     result = StringIO.open do |sio|
-      cs = OfflineMirror::CargoStreamer.new(sio, "w")
+      cs = Offroad::CargoStreamer.new(sio, "w")
       cs.write_cargo_section("test", [rec], :human_readable => true)
       sio.string
     end
@@ -223,11 +223,11 @@ class CargoStreamerTest < Test::Unit::TestCase
     else
       flunk "Unable to find an md5sum in the generated string"
     end
-    assert_raise OfflineMirror::CargoStreamerError, "Changing fingerprint causes exception to be raised" do
+    assert_raise Offroad::CargoStreamerError, "Changing fingerprint causes exception to be raised" do
       retrieve_cargo_from_string(str.gsub md5sum, "a"*md5sum.size)
     end
     
-    assert_raise OfflineMirror::CargoStreamerError, "Changing base64 content causes exception to be raised" do
+    assert_raise Offroad::CargoStreamerError, "Changing base64 content causes exception to be raised" do
       # This is somewhat of an implementation-dependent test; I checked manually that the data has these strings.
       # It's safe, though, as changing the implementation should cause false neg, not false pos.
       retrieve_cargo_from_string(str.sub("X", "x"))
@@ -236,37 +236,37 @@ class CargoStreamerTest < Test::Unit::TestCase
   
   agnostic_test "modes r and w work, other modes do not" do
     assert_nothing_raised "Mode r works" do
-      OfflineMirror::CargoStreamer.new(StringIO.new(), "r")
+      Offroad::CargoStreamer.new(StringIO.new(), "r")
     end
     
     assert_nothing_raised "Mode w works" do
-      OfflineMirror::CargoStreamer.new(StringIO.new(), "w")
+      Offroad::CargoStreamer.new(StringIO.new(), "w")
     end
     
-    assert_raise OfflineMirror::CargoStreamerError, "Mode a doesn't work" do
-      OfflineMirror::CargoStreamer.new(StringIO.new(), "a")
+    assert_raise Offroad::CargoStreamerError, "Mode a doesn't work" do
+      Offroad::CargoStreamer.new(StringIO.new(), "a")
     end
   end
   
   agnostic_test "cannot write cargo in read mode" do
-    assert_raise OfflineMirror::CargoStreamerError do
-      cs = OfflineMirror::CargoStreamer.new(StringIO.new, "r")
+    assert_raise Offroad::CargoStreamerError do
+      cs = Offroad::CargoStreamer.new(StringIO.new, "r")
       cs.write_cargo_section("test", [test_rec("test")])
     end
   end
   
   agnostic_test "cannot use invalid cargo section names" do
-    cs = OfflineMirror::CargoStreamer.new(StringIO.new, "w")
+    cs = Offroad::CargoStreamer.new(StringIO.new, "w")
     
-    assert_raise OfflineMirror::CargoStreamerError, "Expect exception for symbol cargo name" do
+    assert_raise Offroad::CargoStreamerError, "Expect exception for symbol cargo name" do
       cs.write_cargo_section(:test, [test_rec("test")])
     end
     
-    assert_raise OfflineMirror::CargoStreamerError, "Expect exception for cargo name that's bad in HTML comments" do
+    assert_raise Offroad::CargoStreamerError, "Expect exception for cargo name that's bad in HTML comments" do
       cs.write_cargo_section("whatever--foobar", [test_rec("test")])
     end
     
-    assert_raise OfflineMirror::CargoStreamerError, "Expect exception for cargo name that's multiline" do
+    assert_raise Offroad::CargoStreamerError, "Expect exception for cargo name that's multiline" do
       cs.write_cargo_section("whatever\nfoobar", [test_rec("test")])
     end
   end
@@ -274,7 +274,7 @@ class CargoStreamerTest < Test::Unit::TestCase
   agnostic_test "cannot encode invalid records" do
     rec = TestModel.new() # Nothing set to the required "data" field
     assert_equal false, rec.valid?
-    assert_raise OfflineMirror::CargoStreamerError do
+    assert_raise Offroad::CargoStreamerError do
       generate_cargo_string "foo" => [[rec]]
     end
     rec.data = "Something"
@@ -290,7 +290,7 @@ class CargoStreamerTest < Test::Unit::TestCase
         str = generate_cargo_string "test" => [[test_rec("ABC")]]
       end
       TestModel.set_unsafe
-      assert_raise OfflineMirror::CargoStreamerError do
+      assert_raise Offroad::CargoStreamerError do
         str = generate_cargo_string "test" => [[test_rec("ABC")]]
       end
     ensure
@@ -307,7 +307,7 @@ class CargoStreamerTest < Test::Unit::TestCase
         retrieve_cargo_from_string(str)
       end
       TestModel.set_unsafe
-      assert_raise OfflineMirror::CargoStreamerError do
+      assert_raise Offroad::CargoStreamerError do
         retrieve_cargo_from_string(str)
       end
     ensure
@@ -317,13 +317,13 @@ class CargoStreamerTest < Test::Unit::TestCase
   
   agnostic_test "cargo streamer can read directly from a passed in string" do
     str = generate_cargo_string("test" => [[test_rec("abc")]])
-    cs = OfflineMirror::CargoStreamer.new(str, "r")
+    cs = Offroad::CargoStreamer.new(str, "r")
     assert cs.has_cargo_named?("test")
   end
   
   agnostic_test "cannot have cargo streamer write to a passed in string" do
-    assert_raise OfflineMirror::CargoStreamerError do
-      OfflineMirror::CargoStreamer.new("", "w")
+    assert_raise Offroad::CargoStreamerError do
+      Offroad::CargoStreamer.new("", "w")
     end
   end
 end

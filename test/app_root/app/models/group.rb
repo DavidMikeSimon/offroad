@@ -1,5 +1,5 @@
 class Group < ActiveRecord::Base
-  acts_as_mirrored_offline :group_base
+  acts_as_offroadable :group_base
   validates_presence_of :name
   has_many :group_owned_records, :dependent => :destroy
   belongs_to :favorite, :class_name => "GroupOwnedRecord"

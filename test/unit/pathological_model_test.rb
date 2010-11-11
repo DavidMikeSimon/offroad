@@ -1,32 +1,32 @@
 require File.expand_path(File.dirname(__FILE__) + '/../test_helper')
 
-# This is a unit test on the ability of model_extensions to correctly handle bad acts_as_mirrored_offline calls
+# This is a unit test on the ability of model_extensions to correctly handle bad acts_as_offroadable calls
 
 class PathologicalModelTest < Test::Unit::TestCase
-  agnostic_test "cannot specify acts_as_mirrored_offline multiple times" do
-    assert_raise OfflineMirror::ModelError do
+  agnostic_test "cannot specify acts_as_offroadable multiple times" do
+    assert_raise Offroad::ModelError do
       class MultipleTimesBrokenRecord < ActiveRecord::Base
         set_table_name "broken_records"
-        acts_as_mirrored_offline :global
-        acts_as_mirrored_offline :global
+        acts_as_offroadable :global
+        acts_as_offroadable :global
       end
     end
   end
   
   agnostic_test "cannot specify invalid mirror mode" do
-    assert_raise OfflineMirror::ModelError do
+    assert_raise Offroad::ModelError do
       class InvalidModeBrokenRecord < ActiveRecord::Base
         set_table_name "broken_records"
-        acts_as_mirrored_offline :this_mode_does_not_exist
+        acts_as_offroadable :this_mode_does_not_exist
       end
     end
   end
   
   agnostic_test "cannot specify :group_owned mode without :group_key" do
-    assert_raise OfflineMirror::ModelError do
+    assert_raise Offroad::ModelError do
       class NoGroupKeyBrokenRecord < ActiveRecord::Base
         set_table_name "broken_records"
-        acts_as_mirrored_offline :group_owned # No :group_key
+        acts_as_offroadable :group_owned # No :group_key
       end
     end
   end
@@ -35,27 +35,27 @@ class PathologicalModelTest < Test::Unit::TestCase
     self.class.send(:remove_const, :InvalidColumnBrokenRecord) if self.class.const_defined?(:InvalidColumnBrokenRecord)
     class InvalidColumnBrokenRecord < ActiveRecord::Base
       set_table_name "broken_records"
-      acts_as_mirrored_offline :group_owned, :group_key => :no_such_column
+      acts_as_offroadable :group_owned, :group_key => :no_such_column
     end
-    assert_raise OfflineMirror::ModelError do
+    assert_raise Offroad::ModelError do
       InvalidColumnBrokenRecord.create
     end
   end
   
-  agnostic_test "cannot give acts_as_mirrored_offline unknown options" do
-    assert_raise OfflineMirror::ModelError do
+  agnostic_test "cannot give acts_as_offroadable unknown options" do
+    assert_raise Offroad::ModelError do
       class UnknownOptionsBrokenRecord < ActiveRecord::Base
         set_table_name "broken_records"
-        acts_as_mirrored_offline :global, :foo_bar_bork_narf => 1234
+        acts_as_offroadable :global, :foo_bar_bork_narf => 1234
       end
     end
   end
   
   agnostic_test "cannot specify more than one group base" do
     # The Group model has already declare itself as :group base
-    assert_raise OfflineMirror::ModelError do
+    assert_raise Offroad::ModelError do
       class DoubleGroupBaseBrokenRecord < ActiveRecord::Base
-        acts_as_mirrored_offline :group_base
+        acts_as_offroadable :group_base
       end
     end
   end

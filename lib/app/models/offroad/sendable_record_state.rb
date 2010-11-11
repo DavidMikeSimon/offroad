@@ -1,10 +1,10 @@
-module OfflineMirror
+module Offroad
   private
   
   class SendableRecordState < ActiveRecord::Base
-    set_table_name "offline_mirror_sendable_record_states"
+    set_table_name "offroad_sendable_record_states"
     
-    belongs_to :model_state, :class_name => "::OfflineMirror::ModelState"
+    belongs_to :model_state, :class_name => "::Offroad::ModelState"
     
     def validate
       unless model_state
@@ -22,16 +22,16 @@ module OfflineMirror
       end
       
       if rec
-        if OfflineMirror::app_offline? && app_record.class.offline_mirror_global_data?
+        if Offroad::app_offline? && app_record.class.offroad_global_data?
           errors.add_to_base "Cannot create sendable record state for global data in offline app"
-        elsif OfflineMirror::app_online? && app_record.class.offline_mirror_group_data?
+        elsif Offroad::app_online? && app_record.class.offroad_group_data?
           errors.add_to_base "Cannot create sendable record state for group data in online app"
         end
       end
     end
     
     named_scope :for_model, lambda { |model| { :conditions => {
-      :model_state_id => model.offline_mirror_model_state.id
+      :model_state_id => model.offroad_model_state.id
     } } }
     
     named_scope :for_deleted_records, :conditions => { :deleted => true }
@@ -40,7 +40,7 @@ module OfflineMirror
     named_scope :with_version_greater_than, lambda { |v| { :conditions => ["mirror_version > ?", v] } }
     
     named_scope :for_record, lambda { |rec| { :conditions => {
-      :model_state_id => rec.class.offline_mirror_model_state.id,
+      :model_state_id => rec.class.offroad_model_state.id,
       :local_record_id => rec.id
     } } }
     

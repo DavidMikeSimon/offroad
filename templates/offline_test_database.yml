@@ -1,4 +1,4 @@
-# Database settings for the offline_mirror plugin
+# Database settings for the offroad plugin
 # This database config file is used by the 'offline' environment
 
 offline:

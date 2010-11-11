@@ -1,5 +1,5 @@
 =======================
-OFFLINE MIRROR PLUGIN
+OFFROAD
 =======================
 
 
@@ -62,7 +62,7 @@ bookmark is incorrect, it is updated.
 8. The exe file is installed/updated, and links in the Start Menu/etc. are created as necessary. The program
 is made to start automatically when the computer starts (TODO: figure out how to do this on OSX, and the best
 way to do this on Linux).
-9. Run any special scripts provided by the app (i.e. to uninstall/convert prior, pre-Offline-Mirror versions
+9. Run any special scripts provided by the app (i.e. to uninstall/convert prior, pre-Offroad versions
 of the app)
 10. As soon as the installer is finished, the launcher is started right away.
 
@@ -87,7 +87,7 @@ Here is how a sync is done:
 	the offline launcher app, the system then offers them a down-mirror file with a corresponding name, and asks
 	them to save it to their thumbdrive. If the up-mirror file is from an older version of the launcher, the
 	system directs them to the installation wizard, which has them download both the latest installer and the
-	down-mirror file. NOTE: Re-downloading the installer is only necessary if the Offline Mirror plugin or the
+	down-mirror file. NOTE: Re-downloading the installer is only necessary if the Offroad plugin or the
 	bundled executables (Rails, Ruby, etc) need to be updated. If only the rails app is to be updated, that
 	update (including new ruby scripts, templates, migrations, etc) is to be included in the down-mirror file.
 	5. In the background, the online system imports the up-mirror'd data into the database, making sure that it
@@ -147,7 +147,7 @@ The launcher window contains the following GUI elements:
 	* A checkbox is provided that enables a setting to automatically minimize the launcher window after the server is started.
 	* A help button which leads to documentation.
 	* A button used to make manual backups and/or restorations. The user is warned that doing so requires turning off the web server and disconnecting any active users. It is not permitted to restore a database which corresponds to a prior migration. These backups include both the database and the entire rails app itself; that way, it's possible to downgrade to an earlier version of the application if an update causes some issue.
-	* A label indicating the current version of the Rails app and the Offline Mirror plugin. This is to ease phone tech-support.
+	* A label indicating the current version of the Rails app and the Offroad plugin. This is to ease phone tech-support.
 	* A reminder to up-mirror and/or down-mirror if it has been over two weeks since the last time this was done.
 	* A menu option to upgrade to the online version, if the launcher can reach the online server.
 
@@ -159,7 +159,7 @@ LAUNCHER STARTUP PROCEDURE
 
 Starting the app doesn't run the web server immediately; instead, it runs a launcher GUI, which does the following:
 	* If the launcher is already running, the user is told so.
-   * If the database doesn't exist and the system is connected to a LAN, it port-scans for a running Offline-Mirror server on X.X.X.* addresses of that network. If it finds one, it tells the user that the program only needs to be installed on one computer, and tells them how to use their browser to access the already-installed version.
+   * If the database doesn't exist and the system is connected to a LAN, it port-scans for a running Offroad server on X.X.X.* addresses of that network. If it finds one, it tells the user that the program only needs to be installed on one computer, and tells them how to use their browser to access the already-installed version.
 	* If the database doesn't exist, it creates an empty one using migrations.
 	* If the database is empty, it requires that the user supply a down-mirror file to initialize it with appropriate data before it will continue.
 	* If the database exists but the Rails app is an old version, the database is backed up, the Rails app is updated, then the database is updated using migrations.

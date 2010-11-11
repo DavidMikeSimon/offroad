@@ -16,8 +16,8 @@ class GlobalDataTest < Test::Unit::TestCase
   end
   
   double_test "global data models report being global data" do
-    assert GlobalRecord.offline_mirror_global_data?, "Global model should return true to offline_mirror_global_data?"
-    assert_equal false, GlobalRecord.offline_mirror_group_data?, "Global model should return false to offline_mirror_group_data?"
+    assert GlobalRecord.offroad_global_data?, "Global model should return true to offroad_global_data?"
+    assert_equal false, GlobalRecord.offroad_group_data?, "Global model should return false to offroad_group_data?"
   end
   
   online_test "global data is writable and destroyable" do
@@ -45,7 +45,7 @@ class GlobalDataTest < Test::Unit::TestCase
   
   online_test "cannot change id of global data" do
     global_record = GlobalRecord.create(:title => "Something or other")
-    assert_raise OfflineMirror::DataError do
+    assert_raise Offroad::DataError do
       global_record.id += 1
       global_record.save!
     end
@@ -63,7 +63,7 @@ class GlobalDataTest < Test::Unit::TestCase
   
   online_test "global data cannot hold a foreign key to group data" do
     global_record = GlobalRecord.create(:title => "Something or other")
-    assert_raise OfflineMirror::DataError do
+    assert_raise Offroad::DataError do
       global_record.some_group = @offline_group
       global_record.save!
     end
@@ -72,13 +72,13 @@ class GlobalDataTest < Test::Unit::TestCase
   online_test "global data cannot hold a foreign key to unmirrored data" do
     global_record = GlobalRecord.create(:title => "Something or other")
     unmirrored_data = UnmirroredRecord.create(:content => "Some Unmirrored Data")
-    assert_raise OfflineMirror::DataError do
+    assert_raise Offroad::DataError do
       global_record.unmirrored_record = unmirrored_data
       global_record.save!
     end
   end
   
-  double_test "global data models return true to acts_as_mirrored_offline?" do
-    assert GlobalRecord.acts_as_mirrored_offline?
+  double_test "global data models return true to acts_as_offroadable?" do
+    assert GlobalRecord.acts_as_offroadable?
   end
 end

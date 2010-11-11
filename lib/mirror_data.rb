@@ -1,4 +1,4 @@
-module OfflineMirror
+module Offroad
   private
   
   class MirrorData
@@ -11,15 +11,15 @@ module OfflineMirror
       
       raise PluginError.new("Invalid option keys") unless options.size == 0
       
-      unless OfflineMirror::app_offline? && @initial_mode
-        raise PluginError.new("Need group") unless @group.is_a?(OfflineMirror::group_base_model) && !@group.new_record?
+      unless Offroad::app_offline? && @initial_mode
+        raise PluginError.new("Need group") unless @group.is_a?(Offroad::group_base_model) && !@group.new_record?
       end
       
       @imported_models_to_validate = []
     end
     
     def write_upwards_data(tgt = nil)
-      raise PluginError.new("Can only write upwards data in offline mode") unless OfflineMirror.app_offline?
+      raise PluginError.new("Can only write upwards data in offline mode") unless Offroad.app_offline?
       raise PluginError.new("No such thing as initial upwards data") if @initial_mode
       write_data(tgt) do |cs|
         add_group_specific_cargo(cs)
@@ -27,7 +27,7 @@ module OfflineMirror
     end
     
     def write_downwards_data(tgt = nil)
-      raise PluginError.new("Can only write downwards data in online mode") unless OfflineMirror.app_online?
+      raise PluginError.new("Can only write downwards data in online mode") unless Offroad.app_online?
       write_data(tgt) do |cs|
         add_global_cargo(cs)
         if @initial_mode
@@ -37,7 +37,7 @@ module OfflineMirror
     end
     
     def load_upwards_data(src)
-      raise PluginError.new("Can only load upwards data in online mode") unless OfflineMirror.app_online?
+      raise PluginError.new("Can only load upwards data in online mode") unless Offroad.app_online?
       raise PluginError.new("No such thing as initial upwards data") if @initial_mode
       
       read_data_from("offline", src) do |cs, mirror_info, cargo_group_state|
@@ -50,12 +50,12 @@ module OfflineMirror
     end
     
     def load_downwards_data(src)
-      raise PluginError.new("Can only load downwards data in offline mode") unless OfflineMirror.app_offline?
+      raise PluginError.new("Can only load downwards data in offline mode") unless Offroad.app_offline?
       
       read_data_from("online", src) do |cs, mirror_info, cargo_group_state|
         raise DataError.new("Unexpected initial file value") unless mirror_info.initial_file == @initial_mode
         
-        group_cargo_name = MirrorData::data_cargo_name_for_model(OfflineMirror::group_base_model)
+        group_cargo_name = MirrorData::data_cargo_name_for_model(Offroad::group_base_model)
         if mirror_info.initial_file
           raise DataError.new("No group data in initial down mirror file") unless cs.has_cargo_named?(group_cargo_name)
           # This is an initial mirror file, so we want it to determine the entirety of the database's new state
@@ -64,7 +64,7 @@ module OfflineMirror
           
           import_global_cargo(cs) # Global cargo must be done first because group data might belong_to global data
           import_group_specific_cargo(cs)
-        elsif OfflineMirror::offline_group == nil
+        elsif Offroad::offline_group == nil
           # If there's no offline group, then we can't accept non-initial down mirror files
           raise DataError.new("Initial down mirror file required")
         else
@@ -76,7 +76,7 @@ module OfflineMirror
         end
         
         # Load information into our group state that the online app is in a better position to know about
-        @group = OfflineMirror::offline_group if @initial_mode
+        @group = Offroad::offline_group if @initial_mode
       end
     end
     
@@ -118,12 +118,12 @@ module OfflineMirror
       end
       
       # TODO: Figure out if this transaction ensures we get a consistent read state
-      OfflineMirror::group_base_model.connection.transaction do
+      Offroad::group_base_model.connection.transaction do
         mirror_info = MirrorInfo.new_from_group(@group, @initial_mode)
         cs.write_cargo_section("mirror_info", [mirror_info], :human_readable => true)
         
         group_state = @group.group_state
-        if OfflineMirror::app_online?
+        if Offroad::app_online?
           # Let the offline app know what global data version it's being updated to
           group_state.confirmed_global_data_version = SystemState::current_mirror_version
         else
@@ -159,7 +159,7 @@ module OfflineMirror
       raise DataError.new("Invalid group state type") unless group_state.is_a?(GroupState)
       group_state.readonly!
       
-      OfflineMirror::group_base_model.connection.transaction do
+      Offroad::group_base_model.connection.transaction do
         yield cs, mirror_info, group_state
         validate_imported_models(cs)
                 
@@ -171,14 +171,14 @@ module OfflineMirror
     end
     
     def add_group_specific_cargo(cs)
-      OfflineMirror::group_owned_models.each do |name, model|
+      Offroad::group_owned_models.each do |name, model|
         add_model_cargo(cs, model)
       end
-      add_model_cargo(cs, OfflineMirror::group_base_model)
+      add_model_cargo(cs, Offroad::group_base_model)
     end
     
     def add_global_cargo(cs)
-      OfflineMirror::global_data_models.each do |name, model|
+      Offroad::global_data_models.each do |name, model|
         add_model_cargo(cs, model)
       end
     end
@@ -194,7 +194,7 @@ module OfflineMirror
     def add_initial_model_cargo(cs, model)
       # Include the data for relevant records in this model
       data_source = model
-      data_source = data_source.owned_by_offline_mirror_group(@group) if model.offline_mirror_group_data? && @group
+      data_source = data_source.owned_by_offroad_group(@group) if model.offroad_group_data? && @group
       data_source.find_in_batches(:batch_size => 100) do |batch|
         cs.write_cargo_section(
           MirrorData::data_cargo_name_for_model(model),
@@ -202,11 +202,11 @@ module OfflineMirror
           :skip_validation => @skip_write_validation
         )
         
-        if model.offline_mirror_group_data?
+        if model.offroad_group_data?
           # In initial mode the remote app will create records with the same id's as the corresponding records here
           # So we'll create RRSes indicating that we've already "received" the data we're about to send
           # Later when the remote app sends new information on those records, we'll know which ones it means
-          rrs_source = OfflineMirror::ReceivedRecordState.for_model(model).for_group(@group)
+          rrs_source = Offroad::ReceivedRecordState.for_model(model).for_group(@group)
           batch.each do |rec|
             existing_rrs = rrs_source.find_by_remote_record_id(rec.id)
             ReceivedRecordState.for_record(rec).create!(:remote_record_id => rec.id) unless existing_rrs
@@ -219,7 +219,7 @@ module OfflineMirror
       # Include the data for relevant records in this model that are newer than the remote side's known latest version
       gs = @group.group_state
       remote_version = nil
-      if model.offline_mirror_group_data?
+      if model.offroad_group_data?
         remote_version = gs.confirmed_group_data_version
       else
         remote_version = gs.confirmed_global_data_version
@@ -244,14 +244,14 @@ module OfflineMirror
     end
     
     def import_group_specific_cargo(cs)
-      import_model_cargo(cs, OfflineMirror::group_base_model)
-      OfflineMirror::group_owned_models.each do |name, model|
+      import_model_cargo(cs, Offroad::group_base_model)
+      Offroad::group_owned_models.each do |name, model|
         import_model_cargo(cs, model)
       end
     end
     
     def import_global_cargo(cs)
-      OfflineMirror::global_data_models.each do |name, model|
+      Offroad::global_data_models.each do |name, model|
         import_model_cargo(cs, model)
       end
     end
@@ -260,9 +260,9 @@ module OfflineMirror
       @imported_models_to_validate.push model
       
       rrs_source = ReceivedRecordState.for_model(model)
-      rrs_source = rrs_source.for_group(@group) if model.offline_mirror_group_data?
+      rrs_source = rrs_source.for_group(@group) if model.offroad_group_data?
       
-      if @initial_mode && model.offline_mirror_group_data?
+      if @initial_mode && model.offroad_group_data?
         import_initial_model_cargo(cs, model)
       else
         import_non_initial_model_cargo(cs, model, rrs_source)
@@ -275,7 +275,7 @@ module OfflineMirror
           local_record = model.new
           local_record.id = cargo_record.id # Safe, SQLite's autoincrement columns keep track of manually set values
           local_record.send(:attributes=, cargo_record.attributes.reject{|k,v| k == "id"}, false)          
-          local_record.bypass_offline_mirror_readonly_checks
+          local_record.bypass_offroad_readonly_checks
           local_record.save_without_validation # Validation delayed because it might depend on as-yet unimported data
         end
       end
@@ -291,7 +291,7 @@ module OfflineMirror
           
           # Update foreign key associations so they point to the same actual records as they did on the remote system
           delayed_self_reference_cols = []
-          model.offline_mirror_foreign_key_models.each_pair do |column_name, foreign_model|
+          model.offroad_foreign_key_models.each_pair do |column_name, foreign_model|
             remote_foreign_id = local_record.send(column_name.to_sym)
             if remote_foreign_id && remote_foreign_id != 0
               if foreign_model == model && remote_foreign_id == cargo_record.id
@@ -303,12 +303,12 @@ module OfflineMirror
                 end
               else
                 foreign_rrs_source = ReceivedRecordState.for_model(foreign_model)
-                foreign_rrs_source = foreign_rrs_source.for_group(@group) if foreign_model.offline_mirror_group_data?
+                foreign_rrs_source = foreign_rrs_source.for_group(@group) if foreign_model.offroad_group_data?
                 foreign_rrs = foreign_rrs_source.find_by_remote_record_id(remote_foreign_id)
                 if !foreign_rrs
                   # Create then immediately destroy a record to get a safely autoincremented id
                   foreign_rec_placeholder = foreign_model.new
-                  foreign_rec_placeholder.bypass_offline_mirror_readonly_checks
+                  foreign_rec_placeholder.bypass_offroad_readonly_checks
                   foreign_rec_placeholder.save_without_validation
                   foreign_rrs = foreign_rrs_source.create!(
                     :local_record_id => foreign_rec_placeholder.id,
@@ -321,14 +321,14 @@ module OfflineMirror
             end
           end
           
-          local_record.bypass_offline_mirror_readonly_checks
+          local_record.bypass_offroad_readonly_checks
           local_record.save_without_validation # Validation delayed because it might depend on as-yet unimported data
           
           ReceivedRecordState.for_record(local_record).create!(:remote_record_id => cargo_record.id) unless rrs
           
           # If the record is new and must reference itself, we now have an id it can use for that reference
           if delayed_self_reference_cols.size > 0
-            local_record.bypass_offline_mirror_readonly_checks
+            local_record.bypass_offroad_readonly_checks
             delayed_self_reference_cols.each do |column_name|
               local_record.send("#{column_name}=".to_sym, local_record.id)
             end
@@ -338,13 +338,13 @@ module OfflineMirror
       end
       
       # Destroy records here which were destroyed there (except for group_base records, that would cause trouble)
-      unless model == OfflineMirror::group_base_model
+      unless model == Offroad::group_base_model
         cs.each_cargo_section(MirrorData::deletion_cargo_name_for_model(model)) do |batch|
           batch.each do |deletion_srs|
             rrs = rrs_source.find_by_remote_record_id(deletion_srs.local_record_id)
             next unless rrs # No problem if we can't find record, it means this deletion request duplicates an earlier one
             local_record = rrs.app_record
-            local_record.bypass_offline_mirror_readonly_checks
+            local_record.bypass_offroad_readonly_checks
             local_record.destroy
             rrs.destroy
           end
@@ -358,8 +358,8 @@ module OfflineMirror
         
         rrs_source = nil
         unless @initial_mode
-          rrs_source = OfflineMirror::ReceivedRecordState.for_model(model)
-          rrs_source = rrs_source.for_group(@group) if model.offline_mirror_group_data?
+          rrs_source = Offroad::ReceivedRecordState.for_model(model)
+          rrs_source = rrs_source.for_group(@group) if model.offroad_group_data?
         end
         
         cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
@@ -372,10 +372,10 @@ module OfflineMirror
                 rec = rrs_source.find_by_remote_record_id(cargo_record.id).app_record
               end
             rescue ActiveRecord::RecordNotFound
-              raise OfflineMirror::DataError.new("Unable to locate imported record")
+              raise Offroad::DataError.new("Unable to locate imported record")
             end
             
-            raise OfflineMirror::DataError.new("Invalid record found in mirror data") unless rec.valid?
+            raise Offroad::DataError.new("Invalid record found in mirror data") unless rec.valid?
           end
         end
       end

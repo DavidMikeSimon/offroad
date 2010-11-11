@@ -1,4 +1,4 @@
-class GroupController < OfflineMirror::GroupBaseController
+class GroupController < Offroad::GroupBaseController
   def download_down_mirror
     render_down_mirror_file Group.find(params[:id]), "down-mirror-file", :layout => "mirror"
   end

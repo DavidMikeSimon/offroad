@@ -29,30 +29,30 @@ class MirrorDataTest < Test::Unit::TestCase
     assert_single_cargo_section_named cs, "mirror_info"
 
     mirror_info = cs.first_cargo_element("mirror_info")
-    assert_instance_of OfflineMirror::MirrorInfo, mirror_info
+    assert_instance_of Offroad::MirrorInfo, mirror_info
     migration_query = "SELECT version FROM schema_migrations ORDER BY version"
     migrations = Group.connection.select_all(migration_query).map{ |r| r["version"] }
     assert_equal migrations, mirror_info.schema_migrations.split(",").sort
-    assert_equal mirror_info.app, OfflineMirror::app_name
+    assert_equal mirror_info.app, Offroad::app_name
     assert Time.now - mirror_info.created_at < 30
     assert mirror_info.app_mode.downcase.include?(mode.downcase)
 
     assert_single_cargo_section_named cs, "group_state"
     group_state = cs.first_cargo_element("group_state")
-    assert_instance_of OfflineMirror::GroupState, group_state
+    assert_instance_of Offroad::GroupState, group_state
     assert_equal @offline_group.id, group_state.app_group_id
   end
 
   def assert_single_model_cargo_entry_matches(cs, record)
     record.reload
-    data_name = OfflineMirror::MirrorData.send(:data_cargo_name_for_model, record.class)
+    data_name = Offroad::MirrorData.send(:data_cargo_name_for_model, record.class)
     assert_single_cargo_section_named cs, data_name
     assert_equal record.attributes, cs.first_cargo_element(data_name).attributes
   end
 
   def assert_record_not_present(cs, record)
     record.reload
-    data_name = OfflineMirror::MirrorData.send(:data_cargo_name_for_model, record.class)
+    data_name = Offroad::MirrorData.send(:data_cargo_name_for_model, record.class)
     assert_nothing_raised do
       cs.each_cargo_section(data_name) do |batch|
         batch.each do |cargo_record|
@@ -66,18 +66,18 @@ class MirrorDataTest < Test::Unit::TestCase
     mirror_data = nil
     in_online_app do
       GlobalRecord.create(:title => "Foo Bar")
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
     sources = [
-      OfflineMirror::CargoStreamer.new(mirror_data, "r"),
+      Offroad::CargoStreamer.new(mirror_data, "r"),
       StringIO.new(mirror_data, "r"),
       mirror_data
     ]
     sources.each do |source|
       in_offline_app(true) do
         assert_equal 0, GlobalRecord.count
-        OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(source)
+        Offroad::MirrorData.new(@offline_group).load_downwards_data(source)
         assert GlobalRecord.find_by_title("Foo Bar")
       end
     end
@@ -85,19 +85,19 @@ class MirrorDataTest < Test::Unit::TestCase
 
   offline_test "can have MirrorData write methods send to CargoStreamer, IO, or return value" do
     cargo_streamer_sio = StringIO.new
-    cargo_streamer = OfflineMirror::CargoStreamer.new(cargo_streamer_sio, "w")
+    cargo_streamer = Offroad::CargoStreamer.new(cargo_streamer_sio, "w")
     direct_sio = StringIO.new
 
-    writer = OfflineMirror::MirrorData.new(@offline_group)
+    writer = Offroad::MirrorData.new(@offline_group)
     writer.write_upwards_data(cargo_streamer)
     writer.write_upwards_data(direct_sio)
     str = writer.write_upwards_data
 
     cargo_streamer_sio.rewind
     direct_sio.rewind
-    result_a = OfflineMirror::CargoStreamer.new(cargo_streamer_sio, "r").cargo_section_names
-    result_b = OfflineMirror::CargoStreamer.new(direct_sio, "r").cargo_section_names
-    result_c = OfflineMirror::CargoStreamer.new(StringIO.new(str), "r").cargo_section_names
+    result_a = Offroad::CargoStreamer.new(cargo_streamer_sio, "r").cargo_section_names
+    result_b = Offroad::CargoStreamer.new(direct_sio, "r").cargo_section_names
+    result_c = Offroad::CargoStreamer.new(StringIO.new(str), "r").cargo_section_names
 
     assert result_a.size > 0
     assert result_a == result_b
@@ -108,8 +108,8 @@ class MirrorDataTest < Test::Unit::TestCase
     global_record = GlobalRecord.create(:title => "Foo Bar")
     global_record.reload # To clear the high time precision that is lost in the database
 
-    str = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
-    cs = OfflineMirror::CargoStreamer.new(str, "r")
+    str = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+    cs = Offroad::CargoStreamer.new(str, "r")
     assert_common_mirror_elements_appear_valid cs, "online"
     assert_single_model_cargo_entry_matches cs, global_record
     assert_single_model_cargo_entry_matches cs, @offline_group
@@ -121,8 +121,8 @@ class MirrorDataTest < Test::Unit::TestCase
     global_record.reload # To clear the high time precision that is lost in the database
 
     @online_group.group_offline = true
-    str = OfflineMirror::MirrorData.new(@online_group, :initial_mode => true).write_downwards_data
-    cs = OfflineMirror::CargoStreamer.new(str, "r")
+    str = Offroad::MirrorData.new(@online_group, :initial_mode => true).write_downwards_data
+    cs = Offroad::CargoStreamer.new(str, "r")
     assert_single_model_cargo_entry_matches cs, global_record
     assert_single_model_cargo_entry_matches cs, @online_group
     assert_single_model_cargo_entry_matches cs, @online_group_data
@@ -132,8 +132,8 @@ class MirrorDataTest < Test::Unit::TestCase
     global_record = GlobalRecord.create(:title => "Foo Bar")
     global_record.reload # To clear the high time precision that is lost in the database
 
-    str = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
-    cs = OfflineMirror::CargoStreamer.new(str, "r")
+    str = Offroad::MirrorData.new(@offline_group).write_downwards_data
+    cs = Offroad::CargoStreamer.new(str, "r")
     assert_common_mirror_elements_appear_valid cs, "online"
     assert_single_model_cargo_entry_matches cs, global_record
     assert_record_not_present cs, @offline_group
@@ -147,8 +147,8 @@ class MirrorDataTest < Test::Unit::TestCase
     force_save_and_reload(another_group_data)
     [another_offline_group, another_group_data].each { |r| r.reload }
 
-    str = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
-    cs = OfflineMirror::CargoStreamer.new(str, "r")
+    str = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+    cs = Offroad::CargoStreamer.new(str, "r")
     assert_record_not_present cs, another_offline_group
     assert_record_not_present cs, another_group_data
     assert_single_model_cargo_entry_matches cs, @offline_group
@@ -164,8 +164,8 @@ class MirrorDataTest < Test::Unit::TestCase
     force_save_and_reload(another_group_data)
     [another_offline_group, another_group_data].each { |r| r.reload }
 
-    str = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
-    cs = OfflineMirror::CargoStreamer.new(str, "r")
+    str = Offroad::MirrorData.new(@offline_group).write_downwards_data
+    cs = Offroad::CargoStreamer.new(str, "r")
     assert_record_not_present cs, another_offline_group
     assert_record_not_present cs, another_group_data
     assert_record_not_present cs, @offline_group
@@ -180,8 +180,8 @@ class MirrorDataTest < Test::Unit::TestCase
     @offline_group_data.some_integer = 5551212
     @offline_group_data.save!
     @offline_group_data.reload
-    str = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
-    cs = OfflineMirror::CargoStreamer.new(str, "r")
+    str = Offroad::MirrorData.new(@offline_group).write_upwards_data
+    cs = Offroad::CargoStreamer.new(str, "r")
     assert_common_mirror_elements_appear_valid cs, "offline"
     assert_single_model_cargo_entry_matches cs, @offline_group
     assert_single_model_cargo_entry_matches cs, @offline_group_data
@@ -191,32 +191,32 @@ class MirrorDataTest < Test::Unit::TestCase
     fake_global_data = GlobalRecord.new(:title => "Fake Stuff")
     force_save_and_reload(fake_global_data)
 
-    str = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
-    cs = OfflineMirror::CargoStreamer.new(str, "r")
+    str = Offroad::MirrorData.new(@offline_group).write_upwards_data
+    cs = Offroad::CargoStreamer.new(str, "r")
     assert_record_not_present cs, fake_global_data
   end
 
   offline_test "cannot upload an invalid down mirror file" do
-    assert_raise OfflineMirror::DataError do
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data("FOO BAR BLAH")
+    assert_raise Offroad::DataError do
+      Offroad::MirrorData.new(@offline_group).load_downwards_data("FOO BAR BLAH")
     end
   end
 
   online_test "cannot upload an invalid up mirror file" do
-    assert_raise OfflineMirror::DataError do
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data("FOO BAR BLAH")
+    assert_raise Offroad::DataError do
+      Offroad::MirrorData.new(@offline_group).load_upwards_data("FOO BAR BLAH")
     end
   end
 
   offline_test "cannot use load_upwards_data in offline mode" do
-    assert_raise OfflineMirror::PluginError do
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data("FOO BAR BLAH")
+    assert_raise Offroad::PluginError do
+      Offroad::MirrorData.new(@offline_group).load_upwards_data("FOO BAR BLAH")
     end
   end
 
   online_test "cannot use load_downwards_data in online mode" do
-    assert_raise OfflineMirror::PluginError do
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data("FOO BAR BLAH")
+    assert_raise Offroad::PluginError do
+      Offroad::MirrorData.new(@offline_group).load_downwards_data("FOO BAR BLAH")
     end
   end
 
@@ -228,13 +228,13 @@ class MirrorDataTest < Test::Unit::TestCase
       @offline_group_data.description = "TEST XYZ"
       another_group_data = GroupOwnedRecord.new(:description => "TEST ABC", :group => @offline_group)
       force_save_and_reload(@offline_group, @offline_group_data, another_group_data)
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
-      prior_rrs_count = OfflineMirror::ReceivedRecordState.count
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
-      assert_equal prior_rrs_count+1, OfflineMirror::ReceivedRecordState.count 
+      prior_rrs_count = Offroad::ReceivedRecordState.count
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_equal prior_rrs_count+1, Offroad::ReceivedRecordState.count 
       assert_equal @offline_group.id, Group.find_by_name("TEST 123").id
       assert GroupOwnedRecord.find_by_description("TEST ABC")
       assert_equal @offline_group_data.id, GroupOwnedRecord.find_by_description("TEST XYZ").id
@@ -246,14 +246,14 @@ class MirrorDataTest < Test::Unit::TestCase
 
     in_offline_app do
       @offline_group_data.destroy
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
-      prior_rrs_count = OfflineMirror::ReceivedRecordState.count
+      prior_rrs_count = Offroad::ReceivedRecordState.count
       assert_equal 1, GroupOwnedRecord.count(:conditions => { :group_id => @offline_group.id })
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
-      assert_equal prior_rrs_count-1, OfflineMirror::ReceivedRecordState.count
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_equal prior_rrs_count-1, Offroad::ReceivedRecordState.count
       assert_equal 0, GroupOwnedRecord.count(:conditions => { :group_id => @offline_group.id })
     end
   end
@@ -264,15 +264,15 @@ class MirrorDataTest < Test::Unit::TestCase
     in_online_app do
       GlobalRecord.create(:title => "ABC")
       GlobalRecord.create(:title => "123")
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
     offline_number_rec_id = nil
     in_offline_app do
-      rrs_scope = OfflineMirror::ReceivedRecordState.for_model(GlobalRecord)
+      rrs_scope = Offroad::ReceivedRecordState.for_model(GlobalRecord)
       assert_equal 0, rrs_scope.count
       assert_equal 0, GlobalRecord.count
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
       assert_equal 2, rrs_scope.count
       assert_equal 2, GlobalRecord.count
       assert_not_nil GlobalRecord.find_by_title("ABC")
@@ -288,12 +288,12 @@ class MirrorDataTest < Test::Unit::TestCase
       letter_rec = GlobalRecord.find_by_title("ABC")
       letter_rec.destroy
 
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
     in_offline_app do
-      rrs_scope = OfflineMirror::ReceivedRecordState.for_model(GlobalRecord)
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      rrs_scope = Offroad::ReceivedRecordState.for_model(GlobalRecord)
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
       assert_equal 1, rrs_scope.count
       assert_equal 1, GlobalRecord.count
       assert_nil GlobalRecord.find_by_title("ABC")
@@ -306,19 +306,19 @@ class MirrorDataTest < Test::Unit::TestCase
   cross_test "can insert group records using an initial down mirror file" do
     mirror_data = nil
     in_online_app do
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
     end
 
     in_offline_app(false, true) do
       assert_equal 0, Group.count
       assert_equal 0, GroupOwnedRecord.count
-      assert_equal 0, OfflineMirror::SendableRecordState.for_model(Group).count
-      assert_equal 0, OfflineMirror::SendableRecordState.for_model(GroupOwnedRecord).count
-      OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      assert_equal 0, Offroad::SendableRecordState.for_model(Group).count
+      assert_equal 0, Offroad::SendableRecordState.for_model(GroupOwnedRecord).count
+      Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
       assert_equal 1, Group.count
       assert_equal 1, GroupOwnedRecord.count
-      assert_equal 1, OfflineMirror::SendableRecordState.for_model(Group).count
-      assert_equal 1, OfflineMirror::SendableRecordState.for_model(GroupOwnedRecord).count
+      assert_equal 1, Offroad::SendableRecordState.for_model(Group).count
+      assert_equal 1, Offroad::SendableRecordState.for_model(GroupOwnedRecord).count
     end
   end
 
@@ -326,28 +326,28 @@ class MirrorDataTest < Test::Unit::TestCase
     mirror_data = nil
     in_online_app do
       GlobalRecord.create(:title => "Something")
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
     end
 
     in_offline_app(false, true) do
       assert_equal 0, GlobalRecord.count
-      assert_equal 0, OfflineMirror::SendableRecordState.for_model(GlobalRecord).count
-      assert_equal 0, OfflineMirror::ReceivedRecordState.for_model(GlobalRecord).count
-      OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      assert_equal 0, Offroad::SendableRecordState.for_model(GlobalRecord).count
+      assert_equal 0, Offroad::ReceivedRecordState.for_model(GlobalRecord).count
+      Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
       assert_equal 1, GlobalRecord.count
       assert_not_nil GlobalRecord.find_by_title("Something")
-      assert_equal 0, OfflineMirror::SendableRecordState.for_model(GlobalRecord).count
-      assert_equal 1, OfflineMirror::ReceivedRecordState.for_model(GlobalRecord).count
+      assert_equal 0, Offroad::SendableRecordState.for_model(GlobalRecord).count
+      assert_equal 1, Offroad::ReceivedRecordState.for_model(GlobalRecord).count
     end
   end
 
   cross_test "cannot load regular down mirror file in empty offline app" do
     mirror_data = nil
-    in_online_app { mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data }
+    in_online_app { mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data }
 
     in_offline_app(false, true) do
-      assert_raise OfflineMirror::PluginError do
-        OfflineMirror::MirrorData.new(nil).load_downwards_data(mirror_data)
+      assert_raise Offroad::PluginError do
+        Offroad::MirrorData.new(nil).load_downwards_data(mirror_data)
       end
     end
   end
@@ -355,7 +355,7 @@ class MirrorDataTest < Test::Unit::TestCase
   cross_test "importing an initial down mirror file deletes all currently existing records" do
     mirror_data = nil
     in_online_app do
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
     end
 
     in_offline_app do
@@ -365,7 +365,7 @@ class MirrorDataTest < Test::Unit::TestCase
       force_save_and_reload(group_data, global_data)
       UnmirroredRecord.create(:content => "Old Old Old")
 
-      OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
 
       assert_equal nil, Group.find_by_name("Old")
       assert_equal nil, GroupOwnedRecord.find_by_description("Old")
@@ -379,7 +379,7 @@ class MirrorDataTest < Test::Unit::TestCase
   cross_test "importing an initial down mirror file resets autoincrement counters" do
     mirror_data = nil
     in_online_app do
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
     end
 
     in_offline_app do
@@ -388,7 +388,7 @@ class MirrorDataTest < Test::Unit::TestCase
       global_rec_c = GlobalRecord.new(:title => "C")
       force_save_and_reload(global_rec_a, global_rec_b, global_rec_c)
 
-      OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
 
       global_rec = GlobalRecord.new(:title => "Test")
       force_save_and_reload(global_rec)
@@ -399,23 +399,23 @@ class MirrorDataTest < Test::Unit::TestCase
   cross_test "cannot upload an initial down mirror file unless passed :initial_mode => true to MirrorData.new" do
     mirror_data = nil
     in_online_app do
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
     end
 
     in_offline_app do
-      assert_raise OfflineMirror::DataError do
-        OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      assert_raise Offroad::DataError do
+        Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
       end
     end
   end
 
   cross_test "cannot upload a non-initial down mirror file after passing :initial_mode => true to MirrorData.new" do
     mirror_data = nil
-    in_online_app { mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data }
+    in_online_app { mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data }
 
     in_offline_app do
-      assert_raise OfflineMirror::DataError do
-        OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).load_downwards_data(mirror_data)
+      assert_raise Offroad::DataError do
+        Offroad::MirrorData.new(@offline_group, :initial_mode => true).load_downwards_data(mirror_data)
       end
     end
   end
@@ -424,16 +424,16 @@ class MirrorDataTest < Test::Unit::TestCase
     mirror_data = nil
 
     in_online_app do
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
 
-      assert_raise OfflineMirror::DataError do
-        OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_raise Offroad::DataError do
+        Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       end
     end
 
     in_offline_app do
       assert_nothing_raised do
-        OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+        Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
       end
     end
   end
@@ -442,16 +442,16 @@ class MirrorDataTest < Test::Unit::TestCase
     mirror_data = nil
 
     in_offline_app do
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
 
-      assert_raise OfflineMirror::DataError do
-        OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      assert_raise Offroad::DataError do
+        Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
       end
     end
 
     in_online_app do
       assert_nothing_raised do
-        OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+        Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       end
     end
   end
@@ -466,14 +466,14 @@ class MirrorDataTest < Test::Unit::TestCase
     in_offline_app do
       another_offline_rec = GroupOwnedRecord.create(:description => "One More", :group => @offline_group)
       offline_id_of_new_rec = another_offline_rec.id
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       rec = GroupOwnedRecord.find_by_description("One More")
       assert rec
-      assert_equal offline_id_of_new_rec, OfflineMirror::ReceivedRecordState.for_record(rec).first.remote_record_id
+      assert_equal offline_id_of_new_rec, Offroad::ReceivedRecordState.for_record(rec).first.remote_record_id
     end
   end
 
@@ -485,20 +485,20 @@ class MirrorDataTest < Test::Unit::TestCase
       another_offline_rec = GroupOwnedRecord.new(:description => "One More", :group => @offline_group)
       force_save_and_reload(another_offline_rec)
       online_id_of_offline_rec = another_offline_rec.id
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
     end
 
     in_offline_app do
-      OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
       rec = GroupOwnedRecord.find_by_description("One More")
       assert_equal online_id_of_offline_rec, rec.id
       rec.description = "Back To The Future"
       rec.save!
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       assert_equal nil, GroupOwnedRecord.find_by_description("One More")
       assert_equal "Back To The Future", GroupOwnedRecord.find(online_id_of_offline_rec).description
     end
@@ -508,9 +508,9 @@ class MirrorDataTest < Test::Unit::TestCase
     global_record = GlobalRecord.create(:title => "Something")
     global_record.destroy
 
-    str = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
-    cs = OfflineMirror::CargoStreamer.new(str, "r")
-    deletion_cargo_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, GlobalRecord)
+    str = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+    cs = Offroad::CargoStreamer.new(str, "r")
+    deletion_cargo_name = Offroad::MirrorData.send(:deletion_cargo_name_for_model, GlobalRecord)
     assert_equal false, cs.has_cargo_named?(deletion_cargo_name)
   end
 
@@ -519,12 +519,12 @@ class MirrorDataTest < Test::Unit::TestCase
     in_offline_app do
       group_rec = GroupOwnedRecord.new(:description => "Invalid record", :group => @offline_group, :should_be_even => 3)
       group_rec.save_without_validation
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :skip_write_validation => true).write_upwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group, :skip_write_validation => true).write_upwards_data
     end
 
     in_online_app do
-      assert_raise OfflineMirror::DataError do
-        OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_raise Offroad::DataError do
+        Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       end
     end
   end
@@ -534,12 +534,12 @@ class MirrorDataTest < Test::Unit::TestCase
     in_online_app do
       global_rec = GlobalRecord.new(:title => "Invalid record", :should_be_odd => 2)
       global_rec.save_without_validation
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :skip_write_validation => true).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group, :skip_write_validation => true).write_downwards_data
     end
 
     in_offline_app do
-      assert_raise OfflineMirror::DataError do
-        OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      assert_raise Offroad::DataError do
+        Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
       end
     end
   end
@@ -550,13 +550,13 @@ class MirrorDataTest < Test::Unit::TestCase
       group_rec = GroupOwnedRecord.new(:description => "Invalid record", :group => @online_group, :should_be_even => 3)
       group_rec.save_without_validation
       @online_group.group_offline = true
-      writer = OfflineMirror::MirrorData.new(@online_group, :skip_write_validation => true, :initial_mode => true)
+      writer = Offroad::MirrorData.new(@online_group, :skip_write_validation => true, :initial_mode => true)
       mirror_data = writer.write_downwards_data
     end
 
     in_offline_app(false, true) do
-      assert_raise OfflineMirror::DataError do
-        OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      assert_raise Offroad::DataError do
+        Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
       end
     end
   end
@@ -581,11 +581,11 @@ class MirrorDataTest < Test::Unit::TestCase
       @offline_group.save!
       @offline_group_data.parent = grandchild
       @offline_group_data.save!
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
 
       @offline_group.reload
       @offline_group_data.reload
@@ -614,11 +614,11 @@ class MirrorDataTest < Test::Unit::TestCase
       alice.save!
       bob = GlobalRecord.create(:title => "Bob", :friend => alice)
       claire = GlobalRecord.create(:title => "Claire", :friend => bob)
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
     in_offline_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
       alice = GlobalRecord.find_by_title("Alice")
       bob = GlobalRecord.find_by_title("Bob")
       claire = GlobalRecord.find_by_title("Claire")
@@ -636,32 +636,32 @@ class MirrorDataTest < Test::Unit::TestCase
     mirror_data = nil
     offline_os = ""
     in_offline_app do
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
       offline_os = @offline_group.group_state.operating_system
     end
 
     in_online_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       assert_equal offline_os, @offline_group.group_state.operating_system
     end
   end
 
   offline_test "creating up mirror file increments current_mirror_version" do
-    prior_version = OfflineMirror::SystemState::current_mirror_version
-    OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
-    assert_equal prior_version+1, OfflineMirror::SystemState::current_mirror_version
+    prior_version = Offroad::SystemState::current_mirror_version
+    Offroad::MirrorData.new(@offline_group).write_upwards_data
+    assert_equal prior_version+1, Offroad::SystemState::current_mirror_version
   end
 
   online_test "creating down mirror file increments current_mirror_version" do
-    prior_version = OfflineMirror::SystemState::current_mirror_version
-    OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
-    assert_equal prior_version+1, OfflineMirror::SystemState::current_mirror_version
+    prior_version = Offroad::SystemState::current_mirror_version
+    Offroad::MirrorData.new(@offline_group).write_downwards_data
+    assert_equal prior_version+1, Offroad::SystemState::current_mirror_version
   end
 
   online_test "creating initial down mirror file increments current_mirror_version" do
-    prior_version = OfflineMirror::SystemState::current_mirror_version
-    OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
-    assert_equal prior_version+1, OfflineMirror::SystemState::current_mirror_version
+    prior_version = Offroad::SystemState::current_mirror_version
+    Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+    assert_equal prior_version+1, Offroad::SystemState::current_mirror_version
   end
 
   cross_test "receiving an up mirror file increments confirmed_group_data_version to the indicated value if larger" do
@@ -670,14 +670,14 @@ class MirrorDataTest < Test::Unit::TestCase
       @offline_group_data.description = "New Name"
       @offline_group_data.save!
 
-      OfflineMirror::SystemState::instance_record.update_attribute(:current_mirror_version, 42)
+      Offroad::SystemState::instance_record.update_attribute(:current_mirror_version, 42)
 
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
       assert_equal 1, @offline_group.group_state.confirmed_group_data_version
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       assert_equal 42, @offline_group.group_state.confirmed_group_data_version
     end
   end
@@ -689,9 +689,9 @@ class MirrorDataTest < Test::Unit::TestCase
         @offline_group_data.description = "New Name"
         @offline_group_data.save!
 
-        OfflineMirror::SystemState::instance_record.update_attribute(:current_mirror_version, sending_version)
+        Offroad::SystemState::instance_record.update_attribute(:current_mirror_version, sending_version)
 
-        mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+        mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
       end
 
       in_online_app do
@@ -699,8 +699,8 @@ class MirrorDataTest < Test::Unit::TestCase
         group_state.confirmed_group_data_version = 42
         group_state.save!
 
-        assert_raise OfflineMirror::OldDataError do
-          OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+        assert_raise Offroad::OldDataError do
+          Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
         end
       end
     end
@@ -711,14 +711,14 @@ class MirrorDataTest < Test::Unit::TestCase
     in_online_app do
       GlobalRecord.create(:title => "Testing")
 
-      OfflineMirror::SystemState::instance_record.update_attribute(:current_mirror_version, 42)
+      Offroad::SystemState::instance_record.update_attribute(:current_mirror_version, 42)
 
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
     in_offline_app do
       assert_equal 1, @offline_group.group_state.confirmed_global_data_version
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
       assert_equal 42, @offline_group.group_state.confirmed_global_data_version
     end
   end
@@ -729,9 +729,9 @@ class MirrorDataTest < Test::Unit::TestCase
       in_online_app do
         GlobalRecord.create(:title => "Testing")
 
-        OfflineMirror::SystemState::instance_record.update_attribute(:current_mirror_version, sending_version)
+        Offroad::SystemState::instance_record.update_attribute(:current_mirror_version, sending_version)
 
-        mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+        mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
       end
 
       in_offline_app do
@@ -739,8 +739,8 @@ class MirrorDataTest < Test::Unit::TestCase
         group_state.confirmed_global_data_version = 42
         group_state.save!
 
-        assert_raise OfflineMirror::OldDataError do
-          OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+        assert_raise Offroad::OldDataError do
+          Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
         end
       end
     end
@@ -750,13 +750,13 @@ class MirrorDataTest < Test::Unit::TestCase
     mirror_data = nil
     online_version = nil
     in_online_app do
-      OfflineMirror::SystemState::instance_record.update_attribute(:current_mirror_version, 3)
-      online_version = OfflineMirror::SystemState::current_mirror_version
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+      Offroad::SystemState::instance_record.update_attribute(:current_mirror_version, 3)
+      online_version = Offroad::SystemState::current_mirror_version
+      mirror_data = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
     end
 
     in_offline_app(false, true) do
-      OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
       assert_equal online_version, @offline_group.group_state.confirmed_global_data_version
     end
   end
@@ -766,25 +766,25 @@ class MirrorDataTest < Test::Unit::TestCase
     in_online_app do
       GlobalRecord.create!(:title => "Record A", :some_boolean => false)
       GlobalRecord.create!(:title => "Record B", :some_boolean => false)
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
     in_offline_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       rec_a = GlobalRecord.find_by_title("Record A")
       rec_a.some_boolean = true
       rec_a.save!
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
-    cs = OfflineMirror::CargoStreamer.new(mirror_data, "r")
+    cs = Offroad::CargoStreamer.new(mirror_data, "r")
     recs = []
-    cs.each_cargo_section(OfflineMirror::MirrorData.send(:data_cargo_name_for_model, GlobalRecord)) do |batch|
+    cs.each_cargo_section(Offroad::MirrorData.send(:data_cargo_name_for_model, GlobalRecord)) do |batch|
       recs += batch
     end
     assert_equal 1, recs.size
@@ -798,24 +798,24 @@ class MirrorDataTest < Test::Unit::TestCase
       GroupOwnedRecord.create!(:description => "Another Record", :group => @offline_group)
       @offline_group_data.description = "Changed"
       @offline_group_data.save!
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
     in_offline_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
       @offline_group_data.description = "Changed Again"
       @offline_group_data.save!
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
-    cs = OfflineMirror::CargoStreamer.new(mirror_data, "r")
+    cs = Offroad::CargoStreamer.new(mirror_data, "r")
     recs = []
-    cs.each_cargo_section(OfflineMirror::MirrorData.send(:data_cargo_name_for_model, GroupOwnedRecord)) do |batch|
+    cs.each_cargo_section(Offroad::MirrorData.send(:data_cargo_name_for_model, GroupOwnedRecord)) do |batch|
       recs += batch
     end
     assert_equal 1, recs.size
@@ -827,7 +827,7 @@ class MirrorDataTest < Test::Unit::TestCase
     @offline_group_data.save!
 
     2.times do
-      cs = OfflineMirror::CargoStreamer.new(OfflineMirror::MirrorData.new(@offline_group).write_upwards_data, "r")
+      cs = Offroad::CargoStreamer.new(Offroad::MirrorData.new(@offline_group).write_upwards_data, "r")
       assert_single_model_cargo_entry_matches(cs, @offline_group_data)
     end
   end
@@ -836,76 +836,76 @@ class MirrorDataTest < Test::Unit::TestCase
     global_rec = GlobalRecord.create(:title => "Testing")
 
     2.times do
-      cs = OfflineMirror::CargoStreamer.new(OfflineMirror::MirrorData.new(@offline_group).write_downwards_data, "r")
+      cs = Offroad::CargoStreamer.new(Offroad::MirrorData.new(@offline_group).write_downwards_data, "r")
       assert_single_model_cargo_entry_matches(cs, global_rec)
     end
   end
 
   cross_test "up mirror files do not include deletion requests for records known to be deleted on online system" do
-    sec_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, GroupOwnedRecord)
+    sec_name = Offroad::MirrorData.send(:deletion_cargo_name_for_model, GroupOwnedRecord)
 
     mirror_data = nil
     in_offline_app do
       @offline_group_data.destroy
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
-    assert_equal 1, all_records_from_section_named(OfflineMirror::CargoStreamer.new(mirror_data, "r"), sec_name).size
+    assert_equal 1, all_records_from_section_named(Offroad::CargoStreamer.new(mirror_data, "r"), sec_name).size
 
     in_online_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
     in_offline_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
-    assert_equal 0, all_records_from_section_named(OfflineMirror::CargoStreamer.new(mirror_data, "r"), sec_name).size
+    assert_equal 0, all_records_from_section_named(Offroad::CargoStreamer.new(mirror_data, "r"), sec_name).size
   end
 
   cross_test "down mirror files do not include deletion requests for records known to be deleted on offline system" do
-    sec_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, GlobalRecord)
+    sec_name = Offroad::MirrorData.send(:deletion_cargo_name_for_model, GlobalRecord)
 
     mirror_data = nil
     in_online_app do
       GlobalRecord.create(:title => "Testing")
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
     in_offline_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       GlobalRecord.find_by_title("Testing").destroy
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
-    assert_equal 1, all_records_from_section_named(OfflineMirror::CargoStreamer.new(mirror_data, "r"), sec_name).size
+    assert_equal 1, all_records_from_section_named(Offroad::CargoStreamer.new(mirror_data, "r"), sec_name).size
 
     in_offline_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
-    assert_equal 0, all_records_from_section_named(OfflineMirror::CargoStreamer.new(mirror_data, "r"), sec_name).size
+    assert_equal 0, all_records_from_section_named(Offroad::CargoStreamer.new(mirror_data, "r"), sec_name).size
   end
 
   offline_test "deletions are re-included in new up mirror files if their reception is not confirmed" do
-    sec_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, GroupOwnedRecord)
+    sec_name = Offroad::MirrorData.send(:deletion_cargo_name_for_model, GroupOwnedRecord)
     @offline_group_data.destroy
 
     2.times do
-      cs = OfflineMirror::CargoStreamer.new(OfflineMirror::MirrorData.new(@offline_group).write_upwards_data, "r")
+      cs = Offroad::CargoStreamer.new(Offroad::MirrorData.new(@offline_group).write_upwards_data, "r")
       assert_equal 1, all_records_from_section_named(cs, sec_name).size
     end
   end
@@ -914,21 +914,21 @@ class MirrorDataTest < Test::Unit::TestCase
     mirror_data = nil
     in_online_app do
       global_rec = GlobalRecord.create(:title => "Testing")
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
     in_offline_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
 
       GlobalRecord.find_by_title("Testing").destroy
-      sec_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, GlobalRecord)
+      sec_name = Offroad::MirrorData.send(:deletion_cargo_name_for_model, GlobalRecord)
       2.times do
-        cs = OfflineMirror::CargoStreamer.new(OfflineMirror::MirrorData.new(@offline_group).write_downwards_data, "r")
+        cs = Offroad::CargoStreamer.new(Offroad::MirrorData.new(@offline_group).write_downwards_data, "r")
         assert_equal 1, all_records_from_section_named(cs, sec_name).size
       end
     end
@@ -938,8 +938,8 @@ class MirrorDataTest < Test::Unit::TestCase
     another_offline_group = Group.create(:name => "One More Offline Group")
     data = GroupOwnedRecord.create(:description => "One More Offline Data", :group => another_offline_group)
     another_offline_group.group_offline = true
-    mirror_data = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
-    cs = OfflineMirror::CargoStreamer.new(mirror_data, "r")
+    mirror_data = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+    cs = Offroad::CargoStreamer.new(mirror_data, "r")
     assert_record_not_present(cs, data)
   end
 
@@ -948,12 +948,12 @@ class MirrorDataTest < Test::Unit::TestCase
     in_offline_app do
       @offline_group_data.protected_integer = 123
       @offline_group_data.save!
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
       assert_not_equal 123, @offline_group_data.protected_integer
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       @offline_group_data.reload
       assert_equal 123, @offline_group_data.protected_integer
     end
@@ -963,25 +963,25 @@ class MirrorDataTest < Test::Unit::TestCase
     mirror_data = nil
     in_online_app do
       GlobalRecord.create(:title => "Testing")
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
     in_offline_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_upwards_data
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       grec = GlobalRecord.find_by_title("Testing")
       grec.protected_integer = 789
       grec.save!
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
     in_offline_app do
       assert_not_equal 789, GlobalRecord.find_by_title("Testing").protected_integer
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
       assert_equal 789, GlobalRecord.find_by_title("Testing").protected_integer
     end
   end
@@ -990,16 +990,16 @@ class MirrorDataTest < Test::Unit::TestCase
     mirror_data = nil
     in_offline_app do
       mirror_data = StringIO.open do |sio|
-        cs = OfflineMirror::CargoStreamer.new(sio, "w")
-        OfflineMirror::MirrorData.new(@offline_group).write_upwards_data(cs)
+        cs = Offroad::CargoStreamer.new(sio, "w")
+        Offroad::MirrorData.new(@offline_group).write_upwards_data(cs)
 
-        sec_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, Group)
-        deletion_srs = OfflineMirror::SendableRecordState.for_record(@offline_group).first
+        sec_name = Offroad::MirrorData.send(:deletion_cargo_name_for_model, Group)
+        deletion_srs = Offroad::SendableRecordState.for_record(@offline_group).first
         deletion_srs.deleted = true
         cs.write_cargo_section(sec_name, [deletion_srs])
 
-        sec_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, GroupOwnedRecord)
-        deletion_srs = OfflineMirror::SendableRecordState.for_record(@offline_group_data).first
+        sec_name = Offroad::MirrorData.send(:deletion_cargo_name_for_model, GroupOwnedRecord)
+        deletion_srs = Offroad::SendableRecordState.for_record(@offline_group_data).first
         deletion_srs.deleted = true
         cs.write_cargo_section(sec_name, [deletion_srs])
 
@@ -1008,7 +1008,7 @@ class MirrorDataTest < Test::Unit::TestCase
     end
 
     in_online_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       assert_nil GroupOwnedRecord.find_by_description("Sam") # Make sure the deletion faking method actually works...
       assert_not_nil Group.find_by_name("An Offline Group") # Except on group base records
     end
@@ -1017,17 +1017,17 @@ class MirrorDataTest < Test::Unit::TestCase
   cross_test "after loading an initial down mirror file only changed records appear in up mirror" do
     mirror_data = nil
     in_online_app do
-      mirror_data = OfflineMirror::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
     end
 
     in_offline_app(false, true) do
-      OfflineMirror::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
       group = Group.first
       group.name = "Weird Al"
       group.save!
       group.reload
-      mirror_data = OfflineMirror::MirrorData.new(group).write_upwards_data
-      cs = OfflineMirror::CargoStreamer.new(mirror_data, "r")
+      mirror_data = Offroad::MirrorData.new(group).write_upwards_data
+      cs = Offroad::CargoStreamer.new(mirror_data, "r")
       assert_single_model_cargo_entry_matches(cs, group)
       assert_record_not_present(cs, GroupOwnedRecord.first)
     end
@@ -1037,20 +1037,20 @@ class MirrorDataTest < Test::Unit::TestCase
     mirror_data = nil
     in_online_app do
       mirror_data = StringIO.open do |sio|
-        cs = OfflineMirror::CargoStreamer.new(sio, "w")
-        OfflineMirror::MirrorData.new(@offline_group).write_downwards_data(cs)
+        cs = Offroad::CargoStreamer.new(sio, "w")
+        Offroad::MirrorData.new(@offline_group).write_downwards_data(cs)
 
         grec = GlobalRecord.create(:title => "Testing 123")
-        sec_name = OfflineMirror::MirrorData.send(:data_cargo_name_for_model, GlobalRecord)
+        sec_name = Offroad::MirrorData.send(:data_cargo_name_for_model, GlobalRecord)
         cs.write_cargo_section(sec_name, [grec])
 
-        sec_name = OfflineMirror::MirrorData.send(:data_cargo_name_for_model, GroupOwnedRecord)
+        sec_name = Offroad::MirrorData.send(:data_cargo_name_for_model, GroupOwnedRecord)
         new_rec = GroupOwnedRecord.new(:description => "Brand New Thing", :group => @offline_group)
         new_rec.id = 1234
         cs.write_cargo_section(sec_name, [new_rec])
 
-        sec_name = OfflineMirror::MirrorData.send(:deletion_cargo_name_for_model, GroupOwnedRecord)
-        deletion_srs = OfflineMirror::SendableRecordState.for_record(@offline_group_data).new
+        sec_name = Offroad::MirrorData.send(:deletion_cargo_name_for_model, GroupOwnedRecord)
+        deletion_srs = Offroad::SendableRecordState.for_record(@offline_group_data).new
         deletion_srs.deleted = true
         cs.write_cargo_section(sec_name, [deletion_srs])
 
@@ -1059,7 +1059,7 @@ class MirrorDataTest < Test::Unit::TestCase
     end
 
     in_offline_app do
-      OfflineMirror::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
 
       # Make sure the section faking method actually works...
       assert_not_nil GlobalRecord.find_by_title("Testing 123")

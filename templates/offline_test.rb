@@ -1,4 +1,4 @@
-# This file defines envrionment used for testing the offline mode implemented by the offline_mirror plugin
+# This file defines envrionment used for testing the offline mode implemented by the offroad plugin
 # You can define tests specifically for this environment by following the pattern set in the plugin's Rakefile
 # In the regular "test" environment, the plugin considers itself to be in the online mode
 

@@ -18,10 +18,10 @@ Rake::TestTask.new(:test) do |t|
   common_test_settings(t)
 end
 
-desc 'Generate documentation for the offline_mirror plugin.'
+desc 'Generate documentation for the offroad plugin.'
 Rake::RDocTask.new(:rdoc) do |rdoc|
   rdoc.rdoc_dir = 'rdoc'
-  rdoc.title    = 'OfflineMirror'
+  rdoc.title    = 'Offroad'
   rdoc.options << '--line-numbers' << '--inline-source'
   rdoc.rdoc_files.include('README')
   rdoc.rdoc_files.include('lib/**/*.rb')

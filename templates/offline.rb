@@ -1,6 +1,6 @@
 # This file defines the offline envrionment
 # "Offline" means that the application is running on a local network, with only a subset of the real online app's data
-# It is implemented by the offline_mirror plugin
+# It is implemented by the offroad plugin
 
 # Settings specified here will take precedence over those in config/environment.rb
 
@@ -33,4 +33,4 @@ config.action_view.cache_template_loading            = true
 # Enable threaded mode
 # config.threadsafe!
 
-OfflineMirror::config_app_online(false)
+Offroad::config_app_online(false)

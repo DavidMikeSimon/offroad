@@ -1,9 +1,9 @@
 # desc "Explaining what the task does"
-# task :offline_mirror do
+# task :offroad do
 #   # Task goes here
 # end
 
-namespace :offline_mirror do
+namespace :offroad do
   def set_migration_verbosity
     ActiveRecord::Migration.verbose = ENV["VERBOSE"] ? ENV["VERBOSE"] == "true" : true
   end
@@ -22,40 +22,40 @@ namespace :offline_mirror do
   
   def setup_mirroring_for_model_data(model)
     model.find_each do |rec|
-      OfflineMirror::SendableRecordState::note_record_created_or_updated(model, rec.id)
+      Offroad::SendableRecordState::note_record_created_or_updated(model, rec.id)
     end
   end
   
-  desc "Creates the internal tables used by offline_mirror"
+  desc "Creates the internal tables used by offroad"
   task :create_tables => :environment do
     set_migration_verbosity
-    ActiveRecord::Migrator.migrate("vendor/plugins/offline_mirror/lib/migrate/", nil)
+    ActiveRecord::Migrator.migrate("vendor/plugins/offroad/lib/migrate/", nil)
     dump_schema
   end
   
-  desc "Drops the internal tables used by offline_mirror"
+  desc "Drops the internal tables used by offroad"
   task :drop_tables => :environment do
     set_migration_verbosity
-    ActiveRecord::Migrator.migrate("vendor/plugins/offline_mirror/lib/migrate/", 0)
+    ActiveRecord::Migrator.migrate("vendor/plugins/offroad/lib/migrate/", 0)
     dump_schema
   end
   
-  desc "Installs or reinstalls the default offline_mirror configuration files"
+  desc "Installs or reinstalls the default offroad configuration files"
   task :install_conf do
-    install_template_files(["config"], ["offline_mirror.yml", "offline_database.yml", "offline_test_database.yml"])
+    install_template_files(["config"], ["offroad.yml", "offline_database.yml", "offline_test_database.yml"])
     install_template_files(["config", "environments"], ["offline.rb", "offline_test.rb"])
   end
   
-  desc "Initializes offline_mirror's internal tables to follow any records already existing in acts_as_mirrored_offline models"
+  desc "Initializes offroad's internal tables to follow any records already existing in acts_as_offroadable models"
   task :import_existing_data => :environment do
-    if OfflineMirror::app_online?
+    if Offroad::app_online?
       # Setup mirroring for *global* records
-      OfflineMirror::global_data_models.each do |name, cls|
+      Offroad::global_data_models.each do |name, cls|
         setup_mirroring_for_model_data cls
       end
     else
       # Setup mirroring for *group* records
-      OfflineMirror::group_data_models.each do |name, cls|
+      Offroad::group_data_models.each do |name, cls|
         setup_mirroring_for_model_data cls
       end
     end

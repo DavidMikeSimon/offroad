@@ -1,4 +1,4 @@
-# OfflineMirror
+# Offroad
 
 require 'module_funcs'
 
@@ -14,12 +14,12 @@ end
 
 require 'model_extensions'
 class ActiveRecord::Base
-  extend OfflineMirror::ModelExtensions
+  extend Offroad::ModelExtensions
 end
 
 require 'view_helper'
 class ActionView::Base
-  include OfflineMirror::ViewHelper
+  include Offroad::ViewHelper
 end
 
-OfflineMirror::init
+Offroad::init

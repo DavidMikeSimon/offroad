@@ -1,23 +1,23 @@
-module OfflineMirror
+module Offroad
   module ModelExtensions
-    OFFLINE_MIRROR_VALID_MODES = [:group_base, :group_owned, :global]
-    OFFLINE_MIRROR_GROUP_MODES = [:group_base, :group_owned]
+    OFFROAD_VALID_MODES = [:group_base, :group_owned, :global]
+    OFFROAD_GROUP_MODES = [:group_base, :group_owned]
     
-    def acts_as_mirrored_offline(mode, opts = {})
-      raise ModelError.new("You can only call acts_as_mirrored_offline once per model") if acts_as_mirrored_offline?
-      raise ModelError.new("You must specify a mode, one of " + OFFLINE_MIRROR_VALID_MODES.map(&:inspect).join("/")) unless OFFLINE_MIRROR_VALID_MODES.include?(mode)
+    def acts_as_offroadable(mode, opts = {})
+      raise ModelError.new("You can only call acts_as_offroadable once per model") if acts_as_offroadable?
+      raise ModelError.new("You must specify a mode, one of " + OFFROAD_VALID_MODES.map(&:inspect).join("/")) unless OFFROAD_VALID_MODES.include?(mode)
       
-      set_internal_cattr :offline_mirror_mode, mode
+      set_internal_cattr :offroad_mode, mode
       
       case mode
       when :group_owned then
         raise ModelError.new("For :group_owned models, need to specify :group_key, an attribute name for this model's owning group") unless opts[:group_key]
-        set_internal_cattr :offline_mirror_group_key, opts.delete(:group_key).to_sym
-        OfflineMirror::note_group_owned_model(self)
+        set_internal_cattr :offroad_group_key, opts.delete(:group_key).to_sym
+        Offroad::note_group_owned_model(self)
       when :group_base then
-        OfflineMirror::note_group_base_model(self)
+        Offroad::note_group_base_model(self)
       when :global then
-        OfflineMirror::note_global_data_model(self)
+        Offroad::note_global_data_model(self)
       end
       
       # We should have deleted all the options from the hash by this point
@@ -25,12 +25,12 @@ module OfflineMirror
       
       case mode
       when :group_base then
-        named_scope :owned_by_offline_mirror_group, lambda { |group| { :conditions => { :id => group.id } } }
+        named_scope :owned_by_offroad_group, lambda { |group| { :conditions => { :id => group.id } } }
       when :group_owned then
-        named_scope :owned_by_offline_mirror_group, lambda { |group| { :conditions => { offline_mirror_group_key => group.id } } }
+        named_scope :owned_by_offroad_group, lambda { |group| { :conditions => { offroad_group_key => group.id } } }
       end
       
-      if offline_mirror_group_data?
+      if offroad_group_data?
         include GroupDataInstanceMethods
       else
         include GlobalDataInstanceMethods
@@ -42,45 +42,45 @@ module OfflineMirror
       before_save :before_mirrored_data_save
       after_save :after_mirrored_data_save
       
-      set_internal_cattr :offline_mirror_foreign_key_models, {}
+      set_internal_cattr :offroad_foreign_key_models, {}
       class << self
-        alias_method_chain :belongs_to, :offline_mirror_reflection
+        alias_method_chain :belongs_to, :offroad_reflection
       end
     end
     
-    def belongs_to_with_offline_mirror_reflection(association_id, options = {})
-      belongs_to_without_offline_mirror_reflection(association_id, options)
+    def belongs_to_with_offroad_reflection(association_id, options = {})
+      belongs_to_without_offroad_reflection(association_id, options)
       
-      if acts_as_mirrored_offline?
+      if acts_as_offroadable?
         key_name = options.has_key?(:foreign_key) ? options[:foreign_key] : "#{association_id}_id"
         model_name = options.has_key?(:class_name) ? options[:class_name] : association_id.to_s.classify
-        offline_mirror_foreign_key_models[key_name] = model_name.constantize
+        offroad_foreign_key_models[key_name] = model_name.constantize
       end
     end
     
-    def offline_mirror_model_state
-      model_scope = OfflineMirror::ModelState::for_model(self)
+    def offroad_model_state
+      model_scope = Offroad::ModelState::for_model(self)
       return model_scope.first || model_scope.create
     end
     
-    def acts_as_mirrored_offline?
-      respond_to? :offline_mirror_mode
+    def acts_as_offroadable?
+      respond_to? :offroad_mode
     end
     
     def safe_to_load_from_cargo_stream?
-      acts_as_mirrored_offline?
+      acts_as_offroadable?
     end
     
-    def offline_mirror_group_base?
-      acts_as_mirrored_offline? && offline_mirror_mode == :group_base
+    def offroad_group_base?
+      acts_as_offroadable? && offroad_mode == :group_base
     end
     
-    def offline_mirror_group_data?
-      acts_as_mirrored_offline? && OFFLINE_MIRROR_GROUP_MODES.include?(offline_mirror_mode)
+    def offroad_group_data?
+      acts_as_offroadable? && OFFROAD_GROUP_MODES.include?(offroad_mode)
     end
     
-    def offline_mirror_global_data?
-      acts_as_mirrored_offline? && offline_mirror_mode == :global
+    def offroad_global_data?
+      acts_as_offroadable? && offroad_mode == :global
     end
     
     private
@@ -91,21 +91,21 @@ module OfflineMirror
     end
     
     module CommonInstanceMethods
-      # Methods below this point are only to be used internally by OfflineMirror
+      # Methods below this point are only to be used internally by Offroad
       # However, making all of them private would make using them from elsewhere in the plugin troublesome
       
       # TODO Should put common save and destroy wrappers in here, with access to a method that checks if SRS needed
       # TODO That method should also be used in import_model_cargo instead of explicitly trying to find the srs
       
       #:nodoc:#
-      def bypass_offline_mirror_readonly_checks
-        @offline_mirror_readonly_bypassed = true
+      def bypass_offroad_readonly_checks
+        @offroad_readonly_bypassed = true
       end
       
       #:nodoc:#
       def checks_bypassed?
-        if @offline_mirror_readonly_bypassed
-          @offline_mirror_readonly_bypassed = false
+        if @offroad_readonly_bypassed
+          @offroad_readonly_bypassed = false
           return true
         end
         return false
@@ -114,9 +114,9 @@ module OfflineMirror
       #:nodoc:#
       def validate_changed_id_columns
         changed.each do |colname|
-          raise DataError.new("Cannot change id of offline-mirror tracked records") if colname == "id"
+          raise DataError.new("Cannot change id of offroad-tracked records") if colname == "id"
           
-          if !new_record? and offline_mirror_mode == :group_owned and colname == offline_mirror_group_key.to_s
+          if !new_record? and offroad_mode == :group_owned and colname == offroad_group_key.to_s
             raise DataError.new("Ownership of group-owned data cannot be transferred between groups")
           end
           
@@ -125,14 +125,14 @@ module OfflineMirror
           next unless respond_to? accessor_name
           obj = send(accessor_name)
           
-          raise DataError.new("Mirrored data cannot hold a foreign key to unmirrored data") unless obj.class.acts_as_mirrored_offline?
+          raise DataError.new("Mirrored data cannot hold a foreign key to unmirrored data") unless obj.class.acts_as_offroadable?
           
-          if self.class.offline_mirror_group_data?
-            if obj.class.offline_mirror_group_data? && obj.owning_group.id != owning_group.id
+          if self.class.offroad_group_data?
+            if obj.class.offroad_group_data? && obj.owning_group.id != owning_group.id
               raise DataError.new("Invalid #{colname}: Group data cannot hold a foreign key to data owned by another group")
             end
-          elsif self.class.offline_mirror_global_data?
-            unless obj.class.offline_mirror_global_data?
+          elsif self.class.offroad_global_data?
+            unless obj.class.offroad_global_data?
               raise DataError.new("Invalid #{colname}: Global mirrored data cannot hold a foreign key to group data")
             end
           end
@@ -142,7 +142,7 @@ module OfflineMirror
     end
     
     module GlobalDataInstanceMethods
-      # Methods below this point are only to be used internally by OfflineMirror
+      # Methods below this point are only to be used internally by Offroad
       # However, marking all of them private would make using them from elsewhere in the plugin troublesome
       
       #:nodoc#
@@ -154,7 +154,7 @@ module OfflineMirror
       
       #:nodoc#
       def after_mirrored_data_destroy
-        OfflineMirror::SendableRecordState::note_record_destroyed(self) if OfflineMirror::app_online?
+        Offroad::SendableRecordState::note_record_destroyed(self) if Offroad::app_online?
         return true
       end
       
@@ -168,7 +168,7 @@ module OfflineMirror
       
       #:nodoc#
       def after_mirrored_data_save
-        OfflineMirror::SendableRecordState::note_record_created_or_updated(self) if OfflineMirror::app_online? && changed?
+        Offroad::SendableRecordState::note_record_created_or_updated(self) if Offroad::app_online? && changed?
         return true
       end
       
@@ -176,13 +176,13 @@ module OfflineMirror
       
       def ensure_online
         # Only the online app can change global data
-        raise ActiveRecord::ReadOnlyRecord if OfflineMirror::app_offline?
+        raise ActiveRecord::ReadOnlyRecord if Offroad::app_offline?
       end
     end
     
     module GroupDataInstanceMethods
-      def locked_by_offline_mirror?
-        OfflineMirror::app_online? && group_offline?
+      def locked_by_offroad?
+        Offroad::app_online? && group_offline?
       end
       
       # If called on a group_owned_model, methods below bubble up to the group_base_model
@@ -214,39 +214,39 @@ module OfflineMirror
       end
       
       def group_offline=(b)
-        raise DataError.new("Unable to change a group's offline status in offline app") if OfflineMirror::app_offline?
+        raise DataError.new("Unable to change a group's offline status in offline app") if Offroad::app_offline?
         if b && !group_state
-          OfflineMirror::GroupState.for_group(owning_group).create!
+          Offroad::GroupState.for_group(owning_group).create!
         elsif group_state
           group_state.destroy
         end
       end
       
       def owning_group
-        return case offline_mirror_mode
+        return case offroad_mode
           # Using find_by_id so this returns nil if owning group not there, instead of rasing RecordNotFound
-          when :group_owned then OfflineMirror::group_base_model.find_by_id(owning_group_id)
+          when :group_owned then Offroad::group_base_model.find_by_id(owning_group_id)
           when :group_base then self
         end
       end
       
       def owning_group_id
-        if offline_mirror_mode == :group_owned
-           raise ModelError.new("No such group key column #{offline_mirror_group_key}") unless has_attribute?(offline_mirror_group_key)
+        if offroad_mode == :group_owned
+           raise ModelError.new("No such group key column #{offroad_group_key}") unless has_attribute?(offroad_group_key)
         end
         
-        return case offline_mirror_mode
-          when :group_owned then self.send(offline_mirror_group_key)
+        return case offroad_mode
+          when :group_owned then self.send(offroad_group_key)
           when :group_base then new_record? ? nil : self.id
         end
       end
       
-      # Methods below this point are only to be used internally by OfflineMirror
+      # Methods below this point are only to be used internally by Offroad
       # However, marking them private makes using them from elsewhere in the plugin troublesome
       
       #:nodoc#
       def before_mirrored_data_destroy
-        if group_offline? && offline_mirror_mode == :group_base
+        if group_offline? && offroad_mode == :group_base
           group_state.update_attribute(:group_being_destroyed, true)
         end
         
@@ -255,8 +255,8 @@ module OfflineMirror
         if group_offline?
           # If the app is online, the only thing that can be deleted is the entire group (possibly with its records)
           # If the app is offline, the only thing that CAN'T be deleted is the group
-          raise ActiveRecord::ReadOnlyRecord if OfflineMirror::app_offline? and offline_mirror_mode == :group_base
-          raise ActiveRecord::ReadOnlyRecord if OfflineMirror::app_online? and offline_mirror_mode != :group_base and !group_being_destroyed
+          raise ActiveRecord::ReadOnlyRecord if Offroad::app_offline? and offroad_mode == :group_base
+          raise ActiveRecord::ReadOnlyRecord if Offroad::app_online? and offroad_mode != :group_base and !group_being_destroyed
         end
         
         return true
@@ -264,8 +264,8 @@ module OfflineMirror
       
       #:nodoc#
       def after_mirrored_data_destroy
-        OfflineMirror::SendableRecordState::note_record_destroyed(self) if OfflineMirror::app_offline?
-        OfflineMirror::GroupState::note_group_destroyed(self) if group_offline? && offline_mirror_mode == :group_base
+        Offroad::SendableRecordState::note_record_destroyed(self) if Offroad::app_offline?
+        Offroad::GroupState::note_group_destroyed(self) if group_offline? && offroad_mode == :group_base
         return true
       end
       
@@ -274,14 +274,14 @@ module OfflineMirror
         return true if checks_bypassed?
         
         raise DataError.new("Invalid owning group") if owning_group == nil
-        raise ActiveRecord::ReadOnlyRecord if locked_by_offline_mirror?
+        raise ActiveRecord::ReadOnlyRecord if locked_by_offroad?
         
-        if OfflineMirror::app_offline?
-          case offline_mirror_mode
+        if Offroad::app_offline?
+          case offroad_mode
           when :group_base
             raise DataError.new("Cannot create groups in offline mode") if new_record?
           when :group_owned
-            raise DataError.new("Owning group must be the offline group") if owning_group_id != OfflineMirror::offline_group.id
+            raise DataError.new("Owning group must be the offline group") if owning_group_id != Offroad::offline_group.id
           end
         end
         
@@ -291,20 +291,20 @@ module OfflineMirror
       
       #:nodoc#
       def after_mirrored_data_save
-        if OfflineMirror::app_offline?
+        if Offroad::app_offline?
           # Make a GroupState if this is the group being loaded into the offline app from an initial down mirror file
-          if self.class.offline_mirror_group_base? && group_state == nil
+          if self.class.offroad_group_base? && group_state == nil
             GroupState.for_group(self).create!
           end
           
-          OfflineMirror::SendableRecordState::note_record_created_or_updated(self) if changed?
+          Offroad::SendableRecordState::note_record_created_or_updated(self) if changed?
         end
         return true
       end
       
       #:nodoc#
       def group_state
-        OfflineMirror::GroupState.for_group(owning_group).first
+        Offroad::GroupState.for_group(owning_group).first
       end
       
       #:nodoc:#

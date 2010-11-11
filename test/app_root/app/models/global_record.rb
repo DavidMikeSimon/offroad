@@ -1,5 +1,5 @@
 class GlobalRecord < ActiveRecord::Base
-  acts_as_mirrored_offline :global
+  acts_as_offroadable :global
   validates_presence_of :title
   belongs_to :unmirrored_record
   belongs_to :some_group, :class_name => "Group"

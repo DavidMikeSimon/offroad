@@ -23,11 +23,11 @@ class GroupDataTest < Test::Unit::TestCase
   end
   
   double_test "group data models report being group data" do
-    assert Group.offline_mirror_group_data?, "Group model should return true to offline_mirror_group_data?"
-    assert_equal false, Group.offline_mirror_global_data?, "Group model should return false to offline_mirror_global_data?"
+    assert Group.offroad_group_data?, "Group model should return true to offroad_group_data?"
+    assert_equal false, Group.offroad_global_data?, "Group model should return false to offroad_global_data?"
     
-    assert GroupOwnedRecord.offline_mirror_group_data?, "Group-owned model should return true to offline_mirror_group_data?"
-    assert_equal false, GroupOwnedRecord.offline_mirror_global_data?, "Group-owned model should return false to offline_mirror_global_data?"
+    assert GroupOwnedRecord.offroad_group_data?, "Group-owned model should return true to offroad_group_data?"
+    assert_equal false, GroupOwnedRecord.offroad_global_data?, "Group-owned model should return false to offroad_global_data?"
   end
   
   double_test "group base reports being owned by itself" do
@@ -41,24 +41,24 @@ class GroupDataTest < Test::Unit::TestCase
   end
   
   online_test "only offline groups locked and unsaveable" do
-    assert @offline_group.locked_by_offline_mirror?, "Offline groups should be locked"
+    assert @offline_group.locked_by_offroad?, "Offline groups should be locked"
     assert_raise ActiveRecord::ReadOnlyRecord do
       @offline_group.save!
     end
     
-    assert_equal false, @online_group.locked_by_offline_mirror?, "Online groups should not be locked"
+    assert_equal false, @online_group.locked_by_offroad?, "Online groups should not be locked"
     assert_nothing_raised do
       @online_group.save!
     end
   end
   
   online_test "only offline group owned data locked and unsaveable" do
-    assert @offline_group_data.locked_by_offline_mirror?, "Offline group data should be locked"
+    assert @offline_group_data.locked_by_offroad?, "Offline group data should be locked"
     assert_raise ActiveRecord::ReadOnlyRecord do
       @offline_group_data.save!
     end
     
-    assert_equal false, @online_group_data.locked_by_offline_mirror?, "Online group data should not be locked"
+    assert_equal false, @online_group_data.locked_by_offroad?, "Online group data should not be locked"
     assert_nothing_raised do
       @online_group_data.save!
     end
@@ -85,14 +85,14 @@ class GroupDataTest < Test::Unit::TestCase
   end
   
   offline_test "offline groups unlocked and writable" do
-    assert_equal false, @offline_group.locked_by_offline_mirror?
+    assert_equal false, @offline_group.locked_by_offroad?
     assert_nothing_raised do
       @offline_group.save!
     end
   end
   
   offline_test "offline group owned data unlocked and writable" do
-    assert_equal false, @offline_group_data.locked_by_offline_mirror?
+    assert_equal false, @offline_group_data.locked_by_offroad?
     assert_nothing_raised do
       @offline_group_data.save!
     end
@@ -105,7 +105,7 @@ class GroupDataTest < Test::Unit::TestCase
   end
   
   offline_test "cannot create another group" do
-    assert_raise OfflineMirror::DataError do
+    assert_raise Offroad::DataError do
       Group.create(:name => "Another Offline Group?")
     end
   end
@@ -117,31 +117,31 @@ class GroupDataTest < Test::Unit::TestCase
   end
   
   offline_test "cannot change id of offline group data" do
-    assert_raise OfflineMirror::DataError do
+    assert_raise Offroad::DataError do
       @offline_group.id += 1
       @offline_group.save!
     end
     
-    assert_raise OfflineMirror::DataError do
+    assert_raise Offroad::DataError do
       @offline_group_data.id += 1
       @offline_group_data.save!
     end
   end
   
   online_test "cannot change id of online group data" do
-    assert_raise OfflineMirror::DataError do
+    assert_raise Offroad::DataError do
       @online_group.id += 1
       @online_group.save!
     end
     
-    assert_raise OfflineMirror::DataError do
+    assert_raise Offroad::DataError do
       @online_group_data.id += 1
       @online_group_data.save!
     end
   end
   
   offline_test "cannot set offline group to online" do
-    assert_raise OfflineMirror::DataError do
+    assert_raise Offroad::DataError do
       @offline_group.group_offline = false
     end
   end
@@ -150,11 +150,11 @@ class GroupDataTest < Test::Unit::TestCase
     # This is an online test because the concept of "another group" doesn't fly in offline mode
     @another_group = Group.create(:name => "Another Group")
     @another_group_data = GroupOwnedRecord.create(:description => "Another Piece of Data", :group => @another_group)
-    assert_raise OfflineMirror::DataError, "Expect exception when putting bad foreign key in group base data" do
+    assert_raise Offroad::DataError, "Expect exception when putting bad foreign key in group base data" do
       @online_group.favorite = @another_group_data
       @online_group.save!
     end
-    assert_raise OfflineMirror::DataError, "Expect exception when putting bad foreign key in group owned data" do
+    assert_raise Offroad::DataError, "Expect exception when putting bad foreign key in group owned data" do
       @online_group_data.parent = @another_group_data
       @online_group_data.save!
     end
@@ -183,18 +183,18 @@ class GroupDataTest < Test::Unit::TestCase
   
   double_test "group data cannot hold a foreign key to unmirrored data" do
     unmirrored_data = UnmirroredRecord.create(:content => "Some Unmirrored Data")
-    assert_raise OfflineMirror::DataError, "Expect exception when putting bad foreign key in group base data" do
+    assert_raise Offroad::DataError, "Expect exception when putting bad foreign key in group base data" do
       @editable_group.unmirrored_record = unmirrored_data
       @editable_group.save!
     end
-    assert_raise OfflineMirror::DataError, "Expect exception when putting bad foreign key in group owned data" do
+    assert_raise Offroad::DataError, "Expect exception when putting bad foreign key in group owned data" do
       @editable_group_data.unmirrored_record = unmirrored_data
       @editable_group_data.save!
     end
   end
   
   online_test "last_known_status is not available for online groups" do
-    assert_raise OfflineMirror::DataError do
+    assert_raise Offroad::DataError do
       status = @online_group.last_known_status
     end
   end
@@ -204,20 +204,20 @@ class GroupDataTest < Test::Unit::TestCase
     assert status
   end
   
-  double_test "group data models return true to acts_as_mirrored_offline?" do
-    assert Group.acts_as_mirrored_offline?, "Group reports mirrored offline"
-    assert GroupOwnedRecord.acts_as_mirrored_offline?, "GroupOwnedRecord reports mirrored offline"
+  double_test "group data models return true to acts_as_offroadable?" do
+    assert Group.acts_as_offroadable?, "Group reports mirrored offline"
+    assert GroupOwnedRecord.acts_as_offroadable?, "GroupOwnedRecord reports mirrored offline"
   end
   
   online_test "cannot save :group_owned data with an invalid group id" do
-    assert_raise OfflineMirror::DataError do
+    assert_raise Offroad::DataError do
       @offline_group_data.group_id = Group.maximum(:id)+1
       @offline_group_data.save(false) # Have to disable validations or it'll catch this error first
     end
   end
   
   online_test "cannot move :group_owned data from one group to another" do
-    assert_raise OfflineMirror::DataError do
+    assert_raise Offroad::DataError do
       @offline_group_data.group = @online_group
       @offline_group_data.save!
     end

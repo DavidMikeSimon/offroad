@@ -1,8 +1,8 @@
-module OfflineMirror
+module Offroad
   private
   
   class ModelState < ActiveRecord::Base
-    set_table_name "offline_mirror_model_states"
+    set_table_name "offroad_model_states"
     
     validates_presence_of :app_model_name
     
@@ -30,7 +30,7 @@ module OfflineMirror
     private
     
     def self.valid_model?(model)
-      model.respond_to?(:acts_as_mirrored_offline?) && model.acts_as_mirrored_offline?
+      model.respond_to?(:acts_as_offroadable?) && model.acts_as_offroadable?
     end
   end
 end

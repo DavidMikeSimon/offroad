@@ -1,12 +1,12 @@
 require 'forwardable'
 
-module OfflineMirror
+module Offroad
   private
   
-  # State of the OfflineMirror plugin as a whole; there should only be one record in this table
+  # State of the Offroad plugin as a whole; there should only be one record in this table
   # Attributes of that record can be read via the class methods of this class
   class SystemState < ActiveRecord::Base
-    set_table_name "offline_mirror_system_state"
+    set_table_name "offroad_system_state"
     
     # Create validators and class-level attribute getters for the columns that contain system settings
     extend SingleForwardable

@@ -1,4 +1,4 @@
-module OfflineMirror
+module Offroad
   private
   
   # Non-database model representing general information attached to any mirror file
@@ -30,17 +30,17 @@ module OfflineMirror
     end
     
     def self.new_from_group(group, initial_file = false)
-      mode = OfflineMirror::app_online? ? "online" : "offline"
+      mode = Offroad::app_online? ? "online" : "offline"
       migration_query = "SELECT version FROM schema_migrations ORDER BY version"
-      migrations = OfflineMirror::group_base_model.connection.select_all(migration_query).map{ |r| r["version"] }
+      migrations = Offroad::group_base_model.connection.select_all(migration_query).map{ |r| r["version"] }
       return MirrorInfo.new(
         :created_at => Time.now.to_s,
-        :online_site => OfflineMirror::online_url,
-        :app => OfflineMirror::app_name,
+        :online_site => Offroad::online_url,
+        :app => Offroad::app_name,
         :app_mode => mode.titleize,
-        :app_version => OfflineMirror::app_version,
+        :app_version => Offroad::app_version,
         :operating_system => RUBY_PLATFORM,
-        :generator => "Offline Mirror " + OfflineMirror::VERSION_MAJOR.to_s + "." + OfflineMirror::VERSION_MINOR.to_s,
+        :generator => "Offroad " + Offroad::VERSION_MAJOR.to_s + "." + Offroad::VERSION_MINOR.to_s,
         :schema_migrations => migrations.join(","),
         :initial_file => initial_file
       )

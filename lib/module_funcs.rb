@@ -1,4 +1,4 @@
-module OfflineMirror
+module Offroad
   VERSION_MAJOR = 0
   VERSION_MINOR = 1
   
@@ -38,7 +38,7 @@ module OfflineMirror
   
   #:nodoc#
   def self.init
-    @@config = YAML.load_file(File.join(RAILS_ROOT, "config", "offline_mirror.yml"))
+    @@config = YAML.load_file(File.join(RAILS_ROOT, "config", "offroad.yml"))
   end
   
   # Returns the record of the group base model that this app is in charge of
@@ -51,11 +51,11 @@ module OfflineMirror
   private
   
   def self.online_url
-    @@config[:online_url] or raise PluginError.new("No online url specified in offline mirror config")
+    @@config[:online_url] or raise PluginError.new("No online url specified in offroad config")
   end
   
   def self.app_name
-    @@config[:app_name] or raise PluginError.new("No app name specified in offline mirror config")
+    @@config[:app_name] or raise PluginError.new("No app name specified in offroad config")
   end
   
   def self.note_global_data_model(cls)

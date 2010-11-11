@@ -3,7 +3,7 @@ require 'digest/md5'
 
 require 'exceptions'
 
-module OfflineMirror
+module Offroad
   class CargoStreamerError < DataError
   end
   
