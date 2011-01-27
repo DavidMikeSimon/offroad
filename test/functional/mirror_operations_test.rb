@@ -71,12 +71,15 @@ class MirrorOperationsTest < ActionController::TestCase
       rec = GlobalRecord.find_by_title("Important Announcement")
       rec.title = "Very Important Announcement"
       rec.save
-      
+
+      assert_equal 3, Group.find_by_name("Test Group").group_owned_records.size
+
       post :upload_up_mirror, "id" => Group.find_by_name("Test Group").id, "mirror_data" => mirror_data
       
       assert_nil Group.find_by_name("Test Group")
       assert_not_nil Group.find_by_name("Renamed Group")
       
+      assert_equal 2, Group.find_by_name("Renamed Group").group_owned_records.size
       assert_nil GroupOwnedRecord.find_by_description("First Item")
       assert_not_nil GroupOwnedRecord.find_by_description("Absolutely The First Item")
       assert_nil GroupOwnedRecord.find_by_description("Second Item")
