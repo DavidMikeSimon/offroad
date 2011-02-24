@@ -98,12 +98,12 @@ module Offroad
       tables = ["sqlite_sequence"] + ActiveRecord::Base.connection.tables
       
       tables.each do |table|
-        next if table.start_with?("VIRTUAL_")
+        next if table.start_with?("VIRTUAL_") # Used in testing
         next if table == "schema_migrations"
         ActiveRecord::Base.connection.execute "DELETE FROM #{table}"
       end
     end
-    
+
     def write_data(tgt)
       cs = nil
       temp_sio = nil
@@ -116,7 +116,7 @@ module Offroad
         else
           cs = CargoStreamer.new(tgt, "w")
       end
-      
+
       # TODO: Figure out if this transaction ensures we get a consistent read state
       Offroad::group_base_model.connection.transaction do
         mirror_info = MirrorInfo.new_from_group(@group, @initial_mode)
