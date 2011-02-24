@@ -19,6 +19,12 @@ class CreateTables < ActiveRecord::Migration
       t.integer :protected_integer, :default => 1
       t.timestamps
     end
+
+    create_table :sub_records do |t|
+      t.string :description
+      t.integer :group_owned_record_id
+      t.timestamps
+    end
     
     create_table :global_records do |t|
       t.string :title

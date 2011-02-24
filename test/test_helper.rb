@@ -240,9 +240,16 @@ class OnlineTestDatabase < VirtualTestDatabase
     force_save_and_reload(offline_data, online_data)
     setup_ivar(:@offline_group_data, offline_data)
     setup_ivar(:@online_group_data, online_data)
+
+    indirect_offline_data = SubRecord.new( :description => "Boris", :group_owned_record => offline_data)
+    indirect_online_data = SubRecord.new( :description => "Natasha", :group_owned_record => online_data)
+    force_save_and_reload(indirect_offline_data, indirect_online_data)
+    setup_ivar(:@offline_indirect_data, indirect_offline_data)
+    setup_ivar(:@online_indirect_data, indirect_online_data)
     
     setup_ivar(:@editable_group, online_group)
     setup_ivar(:@editable_group_data, online_data)
+    setup_ivar(:@editable_indirect_data, indirect_online_data)
     
     @@initial_mirror_data ||= Offroad::MirrorData.new(offline_group, :initial_mode => true).write_downwards_data
   end
@@ -264,12 +271,15 @@ class OfflineTestDatabase < VirtualTestDatabase
     
     offline_group = Group.first
     offline_data = GroupOwnedRecord.first
+    offline_indirect_data = SubRecord.first
     
     setup_ivar(:@offline_group, offline_group)
     setup_ivar(:@offline_group_data, offline_data)
+    setup_ivar(:@offline_indirect_data, offline_indirect_data)
     
     setup_ivar(:@editable_group, offline_group)
     setup_ivar(:@editable_group_data, offline_data)
+    setup_ivar(:@editable_indirect_data, offline_indirect_data)
   end
 end
 
