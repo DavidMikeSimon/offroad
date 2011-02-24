@@ -13,7 +13,6 @@ Low priority:
 - Also assign a random number to the online app, and only accept mirror files which match this number as well
   - Prevents multiple installations of an app from reading each others' mirror files
 - Use read transactions for mirror write operations (is it already doing this?)
-- When applying upmirror files,  make sure object being changed belongs to logged-in user's group
 - The launcher should keep a log file
 - Include recent log lines (for both Rails and the launcher) in generated up-mirror files, for debugging purposes
 - Use rails logger to note activity
