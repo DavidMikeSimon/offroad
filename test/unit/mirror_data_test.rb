@@ -420,6 +420,17 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
 
+  cross_test "cannot upload a non-initial down mirror file to a blank offline instance" do
+    mirror_data = nil
+    in_online_app { mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data }
+
+    in_offline_app(false, true) do
+      assert_raise Offroad::DataError do
+        Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      end
+    end
+  end
+
   cross_test "cannot pass a down mirror file to load_upwards_data" do
     mirror_data = nil
 
@@ -1067,6 +1078,34 @@ class MirrorDataTest < Test::Unit::TestCase
       # Except on group records
       assert_nil GroupOwnedRecord.find_by_description("Brand New Thing")
       assert_not_nil GroupOwnedRecord.find_by_description("Sam")
+    end
+  end
+
+  cross_test "can transfer self-referencing records" do
+    mirror_data = nil
+    in_offline_app do
+      # Create a new self-referencing record
+      new_self_ref = GroupOwnedRecord.create(:description => "Phillip J. Fry", :group => @offline_group)
+      new_self_ref.parent = new_self_ref
+      new_self_ref.save!
+      assert_equal new_self_ref.id, new_self_ref.parent.id
+
+      # Alter an existing record to be self-referencing
+      @offline_group_data.parent = @offline_group_data
+      @offline_group_data.save!
+
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
+    end
+
+    in_online_app do
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+
+      fry = GroupOwnedRecord.find_by_description("Phillip J. Fry")
+      assert fry
+      assert_equal fry.id, fry.parent.id
+
+      @offline_group_data.reload
+      assert_equal @offline_group_data.id, @offline_group_data.parent.id
     end
   end
 end

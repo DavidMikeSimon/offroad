@@ -367,14 +367,10 @@ module Offroad
         cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
           batch.each do |cargo_record|
             rec = nil
-            begin
-              if @initial_mode
-                rec = model.find(cargo_record.id)
-              else
-                rec = rrs_source.find_by_remote_record_id(cargo_record.id).app_record
-              end
-            rescue ActiveRecord::RecordNotFound
-              raise Offroad::DataError.new("Unable to locate imported record")
+            if @initial_mode
+              rec = model.find(cargo_record.id)
+            else
+              rec = rrs_source.find_by_remote_record_id(cargo_record.id).app_record
             end
             
             raise Offroad::DataError.new("Invalid record found in mirror data") unless rec.valid?
