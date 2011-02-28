@@ -1,11 +1,10 @@
 High priority:
-- Make it easy to have an app with only one possible offline group, so if offline group exists online records are locked
 - Allow offline app to request group be made online in its up mirror file
   - This is the best way to ensure we don't have un-sendable records left over in a newly-obsolete offline app
-- Allow offline app to relinquish ownership by setting a belongs_to field to 0 or NULL
 - Creating/updating the installer (ideally, git pull on target platform, one rake task, then git push)
 
 Low priority:
+- Allow offline app to relinquish ownership by setting a belongs_to field to 0 or NULL
 - Figure out why the test app won't generate initial down mirror files with cache_classes = false
 - Get the plugin installer to work well
 - Assign a random number to group state when it is created, only accept mirror files with matching random number
