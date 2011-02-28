@@ -11,8 +11,13 @@ module Offroad
       
       case mode
       when :group_owned then
-        raise ModelError.new("For :group_owned models, need to specify :group_key, an attribute name for this model's owning group") unless opts[:group_key]
-        set_internal_cattr :offroad_group_key, opts.delete(:group_key).to_sym
+        raise ModelError.new("For :group_owned models, need to specify :parent") unless opts[:parent]
+        assoc = reflect_on_association(opts.delete(:parent))
+        raise ModelError.new("No such parent associaton") unless assoc
+        raise ModelError.new("Parent association must be a belongs_to association") unless assoc.belongs_to?
+        raise ModelError.new("Parent association must be to a group data model") unless assoc.klass.offroad_group_data?
+
+        set_internal_cattr :offroad_parent_assoc, assoc
         Offroad::note_group_owned_model(self)
       when :group_base then
         Offroad::note_group_base_model(self)
@@ -27,7 +32,7 @@ module Offroad
       when :group_base then
         named_scope :owned_by_offroad_group, lambda { |group| { :conditions => { :id => group.id } } }
       when :group_owned then
-        named_scope :owned_by_offroad_group, lambda { |group| { :conditions => { offroad_group_key => group.id } } }
+        named_scope :owned_by_offroad_group, lambda { |group| args_for_ownership_scope(group) }
       end
       
       if offroad_group_data?
@@ -41,21 +46,6 @@ module Offroad
       after_destroy :after_mirrored_data_destroy
       before_save :before_mirrored_data_save
       after_save :after_mirrored_data_save
-      
-      set_internal_cattr :offroad_foreign_key_models, {}
-      class << self
-        alias_method_chain :belongs_to, :offroad_reflection
-      end
-    end
-    
-    def belongs_to_with_offroad_reflection(association_id, options = {})
-      belongs_to_without_offroad_reflection(association_id, options)
-      
-      if acts_as_offroadable?
-        key_name = options.has_key?(:foreign_key) ? options[:foreign_key] : "#{association_id}_id"
-        model_name = options.has_key?(:class_name) ? options[:class_name] : association_id.to_s.classify
-        offroad_foreign_key_models[key_name] = model_name.constantize
-      end
     end
     
     def offroad_model_state
@@ -90,6 +80,33 @@ module Offroad
       class_inheritable_reader name
     end
     
+    def args_for_ownership_scope(group)
+      included_assocs = []
+      conditions = []
+      assoc_owner = self
+      assoc = offroad_parent_assoc
+      while true
+        if assoc.klass.offroad_group_base?
+          conditions << "`#{assoc_owner.table_name}`.`#{assoc.primary_key_name}` = #{group.id}"
+          break
+        else
+          conditions << "`#{assoc_owner.table_name}`.`#{assoc.primary_key_name}` = `#{assoc.klass.table_name}`.`#{assoc.klass.primary_key}`"
+          included_assocs << assoc
+          assoc_owner = assoc.klass
+          assoc = assoc.klass.offroad_parent_assoc
+        end
+      end
+
+      # FIXME: It doesn't seem like the conditions are being generated quite right
+
+      includes = {}
+      included_assocs.reverse.each do |assoc|
+        includes = {assoc.name => includes}
+      end
+
+      return {:include => includes, :conditions => conditions.join(" AND ")}
+    end
+
     module CommonInstanceMethods
       # Methods below this point are only to be used internally by Offroad
       # However, making all of them private would make using them from elsewhere in the plugin troublesome
@@ -113,13 +130,13 @@ module Offroad
       
       #:nodoc:#
       def validate_changed_id_columns
-        changed.each do |colname|
-          raise DataError.new("Cannot change id of offroad-tracked records") if colname == "id"
+        changes.each do |colname, arr|
+          orig_val = arr[0]
+          new_val = arr[1]
           
-          if !new_record? and offroad_mode == :group_owned and colname == offroad_group_key.to_s
-            raise DataError.new("Ownership of group-owned data cannot be transferred between groups")
-          end
+          raise DataError.new("Cannot change id of offroad-tracked records") if colname == self.class.primary_key
           
+          # FIXME : Use association reflection instead
           next unless colname.end_with? "_id"
           accessor_name = colname[0, colname.size-3]
           next unless respond_to? accessor_name
@@ -127,6 +144,13 @@ module Offroad
           
           raise DataError.new("Mirrored data cannot hold a foreign key to unmirrored data") unless obj.class.acts_as_offroadable?
           
+          if !new_record? and offroad_mode == :group_owned and colname == offroad_parent_assoc.primary_key_name
+            # obj is our parent
+            if obj.owning_group != obj.class.find(orig_val).owning_group
+              raise DataError.new("Group-owned data cannot be transferred between groups")
+            end
+          end
+
           if self.class.offroad_group_data?
             if obj.class.offroad_group_data? && obj.owning_group.id != owning_group.id
               raise DataError.new("Invalid #{colname}: Group data cannot hold a foreign key to data owned by another group")
@@ -223,21 +247,16 @@ module Offroad
       end
       
       def owning_group
-        return case offroad_mode
-          # Using find_by_id so this returns nil if owning group not there, instead of rasing RecordNotFound
-          when :group_owned then Offroad::group_base_model.find_by_id(owning_group_id)
-          when :group_base then self
-        end
-      end
-      
-      def owning_group_id
-        if offroad_mode == :group_owned
-           raise ModelError.new("No such group key column #{offroad_group_key}") unless has_attribute?(offroad_group_key)
-        end
-        
-        return case offroad_mode
-          when :group_owned then self.send(offroad_group_key)
-          when :group_base then new_record? ? nil : self.id
+        # Recurse upwards until we get to the group base
+        if self.class.offroad_group_base?
+          return self
+        else
+          parent = send(offroad_parent_assoc.name)
+          if parent
+            return parent.owning_group
+          else
+            return nil
+          end
         end
       end
       
@@ -281,7 +300,7 @@ module Offroad
           when :group_base
             raise DataError.new("Cannot create groups in offline mode") if new_record?
           when :group_owned
-            raise DataError.new("Owning group must be the offline group") if owning_group_id != Offroad::offline_group.id
+            raise DataError.new("Owning group must be the offline group") if owning_group != Offroad::offline_group
           end
         end
         

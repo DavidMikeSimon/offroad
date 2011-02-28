@@ -291,7 +291,9 @@ module Offroad
           
           # Update foreign key associations so they point to the same actual records as they did on the remote system
           delayed_self_reference_cols = []
-          model.offroad_foreign_key_models.each_pair do |column_name, foreign_model|
+          model.reflect_on_all_associations(:belongs_to).each do |association|
+            column_name = association.primary_key_name
+            foreign_model = association.klass
             remote_foreign_id = local_record.send(column_name.to_sym)
             if remote_foreign_id && remote_foreign_id != 0
               if foreign_model == model && remote_foreign_id == cargo_record.id

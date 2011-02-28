@@ -32,17 +32,14 @@ class GroupDataTest < Test::Unit::TestCase
   
   double_test "group base reports being owned by itself" do
     assert_equal @offline_group.id, @offline_group.owning_group.id, "Can get offline group id thru owning_group dot id"
-    assert_equal @offline_group.id, @offline_group.owning_group_id, "Can get offline group id thru owning_group_id"
   end
   
   double_test "group-owned data reports proper ownership" do
     assert_equal @offline_group.id, @offline_group_data.owning_group.id, "Can get owner id thru owning_group dot id"
-    assert_equal @offline_group.id, @offline_group_data.owning_group_id, "Can get owner id thru owning_group_id"
   end
 
   double_test "indirectly group-owned data reports proper ownership" do
     assert_equal @offline_group.id, @offline_indirect_data.owning_group.id, "Can get owner id through owning_group dot id"
-    assert_equal @offline_group.id, @offline_indirect_data.owning_group_id, "Can get owner id through owning_group_id"
   end
   
   online_test "only offline groups locked and unsaveable" do

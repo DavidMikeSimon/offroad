@@ -15,11 +15,13 @@ class MirrorOperationsTest < ActionController::TestCase
       
       GroupOwnedRecord.create(:description => "First Item", :group => test_group)
       GroupOwnedRecord.create(:description => "Second Item", :group => test_group)
-      GroupOwnedRecord.create(:description => "Third Item", :group => test_group)
+      third = GroupOwnedRecord.create(:description => "Third Item", :group => test_group)
+      SubRecord.create(:description => "Subitem A", :group_owned_record => third)
+      SubRecord.create(:description => "Subitem B", :group_owned_record => third)
       
       test_group.favorite = GroupOwnedRecord.find_by_description("Third Item")
       test_group.save
-      
+
       test_group.group_offline = true
       get :download_initial_down_mirror, "id" => test_group.id
       mirror_data = @response.binary_content
@@ -40,8 +42,11 @@ class MirrorOperationsTest < ActionController::TestCase
       assert_not_nil GroupOwnedRecord.find_by_description("First Item")
       assert_not_nil GroupOwnedRecord.find_by_description("Second Item")
       assert_not_nil GroupOwnedRecord.find_by_description("Third Item")
+      assert_not_nil SubRecord.find_by_description("Subitem A")
+      assert_not_nil SubRecord.find_by_description("Subitem B")
       
       assert_equal GroupOwnedRecord.find_by_description("Third Item"), test_group.favorite
+      assert_equal GroupOwnedRecord.find_by_description("Third Item"), SubRecord.find_by_description("Subitem A").group_owned_record
       
       assert_equal 2, GlobalRecord.count
       grec_a = GlobalRecord.find_by_title("Important Announcement")

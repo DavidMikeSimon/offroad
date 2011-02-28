@@ -1,6 +1,7 @@
 class GroupOwnedRecord < ActiveRecord::Base
-  acts_as_offroadable :group_owned, :group_key => :group_id
   belongs_to :group
+  acts_as_offroadable :group_owned, :parent => :group
+
   belongs_to :parent, :class_name => "GroupOwnedRecord"
   belongs_to :unmirrored_record
   belongs_to :global_record

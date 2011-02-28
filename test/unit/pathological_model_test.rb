@@ -22,22 +22,22 @@ class PathologicalModelTest < Test::Unit::TestCase
     end
   end
   
-  agnostic_test "cannot specify :group_owned mode without :group_key" do
+  agnostic_test "cannot specify :group_owned mode without :parent" do
     assert_raise Offroad::ModelError do
       class NoGroupKeyBrokenRecord < ActiveRecord::Base
         set_table_name "broken_records"
-        acts_as_offroadable :group_owned # No :group_key
+        acts_as_offroadable :group_owned # No :parent
       end
     end
   end
   
-  agnostic_test "cannot specify :group_owned with a :group_key to a non-existing column" do
+  agnostic_test "cannot specify :group_owned with a :parent to a non-existing association" do
     self.class.send(:remove_const, :InvalidColumnBrokenRecord) if self.class.const_defined?(:InvalidColumnBrokenRecord)
-    class InvalidColumnBrokenRecord < ActiveRecord::Base
-      set_table_name "broken_records"
-      acts_as_offroadable :group_owned, :group_key => :no_such_column
-    end
     assert_raise Offroad::ModelError do
+      class InvalidColumnBrokenRecord < ActiveRecord::Base
+        set_table_name "broken_records"
+        acts_as_offroadable :group_owned, :parent => :no_such_assoc
+      end
       InvalidColumnBrokenRecord.create
     end
   end
