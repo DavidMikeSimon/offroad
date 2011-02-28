@@ -224,7 +224,23 @@ class GroupDataTest < Test::Unit::TestCase
       @offline_group_data.save!
     end
   end
-  
+
+  online_test "cannot move indirectly owned data from one group to another" do
+    assert_raise Offroad::DataError do
+      @offline_indirect_data.group_owned_record = @online_group_data
+      @offline_indirect_data.save!
+    end
+  end
+
+  online_test "can move indirectly owned data between parents in the same group" do
+    another = GroupOwnedRecord.create(:description => "Another", :group => @online_group)
+    assert another
+    assert_nothing_raised do
+      @online_indirect_data.group_owned_record = another
+      @online_indirect_data.save!
+    end
+  end
+
   online_test "cannot create :group_owned data in an offline group" do
     assert_raise ActiveRecord::ReadOnlyRecord do
       GroupOwnedRecord.create(:description => "Test", :group => @offline_group)
