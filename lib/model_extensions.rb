@@ -31,6 +31,16 @@ module Offroad
       case mode
       when :group_base then
         named_scope :owned_by_offroad_group, lambda { |group| { :conditions => { :id => group.id } } }
+        named_scope :offline_groups, {
+          :joins =>
+          "INNER JOIN `#{Offroad::GroupState.table_name}` ON `#{Offroad::GroupState.table_name}`.app_group_id = `#{table_name}`.`#{primary_key}`"
+        }
+        named_scope :online_groups, {
+          :joins =>
+          "LEFT JOIN `#{Offroad::GroupState.table_name}` ON `#{Offroad::GroupState.table_name}`.app_group_id = `#{table_name}`.`#{primary_key}`",
+          :conditions =>
+          "`#{Offroad::GroupState.table_name}`.app_group_id IS NULL"
+        }
       when :group_owned then
         named_scope :owned_by_offroad_group, lambda { |group| args_for_ownership_scope(group) }
       end

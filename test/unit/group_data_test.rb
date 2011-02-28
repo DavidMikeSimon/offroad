@@ -65,6 +65,20 @@ class GroupDataTest < Test::Unit::TestCase
       @online_group_data.save!
     end
   end
+
+  online_test "can find online and offline groups through scope" do
+    another = Group.create(:name => "Another Online Group")
+
+    offline_groups = Group.offline_groups.all
+    online_groups = Group.online_groups.all
+
+    assert_equal 2, offline_groups.size
+    assert_equal 1, offline_groups.select{|r| r.id == @offline_group.id}.size
+
+    assert_equal 3, online_groups.size
+    assert_equal 1, online_groups.select{|r| r.id == another.id}.size
+    assert_equal 1, online_groups.select{|r| r.id == @online_group.id}.size
+  end
   
   online_test "offline and online groups can both be destroyed" do
     assert_nothing_raised do
