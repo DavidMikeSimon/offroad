@@ -74,10 +74,16 @@ class GroupDataTest < Test::Unit::TestCase
 
     assert_equal 2, offline_groups.size
     assert_equal 1, offline_groups.select{|r| r.id == @offline_group.id}.size
+    offline_groups.each do |g|
+      assert g.group_offline?
+    end
 
     assert_equal 3, online_groups.size
     assert_equal 1, online_groups.select{|r| r.id == another.id}.size
     assert_equal 1, online_groups.select{|r| r.id == @online_group.id}.size
+    online_groups.each do |g|
+      assert g.group_online?
+    end
   end
   
   online_test "offline and online groups can both be destroyed" do
