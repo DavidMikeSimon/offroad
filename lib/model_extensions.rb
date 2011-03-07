@@ -156,6 +156,7 @@ module Offroad
           
           if !new_record? and offroad_mode == :group_owned and colname == offroad_parent_assoc.primary_key_name
             # obj is our parent
+            # FIXME: What if we can't find orig_val?
             if obj.owning_group != obj.class.find(orig_val).owning_group
               raise DataError.new("Group-owned data cannot be transferred between groups")
             end
