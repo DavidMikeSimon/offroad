@@ -1,5 +1,6 @@
 High priority:
 - Create a "naive_sync" mode; probably the easiest solution to the Train Track problem.
+  - Give it an option to lock records when any group is offline
 - Allow offline app to request group be made online in its up mirror file
   - This is the best way to ensure we don't have un-sendable records left over in a newly-obsolete offline app
 - Creating/updating the installer (ideally, git pull on target platform, one rake task, then git push)
