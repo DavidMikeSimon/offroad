@@ -302,6 +302,7 @@ module Offroad
 
       #:nodoc#
       def before_mirrored_data_save
+        validate_changed_id_columns
       end
 
       #:nodoc#

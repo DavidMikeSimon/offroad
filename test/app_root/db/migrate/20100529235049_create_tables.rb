@@ -22,6 +22,7 @@ class CreateTables < ActiveRecord::Migration
 
     create_table :naive_synced_records do |t|
       t.string :description
+      t.integer :unmirrored_record_id
       t.timestamps
     end
 
