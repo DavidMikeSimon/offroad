@@ -43,7 +43,7 @@ module Offroad
       raise PluginError.new("No such thing as initial upwards data") if @initial_mode
       
       read_data_from("offline", src) do |cs, mirror_info, cargo_group_state|
-        unless cargo_group_state.confirmed_group_data_version > @group.group_state.confirmed_group_data_version
+        unless cargo_group_state.confirmed_offline_data_version > @group.group_state.confirmed_offline_data_version
           raise OldDataError.new("File contains old up-mirror data")
         end
         
@@ -72,7 +72,7 @@ module Offroad
           raise DataError.new("Initial down mirror file required")
         else
           # Regular, non-initial down mirror file
-          unless cargo_group_state.confirmed_global_data_version > @group.group_state.confirmed_global_data_version
+          unless cargo_group_state.confirmed_online_data_version > @group.group_state.confirmed_online_data_version
             raise OldDataError.new("File contains old down-mirror data")
           end
           import_global_cargo(cs)
@@ -130,10 +130,10 @@ module Offroad
         group_state = @group.group_state
         if Offroad::app_online?
           # Let the offline app know what global data version it's being updated to
-          group_state.confirmed_global_data_version = SystemState::current_mirror_version
+          group_state.confirmed_online_data_version = SystemState::current_mirror_version
         else
           # Let the online app know what group data version the online mirror of this group is being updated to
-          group_state.confirmed_group_data_version = SystemState::current_mirror_version
+          group_state.confirmed_offline_data_version = SystemState::current_mirror_version
         end
         cs.write_cargo_section("group_state", [group_state], :human_readable => true)
         
@@ -232,9 +232,9 @@ module Offroad
       # FIXME FIXME FIXME How to deal with versioning stuff in naive_synced records
       remote_version = nil
       if model.offroad_group_data?
-        remote_version = gs.confirmed_group_data_version
+        remote_version = gs.confirmed_offline_data_version
       else
-        remote_version = gs.confirmed_global_data_version
+        remote_version = gs.confirmed_online_data_version
       end
       srs_source = SendableRecordState.for_model(model).with_version_greater_than(remote_version)
       srs_source.for_non_deleted_records.find_in_batches(:batch_size => 100) do |srs_batch|

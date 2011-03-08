@@ -783,7 +783,7 @@ class MirrorDataTest < Test::Unit::TestCase
     assert_equal prior_version+1, Offroad::SystemState::current_mirror_version
   end
 
-  cross_test "receiving an up mirror file increments confirmed_group_data_version to the indicated value if larger" do
+  cross_test "receiving an up mirror file increments confirmed_offline_data_version to the indicated value if larger" do
     mirror_data = nil
     in_offline_app do
       @offline_group_data.description = "New Name"
@@ -795,9 +795,9 @@ class MirrorDataTest < Test::Unit::TestCase
     end
 
     in_online_app do
-      assert_equal 1, @offline_group.group_state.confirmed_group_data_version
+      assert_equal 1, @offline_group.group_state.confirmed_offline_data_version
       Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
-      assert_equal 42, @offline_group.group_state.confirmed_group_data_version
+      assert_equal 42, @offline_group.group_state.confirmed_offline_data_version
     end
   end
 
@@ -815,7 +815,7 @@ class MirrorDataTest < Test::Unit::TestCase
 
       in_online_app do
         group_state = @offline_group.group_state
-        group_state.confirmed_group_data_version = 42
+        group_state.confirmed_offline_data_version = 42
         group_state.save!
 
         assert_raise Offroad::OldDataError do
@@ -825,7 +825,7 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
 
-  cross_test "receiving a down mirror file increments confirmed_global_data_version to the indicated value if larger" do
+  cross_test "receiving a down mirror file increments confirmed_online_data_version to the indicated value if larger" do
     mirror_data = nil
     in_online_app do
       GlobalRecord.create(:title => "Testing")
@@ -836,9 +836,9 @@ class MirrorDataTest < Test::Unit::TestCase
     end
 
     in_offline_app do
-      assert_equal 1, @offline_group.group_state.confirmed_global_data_version
+      assert_equal 1, @offline_group.group_state.confirmed_online_data_version
       Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
-      assert_equal 42, @offline_group.group_state.confirmed_global_data_version
+      assert_equal 42, @offline_group.group_state.confirmed_online_data_version
     end
   end
 
@@ -855,7 +855,7 @@ class MirrorDataTest < Test::Unit::TestCase
 
       in_offline_app do
         group_state = @offline_group.group_state
-        group_state.confirmed_global_data_version = 42
+        group_state.confirmed_online_data_version = 42
         group_state.save!
 
         assert_raise Offroad::OldDataError do
@@ -876,7 +876,7 @@ class MirrorDataTest < Test::Unit::TestCase
 
     in_offline_app(false, true) do
       Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
-      assert_equal online_version, @offline_group.group_state.confirmed_global_data_version
+      assert_equal online_version, @offline_group.group_state.confirmed_online_data_version
     end
   end
 

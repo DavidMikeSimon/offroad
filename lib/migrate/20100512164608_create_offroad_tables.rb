@@ -13,8 +13,8 @@ class CreateOffroadTables < ActiveRecord::Migration
       t.column :group_being_destroyed, :boolean, :default => false, :null => false
       
       # On both the online and offline systems, these are the latest data versions remote side is known to have
-      t.column :confirmed_group_data_version, :integer, :null => false
-      t.column :confirmed_global_data_version, :integer, :null => false
+      t.column :confirmed_offline_data_version, :integer, :null => false
+      t.column :confirmed_online_data_version, :integer, :null => false
       
       t.column :last_installer_downloaded_at, :datetime
       t.column :last_installation_at, :datetime
@@ -28,7 +28,7 @@ class CreateOffroadTables < ActiveRecord::Migration
     end
     add_index :offroad_group_states, :app_group_id, :unique => true
     # This lets us quickly find min(global_mirror_version) for clearing old deleted global record SRSes
-    add_index :offroad_group_states, :confirmed_global_data_version
+    add_index :offroad_group_states, :confirmed_online_data_version
     
     create_table :offroad_model_states do |t|
       t.column :app_model_name, :string, :null => false

@@ -23,17 +23,17 @@ module Offroad
         self.operating_system ||= RUBY_PLATFORM
       end
       
-      self.confirmed_group_data_version ||= 1
+      self.confirmed_offline_data_version ||= 1
       
       # When first setting a group offline at online app, assume it will start out with at least current global data.
       # It should, since that's the earliest version that could be loaded into the initial down mirror file.
-      self.confirmed_global_data_version ||= Offroad::app_online? ? SystemState::current_mirror_version : 1
+      self.confirmed_online_data_version ||= Offroad::app_online? ? SystemState::current_mirror_version : 1
     end
     
     def update_from_remote_group_state!(remote_gs)
       versioning_columns = [
-        'confirmed_global_data_version',
-        'confirmed_group_data_version'
+        'confirmed_online_data_version',
+        'confirmed_offline_data_version'
       ]
       
       online_owned_columns = [

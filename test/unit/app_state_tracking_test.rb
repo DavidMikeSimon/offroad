@@ -18,8 +18,8 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert group_state
     assert_equal prior_group_state_count+1, Offroad::GroupState::count, "GroupState was created on demand"
     assert_equal rec.id, group_state.app_group_id, "GroupState has correct app group id"
-    assert_equal 1, group_state.confirmed_group_data_version, "Newly offline group has an group data version of 1"
-    assert_equal Offroad::SystemState::current_mirror_version, group_state.confirmed_global_data_version
+    assert_equal 1, group_state.confirmed_offline_data_version, "Newly offline group has an group data version of 1"
+    assert_equal Offroad::SystemState::current_mirror_version, group_state.confirmed_online_data_version
   end
   
   online_test "can change offline state of groups" do
