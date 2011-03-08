@@ -116,6 +116,10 @@ class AppStateTrackingTest < Test::Unit::TestCase
   offline_test "saving group owned record updates mirror version only on changed records" do
     assert_only_changing_attribute_causes_version_change(GroupOwnedRecord, :description, @offline_group_data)
   end
+
+  offline_test "saving indirectly owned recored updates mirror version only on changed records" do
+    assert_only_changing_attribute_causes_version_change(SubRecord, :description, @offline_indirect_data)
+  end
   
   def assert_deleting_record_correctly_updated_record_state(rec)
     rec_state = Offroad::SendableRecordState.for_record(rec).first
@@ -138,6 +142,10 @@ class AppStateTrackingTest < Test::Unit::TestCase
   
   offline_test "deleting group owned record updates mirror version" do
     assert_deleting_record_correctly_updated_record_state(@editable_group_data)
+  end
+  
+  offline_test "deleting indirectly group owned record updates mirror version" do
+    assert_deleting_record_correctly_updated_record_state(@editable_indirect_data)
   end
   
   online_test "deleting offline group base record deletes corresponding group state" do
@@ -187,9 +195,27 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert_equal false, rrs.valid?
   end
   
+  online_test "cannot create valid received record state of online indirect group data records" do
+    rrs_scope = Offroad::ReceivedRecordState.for_group(@online_group).for_model(SubRecord)
+    rrs = rrs_scope.new(:local_record_id => @online_indirect_data.id, :remote_record_id => 1)
+    assert_equal false, rrs.valid?
+  end
+
+  online_test "cannot create valid sendable record state of group records" do
+    srs_scope = Offroad::SendableRecordState.for_model(Group)
+    srs = srs_scope.new(:local_record_id => @offline_group.id)
+    assert_equal false, srs.valid?
+  end
+  
   online_test "cannot create valid sendable record state of group data records" do
     srs_scope = Offroad::SendableRecordState.for_model(GroupOwnedRecord)
     srs = srs_scope.new(:local_record_id => @offline_group_data.id)
+    assert_equal false, srs.valid?
+  end
+  
+  online_test "cannot create valid sendable record state of indirect group data records" do
+    srs_scope = Offroad::SendableRecordState.for_model(SubRecord)
+    srs = srs_scope.new(:local_record_id => @offline_indirect_data.id)
     assert_equal false, srs.valid?
   end
   
@@ -203,6 +229,12 @@ class AppStateTrackingTest < Test::Unit::TestCase
   offline_test "cannot create valid received record state of group data records" do
     rrs_scope = Offroad::ReceivedRecordState.for_group(@offline_group).for_model(GroupOwnedRecord)
     rrs = rrs_scope.new(:local_record_id => @offline_group_data.id)
+    assert_equal false, rrs.valid?
+  end
+  
+  offline_test "cannot create valid received record state of indirect group data records" do
+    rrs_scope = Offroad::ReceivedRecordState.for_group(@offline_group).for_model(SubRecord)
+    rrs = rrs_scope.new(:local_record_id => @offline_indirect_data.id)
     assert_equal false, rrs.valid?
   end
   
