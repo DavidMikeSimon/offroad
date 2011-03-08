@@ -21,4 +21,8 @@ class NaiveSyncDataTest < Test::Unit::TestCase
       naive_rec.destroy
     end
   end
+
+  double_test "naive sync data models return true to acts_as_offroadable?" do
+    assert NaiveSyncedRecord.acts_as_offroadable?
+  end
 end
