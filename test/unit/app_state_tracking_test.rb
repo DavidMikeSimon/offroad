@@ -129,6 +129,11 @@ class AppStateTrackingTest < Test::Unit::TestCase
   offline_test "saving indirectly owned recored updates mirror version only on changed records" do
     assert_only_changing_attribute_causes_version_change(SubRecord, :description, @offline_indirect_data)
   end
+
+  double_test "saving naive synced record updates mirror version only on changed records" do
+    rec = NaiveSyncedRecord.create(:description => "Foo Bar")
+    assert_only_changing_attribute_causes_version_change(NaiveSyncedRecord, :description, rec)
+  end
   
   def assert_deleting_record_correctly_updated_record_state(rec)
     rec_state = Offroad::SendableRecordState.for_record(rec).first
@@ -155,6 +160,11 @@ class AppStateTrackingTest < Test::Unit::TestCase
   
   offline_test "deleting indirectly group owned record updates mirror version" do
     assert_deleting_record_correctly_updated_record_state(@editable_indirect_data)
+  end
+
+  double_test "deleting naively synced record updates mirror version" do
+    rec = NaiveSyncedRecord.create(:description => "Foo Bar")
+    assert_deleting_record_correctly_updated_record_state(rec)
   end
   
   online_test "deleting offline group base record deletes corresponding group state" do

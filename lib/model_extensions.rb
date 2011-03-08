@@ -298,6 +298,8 @@ module Offroad
 
       #:nodoc#
       def after_mirrored_data_destroy
+        Offroad::SendableRecordState::note_record_destroyed(self)
+        return true
       end
 
       #:nodoc#
@@ -308,6 +310,7 @@ module Offroad
       #:nodoc#
       def after_mirrored_data_save
         Offroad::SendableRecordState::note_record_created_or_updated(self) if changed?
+        return true
       end
     end
 
