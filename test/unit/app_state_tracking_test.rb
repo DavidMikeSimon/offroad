@@ -58,6 +58,20 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert_equal nil, Offroad::SendableRecordState.for_record(rec).first
   end
   
+  offline_test "creating indirectly group owned record causes creation of valid sendable record state" do
+    rec = SubRecord.create(:description => "Foo Bar", :group_owned_record => @offline_group_data)
+    
+    rec_state = Offroad::SendableRecordState.for_record(rec).first
+    assert rec_state
+    assert_equal "SubRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
+    assert_newly_created_record_matches_srs(rec, rec_state)
+  end
+  
+  online_test "creating indirectly group owned record does not cause creation of sendable record state" do
+    rec = SubRecord.create(:description => "Foo Bar", :group_owned_record => @online_group_data)
+    assert_equal nil, Offroad::SendableRecordState.for_record(rec).first
+  end
+  
   online_test "creating global record causes creation of valid sendable record state data" do
     assert_nothing_raised "No pre-existing SendableRecordStates for GlobalRecord" do
       Offroad::SendableRecordState::find(:all, :include => [ :model_state]).each do |rec|
