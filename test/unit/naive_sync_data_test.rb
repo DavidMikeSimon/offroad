@@ -30,6 +30,34 @@ class NaiveSyncDataTest < Test::Unit::TestCase
     end
   end
 
+  double_test "naive sync data can hold a foreign key to other naive sync data" do
+    naive_rec = NaiveSyncedRecord.create(:description => "Foobar")
+    other_rec = NaiveSyncedRecord.create(:description => "Other")
+    assert_nothing_raised do
+      naive_rec.buddy = other_rec
+      naive_rec.save!
+    end
+  end
+
+  online_test "naive sync data can hold a foreign key to global data" do
+    # This is an online test because an offline app cannot create global records
+    naive_rec = NaiveSyncedRecord.create(:description => "Foobar")
+    global_rec = GlobalRecord.create(:title => "Something")
+    assert_nothing_raised do
+      naive_rec.global_record = global_rec
+      naive_rec.save!
+    end
+  end
+  
+  double_test "naive sync data can hold a foreign key to group data" do
+    naive_rec = NaiveSyncedRecord.create(:description => "Foobar")
+    assert_nothing_raised do
+      naive_rec.group = @editable_group
+      naive_rec.group_owned_record = @editable_group_data
+      naive_rec.save!
+    end
+  end
+
   double_test "naive sync data cannot hold a foreign key to unmirrored data" do
     naive_rec = NaiveSyncedRecord.create(:description => "Foobar")
     unmirrored_data = UnmirroredRecord.create(:content => "Some Unmirrored Data")

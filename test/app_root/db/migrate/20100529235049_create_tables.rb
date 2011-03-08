@@ -23,6 +23,10 @@ class CreateTables < ActiveRecord::Migration
     create_table :naive_synced_records do |t|
       t.string :description
       t.integer :unmirrored_record_id
+      t.integer :global_record_id
+      t.integer :group_id
+      t.integer :group_owned_record_id
+      t.integer :buddy_id
       t.timestamps
     end
 
