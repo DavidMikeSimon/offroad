@@ -72,7 +72,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert_equal nil, Offroad::SendableRecordState.for_record(rec).first
   end
   
-  online_test "creating global record causes creation of valid sendable record state data" do
+  online_test "creating global record causes creation of valid sendable record state" do
     assert_nothing_raised "No pre-existing SendableRecordStates for GlobalRecord" do
       Offroad::SendableRecordState::find(:all, :include => [ :model_state]).each do |rec|
         raise "Already a GlobalRecord state entry!" if rec.model_state.app_model_name == "GlobalRecord"
@@ -84,6 +84,15 @@ class AppStateTrackingTest < Test::Unit::TestCase
     rec_state = Offroad::SendableRecordState.for_record(rec).first
     assert rec_state, "SendableRecordState was created when record was created"
     assert_equal "GlobalRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
+    assert_newly_created_record_matches_srs(rec, rec_state)
+  end
+
+  double_test "creating naive synced record causes creation of valid sendable record state" do
+    rec = NaiveSyncedRecord.create(:description => "Foo Bar")
+    
+    rec_state = Offroad::SendableRecordState.for_record(rec).first
+    assert rec_state
+    assert_equal "NaiveSyncedRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
     assert_newly_created_record_matches_srs(rec, rec_state)
   end
   

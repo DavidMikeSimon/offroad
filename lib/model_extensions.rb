@@ -307,6 +307,7 @@ module Offroad
 
       #:nodoc#
       def after_mirrored_data_save
+        Offroad::SendableRecordState::note_record_created_or_updated(self) if changed?
       end
     end
 
