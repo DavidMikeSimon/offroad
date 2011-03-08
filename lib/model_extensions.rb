@@ -23,6 +23,8 @@ module Offroad
         Offroad::note_group_base_model(self)
       when :global then
         Offroad::note_global_data_model(self)
+      when :naive_sync then
+        Offroad::note_naive_sync_model(self)
       end
 
       # We should have deleted all the options from the hash by this point
@@ -292,8 +294,12 @@ module Offroad
     end
 
     module SyncDataInstanceMethods
+      # Methods below this point are only to be used internally by Offroad
+      # However, marking them private makes using them from elsewhere in the plugin troublesome
+
       #:nodoc#
       def before_mirrored_data_destroy
+        return true
       end
 
       #:nodoc#
@@ -305,6 +311,7 @@ module Offroad
       #:nodoc#
       def before_mirrored_data_save
         validate_changed_id_columns
+        return true
       end
 
       #:nodoc#

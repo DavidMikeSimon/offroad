@@ -267,7 +267,7 @@ class MirrorDataTest < Test::Unit::TestCase
       mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
-    offline_number_rec_id = nil
+    offline_number_rec = nil
     in_offline_app do
       rrs_scope = Offroad::ReceivedRecordState.for_model(GlobalRecord)
       assert_equal 0, rrs_scope.count
@@ -277,7 +277,7 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_equal 2, GlobalRecord.count
       assert_not_nil GlobalRecord.find_by_title("ABC")
       assert_not_nil GlobalRecord.find_by_title("123")
-      offline_number_rec_id = GlobalRecord.find_by_title("123")
+      offline_number_rec = GlobalRecord.find_by_title("123")
     end
 
     in_online_app do
@@ -299,7 +299,100 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_nil GlobalRecord.find_by_title("ABC")
       assert_nil GlobalRecord.find_by_title("123")
       assert_not_nil GlobalRecord.find_by_title("789")
-      assert_equal offline_number_rec_id, GlobalRecord.find_by_title("789")
+      offline_number_rec.reload
+      assert_equal offline_number_rec, GlobalRecord.find_by_title("789")
+    end
+  end
+  
+  cross_test "can insert and update and delete naive sync records in offline app using a down mirror file" do
+    mirror_data = nil
+
+    in_online_app do
+      NaiveSyncedRecord.create(:description => "ABC")
+      NaiveSyncedRecord.create(:description => "123")
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
+    end
+
+    offline_number_rec = nil
+    in_offline_app do
+      rrs_scope = Offroad::ReceivedRecordState.for_model(NaiveSyncedRecord)
+      assert_equal 0, rrs_scope.count
+      assert_equal 0, NaiveSyncedRecord.count
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      assert_equal 2, rrs_scope.count
+      assert_equal 2, NaiveSyncedRecord.count
+      assert_not_nil NaiveSyncedRecord.find_by_description("ABC")
+      assert_not_nil NaiveSyncedRecord.find_by_description("123")
+      offline_number_rec = NaiveSyncedRecord.find_by_description("123")
+    end
+
+    in_online_app do
+      number_rec = NaiveSyncedRecord.find_by_description("123")
+      number_rec.description = "789"
+      number_rec.save!
+
+      letter_rec = NaiveSyncedRecord.find_by_description("ABC")
+      letter_rec.destroy
+
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
+    end
+
+    in_offline_app do
+      rrs_scope = Offroad::ReceivedRecordState.for_model(NaiveSyncedRecord)
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      assert_equal 1, rrs_scope.count
+      assert_equal 1, NaiveSyncedRecord.count
+      assert_nil NaiveSyncedRecord.find_by_description("ABC")
+      assert_nil NaiveSyncedRecord.find_by_description("123")
+      assert_not_nil NaiveSyncedRecord.find_by_description("789")
+      offline_number_rec.reload
+      assert_equal offline_number_rec, NaiveSyncedRecord.find_by_description("789")
+    end
+  end
+  
+  cross_test "can insert and update and delete naive sync records in online app using an up mirror file" do
+    mirror_data = nil
+
+    in_offline_app do
+      NaiveSyncedRecord.create(:description => "ABC")
+      NaiveSyncedRecord.create(:description => "123")
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
+    end
+
+    online_number_rec = nil
+    in_online_app do
+      rrs_scope = Offroad::ReceivedRecordState.for_model(NaiveSyncedRecord)
+      assert_equal 0, rrs_scope.count
+      assert_equal 0, NaiveSyncedRecord.count
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_equal 2, rrs_scope.count
+      assert_equal 2, NaiveSyncedRecord.count
+      assert_not_nil NaiveSyncedRecord.find_by_description("ABC")
+      assert_not_nil NaiveSyncedRecord.find_by_description("123")
+      online_number_rec = NaiveSyncedRecord.find_by_description("123")
+    end
+
+    in_offline_app do
+      number_rec = NaiveSyncedRecord.find_by_description("123")
+      number_rec.description = "789"
+      number_rec.save!
+
+      letter_rec = NaiveSyncedRecord.find_by_description("ABC")
+      letter_rec.destroy
+
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
+    end
+
+    in_online_app do
+      rrs_scope = Offroad::ReceivedRecordState.for_model(NaiveSyncedRecord)
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_equal 1, rrs_scope.count
+      assert_equal 1, NaiveSyncedRecord.count
+      assert_nil NaiveSyncedRecord.find_by_description("ABC")
+      assert_nil NaiveSyncedRecord.find_by_description("123")
+      assert_not_nil NaiveSyncedRecord.find_by_description("789")
+      online_number_rec.reload
+      assert_equal online_number_rec, NaiveSyncedRecord.find_by_description("789")
     end
   end
 
@@ -338,6 +431,21 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_not_nil GlobalRecord.find_by_title("Something")
       assert_equal 0, Offroad::SendableRecordState.for_model(GlobalRecord).count
       assert_equal 1, Offroad::ReceivedRecordState.for_model(GlobalRecord).count
+    end
+  end
+
+  cross_test "can insert naive sync records using an initial down mirror file" do
+    mirror_data = nil
+    in_online_app do
+      NaiveSyncedRecord.create(:description => "Something")
+      mirror_data = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+    end
+
+    in_offline_app(false, true) do
+      assert_equal 0, NaiveSyncedRecord.count
+      Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      assert_equal 1, NaiveSyncedRecord.count
+      assert_not_nil NaiveSyncedRecord.find_by_description("Something")
     end
   end
 

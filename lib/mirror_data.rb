@@ -22,6 +22,7 @@ module Offroad
       raise PluginError.new("Can only write upwards data in offline mode") unless Offroad.app_offline?
       raise PluginError.new("No such thing as initial upwards data") if @initial_mode
       write_data(tgt) do |cs|
+        add_sync_cargo(cs)
         add_group_specific_cargo(cs)
       end
     end
@@ -30,6 +31,7 @@ module Offroad
       raise PluginError.new("Can only write downwards data in online mode") unless Offroad.app_online?
       write_data(tgt) do |cs|
         add_global_cargo(cs)
+        add_sync_cargo(cs)
         if @initial_mode
           add_group_specific_cargo(cs)
         end
@@ -45,6 +47,7 @@ module Offroad
           raise OldDataError.new("File contains old up-mirror data")
         end
         
+        import_sync_cargo(cs)
         import_group_specific_cargo(cs)
       end
     end
@@ -74,6 +77,8 @@ module Offroad
           end
           import_global_cargo(cs)
         end
+
+        import_sync_cargo(cs)
         
         # Load information into our group state that the online app is in a better position to know about
         @group = Offroad::offline_group if @initial_mode
@@ -182,6 +187,12 @@ module Offroad
         add_model_cargo(cs, model)
       end
     end
+
+    def add_sync_cargo(cs)
+      Offroad::naive_sync_models.each do |name, model|
+        add_model_cargo(cs, model)
+      end
+    end
     
     def add_model_cargo(cs, model)
       if @initial_mode
@@ -202,7 +213,7 @@ module Offroad
           :skip_validation => @skip_write_validation
         )
         
-        if model.offroad_group_data?
+        if model.offroad_group_data? or model.offroad_sync_data?
           # In initial mode the remote app will create records with the same id's as the corresponding records here
           # So we'll create RRSes indicating that we've already "received" the data we're about to send
           # Later when the remote app sends new information on those records, we'll know which ones it means
@@ -218,6 +229,7 @@ module Offroad
     def add_non_initial_model_cargo(cs, model)
       # Include the data for relevant records in this model that are newer than the remote side's known latest version
       gs = @group.group_state
+      # FIXME FIXME FIXME How to deal with versioning stuff in naive_synced records
       remote_version = nil
       if model.offroad_group_data?
         remote_version = gs.confirmed_group_data_version
@@ -252,6 +264,12 @@ module Offroad
     
     def import_global_cargo(cs)
       Offroad::global_data_models.each do |name, model|
+        import_model_cargo(cs, model)
+      end
+    end
+
+    def import_sync_cargo(cs)
+      Offroad::naive_sync_models.each do |name, model|
         import_model_cargo(cs, model)
       end
     end

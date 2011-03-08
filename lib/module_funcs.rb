@@ -6,6 +6,7 @@ module Offroad
   @@group_base_model = nil
   @@global_data_models = {}
   @@group_owned_models = {}
+  @@naive_sync_models = {}
   
   # Used in the environment configuration file to set the app to online or offline mode.
   # This should not be called from within the app.
@@ -84,5 +85,13 @@ module Offroad
   
   def self.group_owned_models
     @@group_owned_models
+  end
+
+  def self.note_naive_sync_model(cls)
+    @@naive_sync_models[cls.name] = cls
+  end
+
+  def self.naive_sync_models
+    @@naive_sync_models
   end
 end
