@@ -65,6 +65,18 @@ class GroupDataTest < Test::Unit::TestCase
       @online_group_data.save!
     end
   end
+  
+  online_test "only offline group indirect data locked and unsaveable" do
+    assert @offline_indirect_data.locked_by_offroad?, "Offline indirect data should be locked"
+    assert_raise ActiveRecord::ReadOnlyRecord do
+      @offline_indirect_data.save!
+    end
+    
+    assert_equal false, @online_indirect_data.locked_by_offroad?, "Online indirect data should not be locked"
+    assert_nothing_raised do
+      @online_indirect_data.save!
+    end
+  end
 
   online_test "can find online and offline groups through scope" do
     another = Group.create(:name => "Another Online Group")
@@ -106,6 +118,16 @@ class GroupDataTest < Test::Unit::TestCase
     end
   end
   
+  online_test "only offline indirect owned data cannot be destroyed" do
+    assert_raise ActiveRecord::ReadOnlyRecord do
+      @offline_indirect_data.destroy
+    end
+    
+    assert_nothing_raised do
+      @online_indirect_data.destroy
+    end
+  end
+  
   offline_test "offline groups unlocked and writable" do
     assert_equal false, @offline_group.locked_by_offroad?
     assert_nothing_raised do
@@ -120,9 +142,22 @@ class GroupDataTest < Test::Unit::TestCase
     end
   end
   
+  offline_test "offline indirectly owned data unlocked and writable" do
+    assert_equal false, @offline_indirect_data.locked_by_offroad?
+    assert_nothing_raised do
+      @offline_indirect_data.save!
+    end
+  end
+  
   offline_test "offline group owned data destroyable" do
     assert_nothing_raised do
       @offline_group_data.destroy
+    end
+  end
+  
+  offline_test "offline indirectly owned data destroyable" do
+    assert_nothing_raised do
+      @offline_indirect_data.destroy
     end
   end
   
@@ -148,6 +183,11 @@ class GroupDataTest < Test::Unit::TestCase
       @offline_group_data.id += 1
       @offline_group_data.save!
     end
+    
+    assert_raise Offroad::DataError do
+      @offline_indirect_data.id += 1
+      @offline_indirect_data.save!
+    end
   end
   
   online_test "cannot change id of online group data" do
@@ -159,6 +199,11 @@ class GroupDataTest < Test::Unit::TestCase
     assert_raise Offroad::DataError do
       @online_group_data.id += 1
       @online_group_data.save!
+    end
+    
+    assert_raise Offroad::DataError do
+      @online_indirect_data.id += 1
+      @online_indirect_data.save!
     end
   end
   
@@ -172,6 +217,7 @@ class GroupDataTest < Test::Unit::TestCase
     # This is an online test because the concept of "another group" doesn't fly in offline mode
     @another_group = Group.create(:name => "Another Group")
     @another_group_data = GroupOwnedRecord.create(:description => "Another Piece of Data", :group => @another_group)
+    @another_indirect_data = SubRecord.create(:description => "Yet Another Data Thingie", :group_owned_record => @another_group_data)
     assert_raise Offroad::DataError, "Expect exception when putting bad foreign key in group base data" do
       @online_group.favorite = @another_group_data
       @online_group.save!
@@ -180,13 +226,20 @@ class GroupDataTest < Test::Unit::TestCase
       @online_group_data.parent = @another_group_data
       @online_group_data.save!
     end
+    assert_raise Offroad::DataError, "Expect exception when putting bad foreign key in indirectly group owned data" do
+      @online_indirect_data.buddy = @another_indirect_data
+      @online_indirect_data.save!
+    end
   end
   
   double_test "group data can hold a foreign key to data owned by the same group" do
+    more_data = GroupOwnedRecord.create(:description => "More Data", :group => @editable_group, :parent => @editable_group_data)
+    more_indirect_data = SubRecord.create(:description => "Yet More", :group_owned_record => more_data)
     assert_nothing_raised do
-      more_data = GroupOwnedRecord.create(:description => "More Data", :group => @editable_group, :parent => @editable_group_data)
       @editable_group.favorite = more_data
       @editable_group.save!
+      @editable_indirect_data.buddy = more_indirect_data
+      @editable_indirect_data.save!
     end
   end
   
@@ -212,6 +265,10 @@ class GroupDataTest < Test::Unit::TestCase
     assert_raise Offroad::DataError, "Expect exception when putting bad foreign key in group owned data" do
       @editable_group_data.unmirrored_record = unmirrored_data
       @editable_group_data.save!
+    end
+    assert_raise Offroad::DataError, "Expect exception when putting bad foreign key in indirectly owned data" do
+      @editable_indirect_data.unmirrored_record = unmirrored_data
+      @editable_indirect_data.save!
     end
   end
   
@@ -264,6 +321,12 @@ class GroupDataTest < Test::Unit::TestCase
   online_test "cannot create :group_owned data in an offline group" do
     assert_raise ActiveRecord::ReadOnlyRecord do
       GroupOwnedRecord.create(:description => "Test", :group => @offline_group)
+    end
+  end
+
+  online_test "cannot create indirectly group owned data in an offline group" do
+    assert_raise ActiveRecord::ReadOnlyRecord do
+      SubRecord.create(:description => "Test", :group_owned_record => @offline_group_data)
     end
   end
 end
