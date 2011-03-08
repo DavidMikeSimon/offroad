@@ -196,6 +196,9 @@ class AppStateTrackingTest < Test::Unit::TestCase
     
     model_state = Offroad::ModelState::new(:app_model_name => "this is not a constant name")
     assert_equal false, model_state.valid?
+    
+    model_state = Offroad::ModelState::new(:app_model_name => "NonExistantConstant")
+    assert_equal false, model_state.valid?
   end
   
   double_test "cannot create valid received record state of records of unmirrored models" do
