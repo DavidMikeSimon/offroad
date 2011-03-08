@@ -1,6 +1,6 @@
 module Offroad
   module ModelExtensions
-    OFFROAD_VALID_MODES = [:group_base, :group_owned, :global]
+    OFFROAD_VALID_MODES = [:group_base, :group_owned, :global, :naive_sync]
     OFFROAD_GROUP_MODES = [:group_base, :group_owned]
     
     def acts_as_offroadable(mode, opts = {})
@@ -47,8 +47,9 @@ module Offroad
       
       if offroad_group_data?
         include GroupDataInstanceMethods
-      else
+      elsif offroad_global_data?
         include GlobalDataInstanceMethods
+      elsif offroad_sync_data?
       end
       include CommonInstanceMethods
       
@@ -81,6 +82,10 @@ module Offroad
     
     def offroad_global_data?
       acts_as_offroadable? && offroad_mode == :global
+    end
+
+    def offroad_sync_data?
+      acts_as_offroadable? && offroad_mode == :naive_sync
     end
     
     private

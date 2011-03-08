@@ -20,6 +20,11 @@ class CreateTables < ActiveRecord::Migration
       t.timestamps
     end
 
+    create_table :naive_synced_records do |t|
+      t.string :description
+      t.timestamps
+    end
+
     create_table :sub_records do |t|
       t.string :description
       t.integer :group_owned_record_id
