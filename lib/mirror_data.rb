@@ -229,13 +229,7 @@ module Offroad
     def add_non_initial_model_cargo(cs, model)
       # Include the data for relevant records in this model that are newer than the remote side's known latest version
       gs = @group.group_state
-      # FIXME FIXME FIXME How to deal with versioning stuff in naive_synced records
-      remote_version = nil
-      if model.offroad_group_data?
-        remote_version = gs.confirmed_offline_data_version
-      else
-        remote_version = gs.confirmed_online_data_version
-      end
+      remote_version = Offroad.app_online? ? gs.confirmed_online_data_version : gs.confirmed_offline_data_version
       srs_source = SendableRecordState.for_model(model).with_version_greater_than(remote_version)
       srs_source.for_non_deleted_records.find_in_batches(:batch_size => 100) do |srs_batch|
         # TODO Might be able to optimize this to one query using a join on app model and SRS tables
