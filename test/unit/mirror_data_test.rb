@@ -577,49 +577,76 @@ class MirrorDataTest < Test::Unit::TestCase
 
   cross_test "transformed ids are handled properly when loading an up mirror file" do
     in_online_app do
-      another_online_record = GroupOwnedRecord.create(:description => "Yet Another", :group => @online_group)
+      GroupOwnedRecord.create(:description => "Chutzhpah", :group => @online_group)
+      NaiveSyncedRecord.create(:description => "Panache")
     end
 
     mirror_data = nil
-    offline_id_of_new_rec = nil
+    offline_group_rec_id = nil
+    offline_naive_rec_id = nil
     in_offline_app do
       another_offline_rec = GroupOwnedRecord.create(:description => "One More", :group => @offline_group)
-      offline_id_of_new_rec = another_offline_rec.id
+      offline_group_rec_id = another_offline_rec.id
+      
+      yet_another = NaiveSyncedRecord.create(:description => "Yet Another")
+      offline_naive_rec_id = yet_another.id
+      
       mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
       Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
-      rec = GroupOwnedRecord.find_by_description("One More")
-      assert rec
-      assert_equal offline_id_of_new_rec, Offroad::ReceivedRecordState.for_record(rec).first.remote_record_id
+      
+      group_rec = GroupOwnedRecord.find_by_description("One More")
+      assert group_rec
+      assert_equal offline_group_rec_id, Offroad::ReceivedRecordState.for_record(group_rec).first.remote_record_id
+      
+      naive_rec = NaiveSyncedRecord.find_by_description("Yet Another")
+      assert naive_rec
+      assert_equal offline_naive_rec_id, Offroad::ReceivedRecordState.for_record(naive_rec).first.remote_record_id
     end
   end
 
   cross_test "transformed ids are handled properly when loading an initial down mirror file" do
     mirror_data = nil
-    online_id_of_offline_rec = nil
+    group_rec_online_id = nil
+    naive_rec_online_id = nil
     in_online_app do
-      another_online_record = GroupOwnedRecord.create(:description => "Yet Another", :group => @online_group)
+      GroupOwnedRecord.create(:description => "Foo", :group => @online_group)
+      NaiveSyncedRecord.create(:description => "Bar")
+
       another_offline_rec = GroupOwnedRecord.new(:description => "One More", :group => @offline_group)
       force_save_and_reload(another_offline_rec)
-      online_id_of_offline_rec = another_offline_rec.id
+      group_rec_online_id = another_offline_rec.id
+
+      yet_another = NaiveSyncedRecord.create(:description => "Another Helping")
+      naive_rec_online_id = yet_another.id
+
       mirror_data = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
     end
 
     in_offline_app do
       Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      
       rec = GroupOwnedRecord.find_by_description("One More")
-      assert_equal online_id_of_offline_rec, rec.id
+      assert_equal group_rec_online_id, rec.id
       rec.description = "Back To The Future"
       rec.save!
+
+      rec_2 = NaiveSyncedRecord.find_by_description("Another Helping")
+      assert_equal naive_rec_online_id, rec_2.id
+      rec_2.description = "Electric Boogaloo"
+      rec_2.save!
+      
       mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
       Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       assert_equal nil, GroupOwnedRecord.find_by_description("One More")
-      assert_equal "Back To The Future", GroupOwnedRecord.find(online_id_of_offline_rec).description
+      assert_equal "Back To The Future", GroupOwnedRecord.find(group_rec_online_id).description
+      assert_equal nil, NaiveSyncedRecord.find_by_description("Another Helping")
+      assert_equal "Electric Boogaloo", NaiveSyncedRecord.find(naive_rec_online_id).description
     end
   end
 
