@@ -39,20 +39,27 @@ class NaiveSyncDataTest < Test::Unit::TestCase
     end
   end
 
-  online_test "naive sync data can hold a foreign key to global data" do
+  online_test "naive sync data cannot hold a foreign key to global data" do
     # This is an online test because an offline app cannot create global records
     naive_rec = NaiveSyncedRecord.create(:description => "Foobar")
     global_rec = GlobalRecord.create(:title => "Something")
-    assert_nothing_raised do
+    assert_raise Offroad::DataError do
       naive_rec.global_record = global_rec
       naive_rec.save!
     end
   end
   
-  double_test "naive sync data can hold a foreign key to group data" do
+  double_test "naive sync data cannot hold a foreign key to a group base object" do
     naive_rec = NaiveSyncedRecord.create(:description => "Foobar")
-    assert_nothing_raised do
+    assert_raise Offroad::DataError do
       naive_rec.group = @editable_group
+      naive_rec.save!
+    end
+  end
+  
+  double_test "naive sync data cannot hold a foreign key to group data" do
+    naive_rec = NaiveSyncedRecord.create(:description => "Foobar")
+    assert_raise Offroad::DataError do
       naive_rec.group_owned_record = @editable_group_data
       naive_rec.save!
     end
