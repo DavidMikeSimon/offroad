@@ -957,11 +957,39 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
 
+  cross_test "naive sync record changes do not result in new records" do
+    mirror_data = nil
+    in_online_app do
+      NaiveSyncedRecord.create!(:description => "Foo")
+      NaiveSyncedRecord.create!(:description => "Bar")
+      assert_equal 2, NaiveSyncedRecord.count
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
+    end
+
+    in_offline_app do
+      Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      rec_foo = NaiveSyncedRecord.find_by_description("Foo")
+      rec_foo.some_boolean = true
+      rec_foo.save!
+      rec_bar = NaiveSyncedRecord.find_by_description("Bar")
+      rec_bar.some_boolean = true
+      rec_bar.save!
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
+    end
+
+    in_online_app do
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_equal 2, NaiveSyncedRecord.count
+    end
+  end
+
   cross_test "down mirror files do not include records which offline is known to already have the latest version of" do
     mirror_data = nil
     in_online_app do
       GlobalRecord.create!(:title => "Record A", :some_boolean => false)
       GlobalRecord.create!(:title => "Record B", :some_boolean => false)
+      NaiveSyncedRecord.create!(:description => "Foo")
+      NaiveSyncedRecord.create!(:description => "Bar")
       mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
@@ -975,17 +1003,29 @@ class MirrorDataTest < Test::Unit::TestCase
       rec_a = GlobalRecord.find_by_title("Record A")
       rec_a.some_boolean = true
       rec_a.save!
+      rec_foo = NaiveSyncedRecord.find_by_description("Foo")
+      rec_foo.some_boolean = true
+      rec_foo.save!
       mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
     cs = Offroad::CargoStreamer.new(mirror_data, "r")
-    recs = []
+
+    global_recs = []
     cs.each_cargo_section(Offroad::MirrorData.send(:data_cargo_name_for_model, GlobalRecord)) do |batch|
-      recs += batch
+      global_recs += batch
     end
-    assert_equal 1, recs.size
-    assert_equal "Record A", recs[0].title
-    assert_equal true, recs[0].some_boolean
+    assert_equal 1, global_recs.size
+    assert_equal "Record A", global_recs[0].title
+    assert_equal true, global_recs[0].some_boolean
+
+    naive_recs = []
+    cs.each_cargo_section(Offroad::MirrorData.send(:data_cargo_name_for_model, NaiveSyncedRecord)) do |batch|
+      naive_recs += batch
+    end
+    assert_equal 1, naive_recs.size
+    assert_equal "Foo", naive_recs[0].title
+    assert_equal true, naive_recs[0].some_boolean
   end
 
   cross_test "up mirror files do not include records which online is known to already have the latest version of" do
@@ -995,6 +1035,8 @@ class MirrorDataTest < Test::Unit::TestCase
       @offline_group_data.description = "Changed"
       @offline_group_data.save!
       mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
+      NaiveSyncedRecord.create!(:description => "Foo")
+      NaiveSyncedRecord.create!(:description => "Bar")
     end
 
     in_online_app do
@@ -1006,16 +1048,27 @@ class MirrorDataTest < Test::Unit::TestCase
       Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
       @offline_group_data.description = "Changed Again"
       @offline_group_data.save!
+      rec_foo = NaiveSyncedRecord.find_by_description("Foo")
+      rec_foo.some_boolean = true
       mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     cs = Offroad::CargoStreamer.new(mirror_data, "r")
+
     recs = []
     cs.each_cargo_section(Offroad::MirrorData.send(:data_cargo_name_for_model, GroupOwnedRecord)) do |batch|
       recs += batch
     end
     assert_equal 1, recs.size
     assert_equal "Changed Again", recs[0].description
+
+    naive_recs = []
+    cs.each_cargo_section(Offroad::MirrorData.send(:data_cargo_name_for_model, NaiveSyncedRecord)) do |batch|
+      naive_recs += batch
+    end
+    assert_equal 1, naive_recs.size
+    assert_equal "Foo", naive_recs[0].title
+    assert_equal true, naive_recs[0].some_boolean
   end
 
   offline_test "changed records are re-included in new up mirror files if their reception is not confirmed" do

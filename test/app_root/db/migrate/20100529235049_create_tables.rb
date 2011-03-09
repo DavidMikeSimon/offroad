@@ -29,6 +29,7 @@ class CreateTables < ActiveRecord::Migration
       t.integer :group_id
       t.integer :group_owned_record_id
       t.integer :buddy_id
+      t.boolean :some_boolean
       t.timestamps
     end
 
