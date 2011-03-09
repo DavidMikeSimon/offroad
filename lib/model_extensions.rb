@@ -299,6 +299,7 @@ module Offroad
 
       #:nodoc#
       def before_mirrored_data_destroy
+        #return true if checks_bypassed?
         return true
       end
 
@@ -310,6 +311,7 @@ module Offroad
 
       #:nodoc#
       def before_mirrored_data_save
+        return true if checks_bypassed?
         validate_changed_id_columns
         return true
       end

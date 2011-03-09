@@ -712,6 +712,8 @@ class MirrorDataTest < Test::Unit::TestCase
       # Perturb the autoincrement a bit
       GroupOwnedRecord.create(:description => "Alice", :group => @online_group)
       GroupOwnedRecord.create(:description => "Bob", :group => @online_group)
+      NaiveSyncedRecord.create(:description => "Zebulon")
+      NaiveSyncedRecord.create(:description => "Yanique")
     end
 
     mirror_data = nil
@@ -727,6 +729,14 @@ class MirrorDataTest < Test::Unit::TestCase
       @offline_group.save!
       @offline_group_data.parent = grandchild
       @offline_group_data.save!
+
+      friend_a = NaiveSyncedRecord.create(:description => "Xavier")
+      friend_b = NaiveSyncedRecord.create(:description => "Wendy", :buddy => friend_a)
+      friend_c = NaiveSyncedRecord.create(:description => "Vernon", :buddy => friend_b)
+      egoist = NaiveSyncedRecord.create(:description => "Ulala")
+      egoist.buddy = egoist
+      egoist.save!
+
       mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
@@ -735,12 +745,12 @@ class MirrorDataTest < Test::Unit::TestCase
 
       @offline_group.reload
       @offline_group_data.reload
+
       parent = GroupOwnedRecord.find_by_description("Celia")
       child_a = GroupOwnedRecord.find_by_description("Daniel")
       child_b = GroupOwnedRecord.find_by_description("Eric")
       grandchild = GroupOwnedRecord.find_by_description("Fran")
       time_traveler = GroupOwnedRecord.find_by_description("Philip J. Fry")
-
       assert_equal parent, child_a.parent
       assert_equal parent, child_b.parent
       assert_equal child_b, grandchild.parent
@@ -749,6 +759,14 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_equal @offline_group_data, grandchild.children.first
       assert_equal grandchild, @offline_group_data.parent
       assert_equal time_traveler, time_traveler.parent
+
+      friend_a = NaiveSyncedRecord.find_by_description("Xavier")
+      friend_b = NaiveSyncedRecord.find_by_description("Wendy")
+      friend_c = NaiveSyncedRecord.find_by_description("Vernon")
+      egoist = NaiveSyncedRecord.find_by_description("Ulala")
+      assert_equal friend_a, friend_b.buddy
+      assert_equal friend_b, friend_c.buddy
+      assert_equal egoist, egoist.buddy
     end
   end
 
@@ -760,17 +778,34 @@ class MirrorDataTest < Test::Unit::TestCase
       alice.save!
       bob = GlobalRecord.create(:title => "Bob", :friend => alice)
       claire = GlobalRecord.create(:title => "Claire", :friend => bob)
+      
+      friend_a = NaiveSyncedRecord.create(:description => "Xavier")
+      friend_b = NaiveSyncedRecord.create(:description => "Wendy", :buddy => friend_a)
+      friend_c = NaiveSyncedRecord.create(:description => "Vernon", :buddy => friend_b)
+      egoist = NaiveSyncedRecord.create(:description => "Ulala")
+      egoist.buddy = egoist
+      egoist.save!
+
       mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
     in_offline_app do
       Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+
       alice = GlobalRecord.find_by_title("Alice")
       bob = GlobalRecord.find_by_title("Bob")
       claire = GlobalRecord.find_by_title("Claire")
       assert_equal alice, alice.friend
       assert_equal alice, bob.friend
       assert_equal bob, claire.friend
+      
+      friend_a = NaiveSyncedRecord.find_by_description("Xavier")
+      friend_b = NaiveSyncedRecord.find_by_description("Wendy")
+      friend_c = NaiveSyncedRecord.find_by_description("Vernon")
+      egoist = NaiveSyncedRecord.find_by_description("Ulala")
+      assert_equal friend_a, friend_b.buddy
+      assert_equal friend_b, friend_c.buddy
+      assert_equal egoist, egoist.buddy
     end
   end
 
