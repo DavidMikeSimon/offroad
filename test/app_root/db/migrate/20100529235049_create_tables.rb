@@ -27,6 +27,11 @@ class CreateTables < ActiveRecord::Migration
       t.integer :buddy_id
       t.timestamps
     end
+
+    create_table :group_single_records do |t|
+      t.string :description
+      t.timestamps
+    end
     
     create_table :global_records do |t|
       t.string :title

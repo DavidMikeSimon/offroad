@@ -6,6 +6,7 @@ module Offroad
   @@group_base_model = nil
   @@global_data_models = {}
   @@group_owned_models = {}
+  @@group_single_models = {}
   
   # Used in the environment configuration file to set the app to online or offline mode.
   # This should not be called from within the app.
@@ -84,5 +85,13 @@ module Offroad
   
   def self.group_owned_models
     @@group_owned_models
+  end
+  
+  def self.note_group_single_model(cls)
+    @@group_single_models[cls.name] = cls
+  end
+  
+  def self.group_single_models
+    @@group_single_models
   end
 end

@@ -1,7 +1,7 @@
 module Offroad
   module ModelExtensions
-    OFFROAD_VALID_MODES = [:group_base, :group_owned, :global]
-    OFFROAD_GROUP_MODES = [:group_base, :group_owned]
+    OFFROAD_VALID_MODES = [:group_base, :group_owned, :group_single, :global]
+    OFFROAD_GROUP_MODES = [:group_base, :group_owned, :group_single]
     
     def acts_as_offroadable(mode, opts = {})
       raise ModelError.new("You can only call acts_as_offroadable once per model") if acts_as_offroadable?
@@ -19,6 +19,8 @@ module Offroad
 
         set_internal_cattr :offroad_parent_assoc, assoc
         Offroad::note_group_owned_model(self)
+      when :group_single then
+        Offroad::note_group_single_model(self)
       when :group_base then
         Offroad::note_group_base_model(self)
       when :global then
