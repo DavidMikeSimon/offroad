@@ -317,6 +317,7 @@ module Offroad
                 end
               else
                 foreign_rrs_source = ReceivedRecordState.for_model(foreign_model)
+                # FIXME Does this need to be adjusted to also understand naive sync data?
                 foreign_rrs_source = foreign_rrs_source.for_group(@group) if foreign_model.offroad_group_data?
                 foreign_rrs = foreign_rrs_source.find_by_remote_record_id(remote_foreign_id)
                 if !foreign_rrs
