@@ -13,8 +13,9 @@ module Offroad
       
       unless Offroad::app_offline? && @initial_mode
         raise PluginError.new("Need group") unless @group.is_a?(Offroad::group_base_model) && !@group.new_record?
+        raise DataError.new("Group must be in offline mode") unless @group.group_offline?
       end
-      
+
       @imported_models_to_validate = []
     end
     

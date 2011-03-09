@@ -1,6 +1,12 @@
 require File.expand_path(File.dirname(__FILE__) + '/../test_helper')
 
 class MirrorDataTest < Test::Unit::TestCase
+  online_test "cannot create MirrorData instance for online group" do
+    assert_raise Offroad::DataError do
+      Offroad::MirrorData.new(@online_group)
+    end
+  end
+  
   def all_records_from_section_named(cs, name)
     recs = []
     cs.each_cargo_section(name) do |batch|
