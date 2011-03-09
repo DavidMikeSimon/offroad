@@ -45,6 +45,12 @@ Scenarios not sure what to do with:
   2. C also changes record then updates online app. Now there are *two* records where there used to be one! Not cool! 
   Maybe should avoid deleting RRSes of naively synced records? That could fill up the RRS table...
   Alternately maybe need to create some kind of general-purpose ID that refers to the "same record" everywhere 
+- If a synced record is uploaded, we don't want it to come back down on the next down mirror. However, we also
+  don't want to lose global record updates that happened in the mean time! How can we deal with this?
+- Imagine two groups, A and B.
+  They both upload different records in the same naive synced model. How to make sure A gets B's new records and B gets A's
+  new records without sending along wasteful and potentially dangerous duplicates of their own records? This
+  can't be done with a single version number for the record, it seems...
 
 Scenarios to deal with (write tests):
 - Offline app creates an up-mirror, makes local changes, then up-mirror is applied and confirmed. Are local changes version-lost?
