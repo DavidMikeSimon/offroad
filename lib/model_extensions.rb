@@ -261,6 +261,7 @@ module Offroad
       
       def owning_group
         return nil if unlocked_group_single_record?
+        return Offroad::GroupState.first.app_group if offroad_mode == :group_single
 
         # Recurse upwards until we get to the group base
         if self.class.offroad_group_base?

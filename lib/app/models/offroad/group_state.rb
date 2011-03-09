@@ -7,8 +7,11 @@ module Offroad
     validates_presence_of :app_group_id
     
     def validate
-      app_group = Offroad::group_base_model.find_by_id(app_group_id)
       errors.add_to_base "Cannot find associated app group record" unless app_group
+    end
+
+    def app_group
+      Offroad::group_base_model.find_by_id(app_group_id)
     end
     
     has_many :received_record_states, :class_name => "::Offroad::ReceivedRecordState", :dependent => :delete_all
