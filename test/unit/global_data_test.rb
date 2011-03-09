@@ -68,15 +68,6 @@ class GlobalDataTest < Test::Unit::TestCase
       global_record.save!
     end
   end
-
-  online_test "global data can hold a foreign key to naive synced data" do
-    global_record = GlobalRecord.create(:title => "Something or other")
-    naive_rec = NaiveSyncedRecord.create(:description => "Foobar")
-    assert_nothing_raised do
-      global_record.naive_synced_record = naive_rec
-      global_record.save!
-    end
-  end
   
   online_test "global data cannot hold a foreign key to unmirrored data" do
     global_record = GlobalRecord.create(:title => "Something or other")

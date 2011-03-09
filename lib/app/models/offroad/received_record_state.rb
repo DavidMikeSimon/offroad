@@ -29,8 +29,8 @@ module Offroad
         elsif Offroad::app_online?
           if rec.class.offroad_global_data?
             errors.add_to_base "Cannot create received record state for global records in online app"
-          elsif group_state.nil? and !rec.class.offroad_sync_data?
-            errors.add_to_base "Cannot create received record state for non-sync online records in online app"
+          elsif group_state.nil?
+            errors.add_to_base "Cannot create received record state for online group records in online app"
           end
         end
       end

@@ -1,17 +1,14 @@
 High priority:
-- Create a "naive_sync" mode; probably the easiest solution to the Train Track problem.
-  - Make sure that non-sync records can hold foreign keys to sync records; vice versa not important for now
-  - Give it an option to lock online records when any group is offline
+- Allow an group owned model's parent to be "any offline group", limiting system to one offline group at a time but not requiring that you specify pointless column in apps where only one group is needed (i.e. Train Track)
 - Allow offline app to request group be made online in its up mirror file
   - This is the best way to ensure we don't have un-sendable records left over in a newly-obsolete offline app
 - Creating/updating the installer (ideally, git pull on target platform, one rake task, then git push)
-- Create an option to not have the app freak out if post-sync validation fails. Maybe make it the default.
 
 Low priority:
-- Get the plugin installer to work well
 - Don't assume "id" as primary key name, look it up with the appropriate ActiveRecord method
 - Allow offline app to relinquish ownership by setting a belongs_to field to 0 or NULL
-- Check out earlier problem with generating initial down mirror files when cache_classes is false
+- Figure out why the test app won't generate initial down mirror files with cache_classes = false
+- Get the plugin installer to work well
 - Assign a random number to group state when it is created, only accept mirror files with matching random number
   - This is to prevent confusion if a group is made offline, then online, then offline again
 - Also assign a random number to the online app, and only accept mirror files which match this number as well
@@ -37,22 +34,8 @@ Low priority:
 - Use ActiveRecord reflections to find belongs_to associations, not the currenty hacky belongs_to wrapper
 - Use save(false) to skip validations, not save_without_validations
 
-Scenarios not sure what to do with:
-- When naive sync record with foreign key to ANOTHER group's data is downloaded to offline app, what to do?
-- Imagine three groups, A and B and C.
-  1. A destroys naive synced record, then updates online app. Online app also destroys the record.
-  2. B changes same record then updates online app, thus creating a new online record since old RRS is gone
-  2. C also changes record then updates online app. Now there are *two* records where there used to be one! Not cool! 
-  Maybe should avoid deleting RRSes of naively synced records? That could fill up the RRS table...
-  Alternately maybe need to create some kind of general-purpose ID that refers to the "same record" everywhere 
-- If a synced record is uploaded, we don't want it to come back down on the next down mirror. However, we also
-  don't want to lose global record updates that happened in the mean time! How can we deal with this?
-- Imagine two groups, A and B.
-  They both upload different records in the same naive synced model. How to make sure A gets B's new records and B gets A's
-  new records without sending along wasteful and potentially dangerous duplicates of their own records? This
-  can't be done with a single version number for the record, it seems...
-
 Scenarios to deal with (write tests):
+
 - Offline app creates an up-mirror, makes local changes, then up-mirror is applied and confirmed. Are local changes version-lost?
 - Offline app reverts to a prior backup, and prior backup either:
 	- Has the same mirror version as online, or

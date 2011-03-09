@@ -5,7 +5,6 @@ class CreateTables < ActiveRecord::Migration
       t.integer :favorite_id
       t.integer :unmirrored_record_id
       t.integer :global_record_id
-      t.integer :naive_synced_record_id
       t.timestamps
     end
     
@@ -17,19 +16,7 @@ class CreateTables < ActiveRecord::Migration
       t.integer :parent_id
       t.integer :unmirrored_record_id
       t.integer :global_record_id
-      t.integer :naive_synced_record_id
       t.integer :protected_integer, :default => 1
-      t.timestamps
-    end
-
-    create_table :naive_synced_records do |t|
-      t.string :description
-      t.integer :unmirrored_record_id
-      t.integer :global_record_id
-      t.integer :group_id
-      t.integer :group_owned_record_id
-      t.integer :buddy_id
-      t.boolean :some_boolean
       t.timestamps
     end
 
@@ -48,7 +35,6 @@ class CreateTables < ActiveRecord::Migration
       t.integer :unmirrored_record_id
       t.integer :friend_id
       t.integer :some_group_id
-      t.integer :naive_synced_record_id
       t.integer :protected_integer, :default => 1
       t.timestamps
     end

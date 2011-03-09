@@ -18,8 +18,8 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert group_state
     assert_equal prior_group_state_count+1, Offroad::GroupState::count, "GroupState was created on demand"
     assert_equal rec.id, group_state.app_group_id, "GroupState has correct app group id"
-    assert_equal 1, group_state.confirmed_offline_data_version, "Newly offline group has an group data version of 1"
-    assert_equal Offroad::SystemState::current_mirror_version, group_state.confirmed_online_data_version
+    assert_equal 1, group_state.confirmed_group_data_version, "Newly offline group has an group data version of 1"
+    assert_equal Offroad::SystemState::current_mirror_version, group_state.confirmed_global_data_version
   end
   
   online_test "can change offline state of groups" do
@@ -72,7 +72,7 @@ class AppStateTrackingTest < Test::Unit::TestCase
     assert_equal nil, Offroad::SendableRecordState.for_record(rec).first
   end
   
-  online_test "creating global record causes creation of valid sendable record state" do
+  online_test "creating global record causes creation of valid sendable record state data" do
     assert_nothing_raised "No pre-existing SendableRecordStates for GlobalRecord" do
       Offroad::SendableRecordState::find(:all, :include => [ :model_state]).each do |rec|
         raise "Already a GlobalRecord state entry!" if rec.model_state.app_model_name == "GlobalRecord"
@@ -84,15 +84,6 @@ class AppStateTrackingTest < Test::Unit::TestCase
     rec_state = Offroad::SendableRecordState.for_record(rec).first
     assert rec_state, "SendableRecordState was created when record was created"
     assert_equal "GlobalRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
-    assert_newly_created_record_matches_srs(rec, rec_state)
-  end
-
-  double_test "creating naive synced record causes creation of valid sendable record state" do
-    rec = NaiveSyncedRecord.create(:description => "Foo Bar")
-    
-    rec_state = Offroad::SendableRecordState.for_record(rec).first
-    assert rec_state
-    assert_equal "NaiveSyncedRecord", rec_state.model_state.app_model_name, "ModelState has correct model name"
     assert_newly_created_record_matches_srs(rec, rec_state)
   end
   
@@ -129,11 +120,6 @@ class AppStateTrackingTest < Test::Unit::TestCase
   offline_test "saving indirectly owned recored updates mirror version only on changed records" do
     assert_only_changing_attribute_causes_version_change(SubRecord, :description, @offline_indirect_data)
   end
-
-  double_test "saving naive synced record updates mirror version only on changed records" do
-    rec = NaiveSyncedRecord.create(:description => "Foo Bar")
-    assert_only_changing_attribute_causes_version_change(NaiveSyncedRecord, :description, rec)
-  end
   
   def assert_deleting_record_correctly_updated_record_state(rec)
     rec_state = Offroad::SendableRecordState.for_record(rec).first
@@ -160,11 +146,6 @@ class AppStateTrackingTest < Test::Unit::TestCase
   
   offline_test "deleting indirectly group owned record updates mirror version" do
     assert_deleting_record_correctly_updated_record_state(@editable_indirect_data)
-  end
-
-  double_test "deleting naively synced record updates mirror version" do
-    rec = NaiveSyncedRecord.create(:description => "Foo Bar")
-    assert_deleting_record_correctly_updated_record_state(rec)
   end
   
   online_test "deleting offline group base record deletes corresponding group state" do
