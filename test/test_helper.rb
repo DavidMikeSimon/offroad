@@ -306,10 +306,13 @@ class Test::Unit::TestCase
     end
   end
   
-  def in_online_app(fresh_flag = false, &block)
+  def in_online_app(fresh_flag = false, delete_all_rows = false, &block)
     begin
       Offroad::config_app_online(true)
       @@online_database.bring_forward(self, fresh_flag)
+      if delete_all_rows
+        @@online_database.delete_all_rows
+      end
       instance_eval &block
     ensure
       Offroad::config_app_online(nil)

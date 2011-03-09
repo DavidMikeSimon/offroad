@@ -260,6 +260,8 @@ module Offroad
       end
       
       def owning_group
+        return nil if unlocked_group_single_record?
+
         # Recurse upwards until we get to the group base
         if self.class.offroad_group_base?
           return self
@@ -282,7 +284,7 @@ module Offroad
           group_state.update_attribute(:group_being_destroyed, true)
         end
         
-        return true if checks_bypassed?
+        return true if checks_bypassed? or unlocked_group_single_record?
         
         if group_offline?
           # If the app is online, the only thing that can be deleted is the entire group (possibly with its records)
@@ -303,7 +305,7 @@ module Offroad
       
       #:nodoc#
       def before_mirrored_data_save
-        return true if checks_bypassed?
+        return true if checks_bypassed? or unlocked_group_single_record?
         
         raise DataError.new("Invalid owning group") if owning_group == nil
         raise ActiveRecord::ReadOnlyRecord if locked_by_offroad?
@@ -343,6 +345,11 @@ module Offroad
       def group_being_destroyed
         return true unless owning_group # If the group doesn't exist anymore, then it's pretty well destroyed
         return group_state.group_being_destroyed
+      end
+
+      #:nodoc:#
+      def unlocked_group_single_record?
+        offroad_mode == :group_single && Offroad::GroupState.count == 0
       end
     end
   end
