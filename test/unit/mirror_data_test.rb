@@ -718,24 +718,26 @@ class MirrorDataTest < Test::Unit::TestCase
 
     mirror_data = nil
     in_offline_app do
-      parent = GroupOwnedRecord.create(:description => "Celia", :group => @offline_group)
-      child_a = GroupOwnedRecord.create(:description => "Daniel", :parent => parent, :group => @offline_group)
-      child_b = GroupOwnedRecord.create(:description => "Eric", :parent => parent, :group => @offline_group)
-      grandchild = GroupOwnedRecord.create(:description => "Fran", :parent => child_b, :group => @offline_group)
-      time_traveler = GroupOwnedRecord.create(:description => "Philip J. Fry", :group => @offline_group)
-      time_traveler.parent = time_traveler
-      time_traveler.save!
-      @offline_group.favorite = grandchild
-      @offline_group.save!
-      @offline_group_data.parent = grandchild
-      @offline_group_data.save!
-
       friend_a = NaiveSyncedRecord.create(:description => "Xavier")
       friend_b = NaiveSyncedRecord.create(:description => "Wendy", :buddy => friend_a)
       friend_c = NaiveSyncedRecord.create(:description => "Vernon", :buddy => friend_b)
       egoist = NaiveSyncedRecord.create(:description => "Ulala")
       egoist.buddy = egoist
       egoist.save!
+
+      parent = GroupOwnedRecord.create(:description => "Celia", :group => @offline_group)
+      child_a = GroupOwnedRecord.create(:description => "Daniel", :parent => parent, :group => @offline_group)
+      child_b = GroupOwnedRecord.create(:description => "Eric", :parent => parent, :group => @offline_group)
+      grandchild = GroupOwnedRecord.create(:description => "Fran", :parent => child_b, :group => @offline_group)
+      time_traveler = GroupOwnedRecord.create(:description => "Philip J. Fry", :group => @offline_group, :naive_synced_record => friend_c)
+      time_traveler.parent = time_traveler
+      time_traveler.save!
+      @offline_group.favorite = grandchild
+      @offline_group.naive_synced_record = friend_b
+      @offline_group.save!
+      @offline_group_data.parent = grandchild
+      @offline_group_data.naive_synced_record = friend_a
+      @offline_group_data.save!
 
       mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
@@ -745,6 +747,14 @@ class MirrorDataTest < Test::Unit::TestCase
 
       @offline_group.reload
       @offline_group_data.reload
+
+      friend_a = NaiveSyncedRecord.find_by_description("Xavier")
+      friend_b = NaiveSyncedRecord.find_by_description("Wendy")
+      friend_c = NaiveSyncedRecord.find_by_description("Vernon")
+      egoist = NaiveSyncedRecord.find_by_description("Ulala")
+      assert_equal friend_a, friend_b.buddy
+      assert_equal friend_b, friend_c.buddy
+      assert_equal egoist, egoist.buddy
 
       parent = GroupOwnedRecord.find_by_description("Celia")
       child_a = GroupOwnedRecord.find_by_description("Daniel")
@@ -759,26 +769,21 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_equal @offline_group_data, grandchild.children.first
       assert_equal grandchild, @offline_group_data.parent
       assert_equal time_traveler, time_traveler.parent
-
-      friend_a = NaiveSyncedRecord.find_by_description("Xavier")
-      friend_b = NaiveSyncedRecord.find_by_description("Wendy")
-      friend_c = NaiveSyncedRecord.find_by_description("Vernon")
-      egoist = NaiveSyncedRecord.find_by_description("Ulala")
-      assert_equal friend_a, friend_b.buddy
-      assert_equal friend_b, friend_c.buddy
-      assert_equal egoist, egoist.buddy
+      assert_equal friend_c, time_traveler.naive_synced_record
+      assert_equal friend_a, @offline_group_data.naive_synced_record
+      assert_equal friend_b, @offline_group.naive_synced_record
     end
   end
 
   cross_test "foreign keys are transformed correctly on down mirror" do
+    in_offline_app do
+      # Perturb the autoincrement a bit
+      NaiveSyncedRecord.create(:description => "Zebulon")
+      NaiveSyncedRecord.create(:description => "Yanique")
+    end
+    
     mirror_data = nil
     in_online_app do
-      alice = GlobalRecord.create(:title => "Alice")
-      alice.friend = alice
-      alice.save!
-      bob = GlobalRecord.create(:title => "Bob", :friend => alice)
-      claire = GlobalRecord.create(:title => "Claire", :friend => bob)
-      
       friend_a = NaiveSyncedRecord.create(:description => "Xavier")
       friend_b = NaiveSyncedRecord.create(:description => "Wendy", :buddy => friend_a)
       friend_c = NaiveSyncedRecord.create(:description => "Vernon", :buddy => friend_b)
@@ -786,18 +791,18 @@ class MirrorDataTest < Test::Unit::TestCase
       egoist.buddy = egoist
       egoist.save!
 
+      alice = GlobalRecord.create(:title => "Alice")
+      alice.friend = alice
+      alice.naive_synced_record = friend_c
+      alice.save!
+      bob = GlobalRecord.create(:title => "Bob", :friend => alice, :naive_synced_record => friend_a)
+      claire = GlobalRecord.create(:title => "Claire", :friend => bob, :naive_synced_record => friend_a)
+      
       mirror_data = Offroad::MirrorData.new(@offline_group).write_downwards_data
     end
 
     in_offline_app do
       Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
-
-      alice = GlobalRecord.find_by_title("Alice")
-      bob = GlobalRecord.find_by_title("Bob")
-      claire = GlobalRecord.find_by_title("Claire")
-      assert_equal alice, alice.friend
-      assert_equal alice, bob.friend
-      assert_equal bob, claire.friend
       
       friend_a = NaiveSyncedRecord.find_by_description("Xavier")
       friend_b = NaiveSyncedRecord.find_by_description("Wendy")
@@ -806,6 +811,16 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_equal friend_a, friend_b.buddy
       assert_equal friend_b, friend_c.buddy
       assert_equal egoist, egoist.buddy
+
+      alice = GlobalRecord.find_by_title("Alice")
+      bob = GlobalRecord.find_by_title("Bob")
+      claire = GlobalRecord.find_by_title("Claire")
+      assert_equal alice, alice.friend
+      assert_equal alice, bob.friend
+      assert_equal bob, claire.friend
+      assert_equal friend_c, alice.naive_synced_record
+      assert_equal friend_a, bob.naive_synced_record
+      assert_equal friend_a, claire.naive_synced_record
     end
   end
 
