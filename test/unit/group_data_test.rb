@@ -255,6 +255,18 @@ class GroupDataTest < Test::Unit::TestCase
       @editable_group_data.save!
     end
   end
+
+  double_test "group data can hold a foreign key to naive sync data" do
+    naive_rec = NaiveSyncedRecord.create(:description => "Some naive synced data")
+    assert_nothing_raised "No exception when putting global data key in group base data" do
+      @editable_group.naive_synced_record = naive_rec
+      @editable_group.save!
+    end
+    assert_nothing_raised "No exception when putting global data key in group owned data" do
+      @editable_group_data.naive_synced_record = naive_rec
+      @editable_group_data.save!
+    end
+  end
   
   double_test "group data cannot hold a foreign key to unmirrored data" do
     unmirrored_data = UnmirroredRecord.create(:content => "Some Unmirrored Data")

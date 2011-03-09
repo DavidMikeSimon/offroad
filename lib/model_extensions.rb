@@ -373,7 +373,7 @@ module Offroad
               raise DataError.new("Invalid #{colname}: Group data cannot hold a foreign key to data owned by another group")
             end
           elsif self.class.offroad_global_data?
-            unless obj.class.offroad_global_data?
+            if obj.class.offroad_group_data?
               raise DataError.new("Invalid #{colname}: Global mirrored data cannot hold a foreign key to group data")
             end
           elsif self.class.offroad_sync_data?
