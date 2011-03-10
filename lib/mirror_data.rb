@@ -175,6 +175,9 @@ module Offroad
       Offroad::group_owned_models.each do |name, model|
         add_model_cargo(cs, model)
       end
+      Offroad::group_single_models.each do |name, model|
+        add_model_cargo(cs, model)
+      end
       add_model_cargo(cs, Offroad::group_base_model)
     end
     
@@ -247,6 +250,9 @@ module Offroad
     def import_group_specific_cargo(cs)
       import_model_cargo(cs, Offroad::group_base_model)
       Offroad::group_owned_models.each do |name, model|
+        import_model_cargo(cs, model)
+      end
+      Offroad::group_single_models.each do |name, model|
         import_model_cargo(cs, model)
       end
     end
