@@ -45,6 +45,10 @@ module Offroad
         }
       when :group_owned then
         named_scope :owned_by_offroad_group, lambda { |group| args_for_ownership_scope(group) }
+      when :group_single then
+        named_scope :owned_by_offroad_group, lambda { |group| {
+          :conditions => (Offroad::GroupState.count > 0 && group == Offroad::GroupState.first.app_group) ? "1=1" : "1=0"
+        } }
       end
       
       if offroad_group_data?

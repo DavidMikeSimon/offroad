@@ -45,9 +45,17 @@ class GroupSingleTest < Test::Unit::TestCase
     end
   end
 
+  empty_online_test "group single models are offroad_group_data" do
+    GroupSingleRecord.offroad_group_data?
+  end
+
   empty_online_test "group single records belong to nil if no groups are offline" do
     rec = GroupSingleRecord.create(:description => "Foo")
+    group_a = Group.create(:name => "A")
+    group_b = Group.create(:name => "B")
     assert_equal nil, rec.owning_group
+    assert_equal 0, GroupSingleRecord.owned_by_offroad_group(group_a).count
+    assert_equal 0, GroupSingleRecord.owned_by_offroad_group(group_b).count
   end
 
   empty_online_test "group single records belong to first offline group" do
@@ -57,9 +65,14 @@ class GroupSingleTest < Test::Unit::TestCase
 
     group_a.group_offline = true
     assert_equal group_a, rec.owning_group
+    assert_equal 1, GroupSingleRecord.owned_by_offroad_group(group_a).count
+    assert_equal 0, GroupSingleRecord.owned_by_offroad_group(group_b).count
+
     group_a.group_offline = false
     group_b.group_offline = true
     assert_equal group_b, rec.owning_group
+    assert_equal 0, GroupSingleRecord.owned_by_offroad_group(group_a).count
+    assert_equal 1, GroupSingleRecord.owned_by_offroad_group(group_b).count
   end
 
   empty_online_test "cannot set more than one group offline if any group single models exist" do
