@@ -361,6 +361,15 @@ def online_test(name, &block)
   define_wrapped_test("ONLINE #{name}", wrapper, block)
 end
 
+# Test that is ran in the online environment, but with no preset records 
+def empty_online_test(name, &block)
+  wrapper = Proc.new do |t|
+    t.in_online_app(false, true, &block)
+  end
+  
+  define_wrapped_test("EMPTY ONLINE #{name}", wrapper, block)
+end
+
 # Test that should be run in the offline environment
 def offline_test(name, &block)
   wrapper = Proc.new do |t|

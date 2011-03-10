@@ -252,6 +252,11 @@ module Offroad
       
       def group_offline=(b)
         raise DataError.new("Unable to change a group's offline status in offline app") if Offroad::app_offline?
+
+        if b and Offroad::group_single_models.size > 0 and Offroad::GroupState.count > 0
+          raise DataError.new("Unable to set more than one group offline if there are any group single models")
+        end
+
         if b && !group_state
           Offroad::GroupState.for_group(owning_group).create!
         elsif group_state
