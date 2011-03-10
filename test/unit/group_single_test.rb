@@ -45,6 +45,11 @@ class GroupSingleTest < Test::Unit::TestCase
     end
   end
 
+  empty_online_test "group single records belong to nil if no groups are offline" do
+    rec = GroupSingleRecord.create(:description => "Foo")
+    assert_equal nil, rec.owning_group
+  end
+
   empty_online_test "group single records belong to first offline group" do
     rec = GroupSingleRecord.create(:description => "Foo")
     group_a = Group.create(:name => "A")
