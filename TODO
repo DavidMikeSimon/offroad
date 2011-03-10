@@ -1,5 +1,4 @@
 High priority:
-- Allow an group owned model's parent to be "any offline group", limiting system to one offline group at a time but not requiring that you specify pointless column in apps where only one group is needed (i.e. Train Track)
 - Allow offline app to request group be made online in its up mirror file
   - This is the best way to ensure we don't have un-sendable records left over in a newly-obsolete offline app
 - Creating/updating the installer (ideally, git pull on target platform, one rake task, then git push)
