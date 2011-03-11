@@ -12,6 +12,8 @@ require 'mirror_data'
   ActiveSupport::Dependencies.load_paths << path
 end
 
+require 'ar-extensions' # External dependency
+
 require 'model_extensions'
 class ActiveRecord::Base
   extend Offroad::ModelExtensions

@@ -14,4 +14,28 @@ class GroupOwnedRecord < ActiveRecord::Base
   def to_s
     description
   end
+
+  def before_save
+    @@callback_called = true
+  end
+
+  def after_save
+    @@callback_called = true
+  end
+
+  def before_destroy
+    @@callback_called = true
+  end
+
+  def after_destroy
+    @@callback_called = true
+  end
+
+  def self.reset_callback_called
+    @@callback_called = false
+  end
+
+  def self.callback_called
+    @@callback_called
+  end
 end

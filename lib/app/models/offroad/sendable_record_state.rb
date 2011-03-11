@@ -62,7 +62,17 @@ module Offroad
     def self.note_record_created_or_updated(record)
       mark_record_changes(record)
     end
-    
+
+    def self.setup_imported(model, batch)
+      model_state_id = model.offroad_model_state.id
+      mirror_version = SystemState::current_mirror_version
+      self.import(
+        [:model_state_id, :local_record_id, :mirror_version],
+        batch.map{|r| [model_state_id, r.id, mirror_version]},
+        :validate => false
+      )
+    end
+
     private
     
     def self.mark_record_changes(record)

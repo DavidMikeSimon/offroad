@@ -17,7 +17,7 @@ module Offroad
     end
     
     def self.increment_mirror_version
-      self.increment_counter(:current_mirror_version, first.id)
+      self.increment_counter(:current_mirror_version, instance_record.id)
     end
     
     # Returns the singleton record, first creating it if necessary

@@ -278,13 +278,11 @@ module Offroad
     
     def import_initial_model_cargo(cs, model)
       cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
-        batch.each do |cargo_record|
-          local_record = model.new
-          local_record.id = cargo_record.id # Safe, SQLite's autoincrement columns keep track of manually set values
-          local_record.send(:attributes=, cargo_record.attributes.reject{|k,v| k == "id"}, false)          
-          local_record.bypass_offroad_readonly_checks
-          local_record.save_without_validation # Validation delayed because it might depend on as-yet unimported data
+        model.import batch, :validate => false, :timestamps => false
+        if model.offroad_group_base? && batch.size > 0
+          GroupState.for_group(model.first).create!
         end
+        SendableRecordState.setup_imported(model, batch)
       end
     end
     

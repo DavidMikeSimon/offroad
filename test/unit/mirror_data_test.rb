@@ -328,6 +328,19 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
 
+  cross_test "records created by initial down mirror file did not have their callbacks called" do
+    mirror_data = nil
+    in_online_app do
+      mirror_data = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+    end
+
+    in_offline_app(false, true) do
+      GroupOwnedRecord.reset_callback_called
+      Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      assert !GroupOwnedRecord.callback_called
+    end
+  end
+
   cross_test "can insert global records using an initial down mirror file" do
     mirror_data = nil
     in_online_app do

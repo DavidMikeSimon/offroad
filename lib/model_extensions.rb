@@ -50,7 +50,7 @@ module Offroad
           :conditions => (Offroad::GroupState.count > 0 && group == Offroad::GroupState.first.app_group) ? "1=1" : "1=0"
         } }
       end
-      
+
       if offroad_group_data?
         include GroupDataInstanceMethods
       else
@@ -335,14 +335,7 @@ module Offroad
       
       #:nodoc#
       def after_mirrored_data_save
-        if Offroad::app_offline?
-          # Make a GroupState if this is the group being loaded into the offline app from an initial down mirror file
-          if self.class.offroad_group_base? && group_state == nil
-            GroupState.for_group(self).create!
-          end
-          
-          Offroad::SendableRecordState::note_record_created_or_updated(self) if changed?
-        end
+        Offroad::SendableRecordState::note_record_created_or_updated(self) if Offroad::app_offline? && changed?
         return true
       end
       
