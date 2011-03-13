@@ -4,8 +4,9 @@ High priority:
 - Creating/updating the installer (ideally, git pull on target platform, one rake task, then git push)
 
 Low priority:
+- Allow validation of records after mirror load to be optional
 - Don't allow group_single records to reference non-single group records, since group_single "ownership" can change
-- Don't assume "id" as primary key name, look it up with the appropriate ActiveRecord method
+- Don't assume "id" as primary key name, always look it up with the appropriate ActiveRecord method
 - Allow offline app to relinquish ownership by setting a belongs_to field to 0 or NULL
 - Figure out why the test app won't generate initial down mirror files with cache_classes = false
 - Get the plugin installer to work well
@@ -31,19 +32,7 @@ Low priority:
 - Figure out which activerecord methods skip the save callbacks, and wrap them to also update the mirror version
   - Maybe methods for which this isn't practical should raise an error when called...
 - Load all the other informational values in GroupState
-- Use ActiveRecord reflections to find belongs_to associations, not the currenty hacky belongs_to wrapper
-- Use save(false) to skip validations, not save_without_validations
-
-Scenarios to deal with (write tests):
-
-- Offline app creates an up-mirror, makes local changes, then up-mirror is applied and confirmed. Are local changes version-lost?
-- Offline app reverts to a prior backup, and prior backup either:
-	- Has the same mirror version as online, or
-	- Has prior version to online, or
-	- Has newer version than online (this shouldn't require any special handling...)
-- Turning an online app into an offline app, then online again, then offline again, with data xfer happening at each stage
-- Online app receives a mirror file, then offline updates and sends another mirror file, without receiving confirmation of first
-- Offline app attempts to delete offline group on online app: this should not be possible
 - App creates a record then deletes it then sends mirror; does a deletion srs still get sent?
   - For any fix to this: make sure that if app updates record then deletes it then sends mirror that deletion gets sent
   - Maybe that means we need both create_version and update_version on srs?
+- Make sure it isn't possible for offline app to delete offline group on online app
