@@ -278,6 +278,7 @@ module Offroad
     
     def import_initial_model_cargo(cs, model)
       cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
+        # Notice we are using the same primary key values as the online system, not allocating new ones
         model.import batch, :validate => false, :timestamps => false
         if model.offroad_group_base? && batch.size > 0
           GroupState.for_group(model.first).create!
@@ -285,65 +286,24 @@ module Offroad
         SendableRecordState.setup_imported(model, batch)
       end
     end
-    
+
     def import_non_initial_model_cargo(cs, model, rrs_source)
       # Update/create records
       cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
-        batch.each do |cargo_record|
-          rrs = rrs_source.find_by_remote_record_id(cargo_record.id)
-          local_record = rrs ? rrs.app_record_find_or_initialize : model.new
-          local_record.send(:attributes=, cargo_record.attributes.reject{|k,v| k == "id"}, false)
-          
-          # Update foreign key associations so they point to the same actual records as they did on the remote system
-          delayed_self_reference_cols = []
-          model.reflect_on_all_associations(:belongs_to).each do |association|
-            column_name = association.primary_key_name
-            foreign_model = association.klass
-            remote_foreign_id = local_record.send(column_name.to_sym)
-            if remote_foreign_id && remote_foreign_id != 0
-              if foreign_model == model && remote_foreign_id == cargo_record.id
-                # If the record is new, self-references will have to wait until after we have the record's own id
-                if rrs
-                  local_record.send("#{column_name}=".to_sym, rrs.local_record_id)
-                else
-                  delayed_self_reference_cols << column_name
-                end
-              else
-                foreign_rrs_source = ReceivedRecordState.for_model(foreign_model)
-                foreign_rrs_source = foreign_rrs_source.for_group(@group) if foreign_model.offroad_group_data?
-                foreign_rrs = foreign_rrs_source.find_by_remote_record_id(remote_foreign_id)
-                if !foreign_rrs
-                  # Create then immediately destroy a record to get a safely autoincremented id
-                  foreign_rec_placeholder = foreign_model.new
-                  foreign_rec_placeholder.bypass_offroad_readonly_checks
-                  foreign_rec_placeholder.save_without_validation
-                  foreign_rrs = foreign_rrs_source.create!(
-                    :local_record_id => foreign_rec_placeholder.id,
-                    :remote_record_id => remote_foreign_id
-                  )
-                  foreign_rec_placeholder.delete
-                end
-                local_record.send("#{column_name}=".to_sym, foreign_rrs.local_record_id)
-              end
-            end
-          end
-          
-          local_record.bypass_offroad_readonly_checks
-          local_record.save_without_validation # Validation delayed because it might depend on as-yet unimported data
-          
-          ReceivedRecordState.for_record(local_record).create!(:remote_record_id => cargo_record.id) unless rrs
-          
-          # If the record is new and must reference itself, we now have an id it can use for that reference
-          if delayed_self_reference_cols.size > 0
-            local_record.bypass_offroad_readonly_checks
-            delayed_self_reference_cols.each do |column_name|
-              local_record.send("#{column_name}=".to_sym, local_record.id)
-            end
-            local_record.save_without_validation
-          end
+        # Update foreign key associations to use local ids instead of remote ids
+        model.reflect_on_all_associations(:belongs_to).each do |a|
+          ReceivedRecordState.redirect_to_local_ids(batch, a.primary_key_name, a.klass, @group)
         end
+
+        # Delete existing records in the database; that way we can just do INSERTs, don't have to worry about UPDATEs
+        # TODO: Is this necessary? Perhaps ar-extensions can deal with a mix of new and updated records...
+        model.delete rrs_source.all(:conditions => {:remote_record_id => batch.map(&:id)} ).map(&:local_record_id)
+
+        # Update the primary keys to use local ids, then insert the records
+        ReceivedRecordState.redirect_to_local_ids(batch, model.primary_key, model, @group)
+        model.import batch, :validate => false, :timestamps => false
       end
-      
+
       # Destroy records here which were destroyed there (except for group_base records, that would cause trouble)
       unless model == Offroad::group_base_model
         cs.each_cargo_section(MirrorData::deletion_cargo_name_for_model(model)) do |batch|
@@ -358,7 +318,7 @@ module Offroad
         end
       end
     end
-    
+
     def validate_imported_models(cs)
       while @imported_models_to_validate.size > 0
         model = @imported_models_to_validate.pop

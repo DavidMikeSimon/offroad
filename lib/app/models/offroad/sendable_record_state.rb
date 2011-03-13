@@ -69,7 +69,8 @@ module Offroad
       self.import(
         [:model_state_id, :local_record_id, :mirror_version],
         batch.map{|r| [model_state_id, r.id, mirror_version]},
-        :validate => false
+        :validate => false,
+        :timestamps => false
       )
     end
 
