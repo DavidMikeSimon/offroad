@@ -66,7 +66,8 @@ class GroupControllerTest < ActionController::TestCase
   cross_test "can upload up mirror files" do
     mirror_data = ""
     in_offline_app do
-      @offline_group.name = "ABC"; force_save_and_reload(@offline_group)
+      @offline_group.name = "ABC"
+      @offline_group.save!
       get :download_up_mirror, "id" => @offline_group.id
       mirror_data = @response.binary_content
     end
@@ -82,7 +83,7 @@ class GroupControllerTest < ActionController::TestCase
   offline_test "can upload down mirror files" do
     mirror_data = ""
     in_online_app do
-      global_record = GlobalRecord.new(:title => "123"); force_save_and_reload(global_record)
+      GlobalRecord.create!(:title => "123")
       get :download_down_mirror, "id" => @offline_group.id
       mirror_data = @response.binary_content
     end

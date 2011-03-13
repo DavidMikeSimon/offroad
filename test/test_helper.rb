@@ -60,16 +60,20 @@ end
 
 def force_save_and_reload(*records)
   records.each do |record|
-    record.bypass_offroad_readonly_checks
-    record.save!
+    record.class.delete(record.id) unless record.new_record?
+    record.class.import([record], :validate => false, :timestamps => false)
+    if record.new_record?
+      record.id = record.class.last(:select => record.class.primary_key, :order => record.class.primary_key).id
+    end
     record.reload
+    record.after_mirrored_data_save
   end
 end
 
 def force_destroy(*records)
   records.each do |record|
-    record.bypass_offroad_readonly_checks
-    record.destroy
+    record.class.delete(record.id)
+    record.after_mirrored_data_destroy
   end
 end
 
@@ -227,29 +231,28 @@ class OnlineTestDatabase < VirtualTestDatabase
     
     unused_offline_group = Group.create(:name => "Unused Offline Group")
     unused_online_group = Group.create(:name => "Unused Online Group")
-    unused_offline_group.group_offline = true
     
     offline_group = Group.create(:name => "An Offline Group")
     online_group = Group.create(:name => "An Online Group")
-    offline_group.group_offline = true
     setup_ivar(:@offline_group, offline_group)
     setup_ivar(:@online_group, online_group)
     
-    offline_data = GroupOwnedRecord.new( :description => "Sam", :group => offline_group)
-    online_data = GroupOwnedRecord.new(:description => "Max", :group => online_group)
-    force_save_and_reload(offline_data, online_data)
+    offline_data = GroupOwnedRecord.create( :description => "Sam", :group => offline_group)
+    online_data = GroupOwnedRecord.create(:description => "Max", :group => online_group)
     setup_ivar(:@offline_group_data, offline_data)
     setup_ivar(:@online_group_data, online_data)
 
-    indirect_offline_data = SubRecord.new( :description => "Boris", :group_owned_record => offline_data)
-    indirect_online_data = SubRecord.new( :description => "Natasha", :group_owned_record => online_data)
-    force_save_and_reload(indirect_offline_data, indirect_online_data)
+    indirect_offline_data = SubRecord.create( :description => "Boris", :group_owned_record => offline_data)
+    indirect_online_data = SubRecord.create( :description => "Natasha", :group_owned_record => online_data)
     setup_ivar(:@offline_indirect_data, indirect_offline_data)
     setup_ivar(:@online_indirect_data, indirect_online_data)
     
     setup_ivar(:@editable_group, online_group)
     setup_ivar(:@editable_group_data, online_data)
     setup_ivar(:@editable_indirect_data, indirect_online_data)
+    
+    unused_offline_group.group_offline = true
+    offline_group.group_offline = true
     
     @@initial_mirror_data ||= Offroad::MirrorData.new(offline_group, :initial_mode => true).write_downwards_data
   end
@@ -265,9 +268,7 @@ class OfflineTestDatabase < VirtualTestDatabase
   def setup
     super
     
-    Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(
-      OnlineTestDatabase::initial_mirror_data
-    )
+    Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data OnlineTestDatabase::initial_mirror_data
     
     offline_group = Group.first
     offline_data = GroupOwnedRecord.first

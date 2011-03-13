@@ -131,20 +131,6 @@ module Offroad
       # TODO That method should also be used in import_model_cargo instead of explicitly trying to find the srs
       
       #:nodoc:#
-      def bypass_offroad_readonly_checks
-        @offroad_readonly_bypassed = true
-      end
-      
-      #:nodoc:#
-      def checks_bypassed?
-        if @offroad_readonly_bypassed
-          @offroad_readonly_bypassed = false
-          return true
-        end
-        return false
-      end
-      
-      #:nodoc:#
       def validate_changed_id_columns
         changes.each do |colname, arr|
           orig_val = arr[0]
@@ -188,7 +174,6 @@ module Offroad
       
       #:nodoc#
       def before_mirrored_data_destroy
-        return true if checks_bypassed?
         ensure_online
         return true
       end
@@ -201,7 +186,6 @@ module Offroad
       
       #:nodoc#
       def before_mirrored_data_save
-        return true if checks_bypassed?
         ensure_online
         validate_changed_id_columns
         return true
@@ -294,7 +278,7 @@ module Offroad
           group_state.update_attribute(:group_being_destroyed, true)
         end
         
-        return true if checks_bypassed? or unlocked_group_single_record?
+        return true if unlocked_group_single_record?
         
         if group_offline?
           # If the app is online, the only thing that can be deleted is the entire group (possibly with its records)
@@ -315,7 +299,7 @@ module Offroad
       
       #:nodoc#
       def before_mirrored_data_save
-        return true if checks_bypassed? or unlocked_group_single_record?
+        return true if unlocked_group_single_record?
         
         raise DataError.new("Invalid owning group") if owning_group == nil
         raise ActiveRecord::ReadOnlyRecord if locked_by_offroad?

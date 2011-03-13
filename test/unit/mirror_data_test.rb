@@ -147,10 +147,9 @@ class MirrorDataTest < Test::Unit::TestCase
   end
 
   online_test "initial down mirror files do not include irrelevant records" do    
-    another_offline_group = Group.create(:name => "Another Group")
+    another_offline_group = Group.create!(:name => "Another Group")
+    another_group_data = GroupOwnedRecord.create!(:description => "Another Data", :group => another_offline_group)
     another_offline_group.group_offline = true
-    another_group_data = GroupOwnedRecord.new(:description => "Another Data", :group => another_offline_group)
-    force_save_and_reload(another_group_data)
     [another_offline_group, another_group_data].each { |r| r.reload }
 
     str = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
@@ -164,10 +163,9 @@ class MirrorDataTest < Test::Unit::TestCase
   online_test "down mirror files do not include irrelevant records" do    
     global_record = GlobalRecord.create(:title => "Foo Bar")
     global_record.reload # To clear the high time precision that is lost in the database
-    another_offline_group = Group.create(:name => "Another Group")
+    another_offline_group = Group.create!(:name => "Another Group")
+    another_group_data = GroupOwnedRecord.create!(:description => "Another Data", :group => another_offline_group)
     another_offline_group.group_offline = true
-    another_group_data = GroupOwnedRecord.new(:description => "Another Data", :group => another_offline_group)
-    force_save_and_reload(another_group_data)
     [another_offline_group, another_group_data].each { |r| r.reload }
 
     str = Offroad::MirrorData.new(@offline_group).write_downwards_data
@@ -231,9 +229,10 @@ class MirrorDataTest < Test::Unit::TestCase
 
     in_offline_app do
       @offline_group.name = "TEST 123"
+      @offline_group.save!
       @offline_group_data.description = "TEST XYZ"
-      another_group_data = GroupOwnedRecord.new(:description => "TEST ABC", :group => @offline_group)
-      force_save_and_reload(@offline_group, @offline_group_data, another_group_data)
+      @offline_group_data.save!
+      GroupOwnedRecord.create!(:description => "TEST ABC", :group => @offline_group)
       mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
@@ -422,10 +421,10 @@ class MirrorDataTest < Test::Unit::TestCase
 
     in_offline_app do
       @offline_group.update_attribute(:name, "Old")
-      group_data = GroupOwnedRecord.new(:description => "Old", :group => @offline_group)
+      GroupOwnedRecord.create!(:description => "Old", :group => @offline_group)
+      UnmirroredRecord.create!(:content => "Old Old Old")
       global_data = GlobalRecord.new(:title => "Old")
-      force_save_and_reload(group_data, global_data)
-      UnmirroredRecord.create(:content => "Old Old Old")
+      force_save_and_reload(global_data)
 
       Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
 
@@ -554,26 +553,23 @@ class MirrorDataTest < Test::Unit::TestCase
     mirror_data = nil
     online_id_of_offline_rec = nil
     in_online_app do
-      another_online_record = GroupOwnedRecord.create(:description => "Yet Another", :group => @online_group)
-      another_offline_rec = GroupOwnedRecord.new(:description => "One More", :group => @offline_group)
-      force_save_and_reload(another_offline_rec)
-      online_id_of_offline_rec = another_offline_rec.id
+      online_id_of_offline_rec = @offline_group_data.id
       mirror_data = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
     end
 
     in_offline_app do
       Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
-      rec = GroupOwnedRecord.find_by_description("One More")
+      rec = GroupOwnedRecord.find_by_description("Sam")
       assert_equal online_id_of_offline_rec, rec.id
-      rec.description = "Back To The Future"
+      rec.description = "Samuel Jackson"
       rec.save!
       mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
 
     in_online_app do
       Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
-      assert_equal nil, GroupOwnedRecord.find_by_description("One More")
-      assert_equal "Back To The Future", GroupOwnedRecord.find(online_id_of_offline_rec).description
+      assert_equal nil, GroupOwnedRecord.find_by_description("Sam")
+      assert_equal "Samuel Jackson", GroupOwnedRecord.find(online_id_of_offline_rec).description
     end
   end
 
