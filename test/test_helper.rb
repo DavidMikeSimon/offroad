@@ -82,6 +82,7 @@ class VirtualTestDatabase
     
     @prefix = prefix
     @test_instance_vars = {}
+    @test_instance_var_names = {}
     
     if @@current_database != nil
       @@current_database.send(:put_away)
@@ -205,7 +206,6 @@ class VirtualTestDatabase
   end
   
   def setup_ivar(key, value)
-    @test_instance_var_names ||= {}
     @test_instance_var_names[key.to_s] = true
     @@test_instance.instance_variable_set(key, value)
   end
