@@ -120,22 +120,26 @@ module Offroad
 
       # TODO: Figure out if this transaction ensures we get a consistent read state
       Offroad::group_base_model.connection.transaction do
-        mirror_info = MirrorInfo.new_from_group(@group, @initial_mode)
-        cs.write_cargo_section("mirror_info", [mirror_info], :human_readable => true)
-        
-        group_state = @group.group_state
-        if Offroad::app_online?
-          # Let the offline app know what global data version it's being updated to
-          group_state.confirmed_global_data_version = SystemState::current_mirror_version
-        else
-          # Let the online app know what group data version the online mirror of this group is being updated to
-          group_state.confirmed_group_data_version = SystemState::current_mirror_version
+        begin
+          mirror_info = MirrorInfo.new_from_group(@group, @initial_mode)
+          cs.write_cargo_section("mirror_info", [mirror_info], :human_readable => true)
+          
+          group_state = @group.group_state
+          if Offroad::app_online?
+            # Let the offline app know what global data version it's being updated to
+            group_state.confirmed_global_data_version = SystemState::current_mirror_version
+          else
+            # Let the online app know what group data version the online mirror of this group is being updated to
+            group_state.confirmed_group_data_version = SystemState::current_mirror_version
+          end
+          cs.write_cargo_section("group_state", [group_state], :human_readable => true)
+          
+          yield cs
+          
+          SystemState::increment_mirror_version
+        rescue Offroad::CargoStreamerError
+          raise Offroad::DataError.new("Encountered data validation error while writing to cargo file")
         end
-        cs.write_cargo_section("group_state", [group_state], :human_readable => true)
-        
-        yield cs
-        
-        SystemState::increment_mirror_version
       end
       
       return temp_sio.string if temp_sio

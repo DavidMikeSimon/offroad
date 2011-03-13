@@ -612,6 +612,17 @@ class MirrorDataTest < Test::Unit::TestCase
     assert_equal false, cs.has_cargo_named?(deletion_cargo_name)
   end
 
+  offline_test "can only create mirror files containing invalid records when skip_write_validation is true" do
+    group_rec = GroupOwnedRecord.new(:description => "Invalid record", :group => @offline_group, :should_be_even => 3)
+    group_rec.save_without_validation
+    assert_raise Offroad::DataError do
+      Offroad::MirrorData.new(@offline_group).write_upwards_data
+    end
+    assert_nothing_raised do
+      Offroad::MirrorData.new(@offline_group, :skip_write_validation => true).write_upwards_data
+    end
+  end
+
   cross_test "cannot import up mirror files with invalid records" do
     mirror_data = nil
     in_offline_app do
