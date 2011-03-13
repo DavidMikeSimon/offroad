@@ -211,9 +211,10 @@ module Offroad
           # So we'll create RRSes indicating that we've already "received" the data we're about to send
           # Later when the remote app sends new information on those records, we'll know which ones it means
           rrs_source = Offroad::ReceivedRecordState.for_model_and_group_if_apropos(model, @group)
-          batch.each do |rec|
-            existing_rrs = rrs_source.find_by_remote_record_id(rec.id)
-            ReceivedRecordState.for_record(rec).create!(:remote_record_id => rec.id) unless existing_rrs
+          existing_rrs = rrs_source.all(:conditions => {:remote_record_id => batch.map(&:id)}).index_by(&:remote_record_id)
+          new_rrs = batch.reject{|r| existing_rrs.has_key?(r.id)}.map{|r| rrs_source.for_record(r).new(:remote_record_id => r.id)}
+          if new_rrs.size > 0
+            Offroad::ReceivedRecordState.import(new_rrs, :validate => false, :timestamps => false)
           end
         end
       end
