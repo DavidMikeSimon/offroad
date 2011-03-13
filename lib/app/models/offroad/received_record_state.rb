@@ -13,26 +13,28 @@ module Offroad
         errors.add_to_base "Cannot find associated model state"
         return
       end
-      
-      rec = nil
+      model = model_state.app_model
+
+      if Offroad::app_offline?
+        if model.offroad_group_data?
+          errors.add_to_base "Cannot allow received record state for group data in offline app"
+        end
+      elsif Offroad::app_online?
+        if model.offroad_global_data?
+          errors.add_to_base "Cannot allow received record state for global records in online app"
+        elsif group_state.nil?
+          errors.add_to_base "Cannot allow received record state for online group records in online app"
+        end
+      end
+
+      if model.offroad_global_data? && group_state
+        errors.add_to_base "Cannot allow received record state for global records to also be assoc with a group"
+      end
+
       begin
-        rec = app_record
+        app_record
       rescue ActiveRecord::RecordNotFound
         errors.add_to_base "Cannot find associated app record"
-      end
-      
-      if rec
-        if Offroad::app_offline?
-          if rec.class.offroad_group_data?
-            errors.add_to_base "Cannot create received record state for group data in offline app"
-          end
-        elsif Offroad::app_online?
-          if rec.class.offroad_global_data?
-            errors.add_to_base "Cannot create received record state for global records in online app"
-          elsif group_state.nil?
-            errors.add_to_base "Cannot create received record state for online group records in online app"
-          end
-        end
       end
     end
     
@@ -98,7 +100,7 @@ module Offroad
 
       # Create the corresponding RRSes
       model_state_id = model.offroad_model_state.id
-      group_state = group ? group.group_state : nil
+      group_state = model.offroad_group_data? && group ? group.group_state : nil
       group_state_id = group_state ? group_state.id : 0
       self.import(
         [:model_state_id, :group_state_id, :local_record_id, :remote_record_id],
