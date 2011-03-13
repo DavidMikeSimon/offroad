@@ -317,23 +317,16 @@ module Offroad
     def validate_imported_models(cs)
       while @imported_models_to_validate.size > 0
         model = @imported_models_to_validate.pop
+        rrs_source = Offroad::ReceivedRecordState.for_model_and_group_if_apropos(model, @group)
         
-        rrs_source = nil
-        unless @initial_mode
-          rrs_source = Offroad::ReceivedRecordState.for_model_and_group_if_apropos(model, @group)
-        end
-        
-        cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
-          batch.each do |cargo_record|
-            rec = nil
-            if @initial_mode
-              rec = model.find(cargo_record.id)
-            else
-              rec = rrs_source.find_by_remote_record_id(cargo_record.id).app_record
-            end
-            
-            raise Offroad::DataError.new("Invalid record found in mirror data") unless rec.valid?
+        cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |cargo_batch|
+          if @initial_mode
+            local_batch = model.all(:conditions => {:id => cargo_batch.map(&:id)})
+          else
+            local_rrs_batch = rrs_source.all(:conditions => {:remote_record_id => cargo_batch.map(&:id)})
+            local_batch = model.all(:conditions => {:id => local_rrs_batch.map(&:local_record_id)})
           end
+          raise Offroad::DataError.new("Invalid record found in mirror data") unless local_batch.all?(&:valid?)
         end
       end
     end
