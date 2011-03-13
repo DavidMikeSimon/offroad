@@ -7,7 +7,7 @@ module Offroad
     def initialize(group, options = {})
       @group = group
       @initial_mode = options.delete(:initial_mode) || false
-      @skip_write_validation = options.delete(:skip_write_validation) || false
+      @skip_validation = options.delete(:skip_validation) || false
       
       raise PluginError.new("Invalid option keys") unless options.size == 0
       
@@ -207,7 +207,7 @@ module Offroad
         cs.write_cargo_section(
           MirrorData::data_cargo_name_for_model(model),
           batch,
-          :skip_validation => @skip_write_validation
+          :skip_validation => @skip_validation
         )
         
         if model.offroad_group_data?
@@ -242,7 +242,7 @@ module Offroad
         cs.write_cargo_section(
           MirrorData::data_cargo_name_for_model(model),
           data_batch,
-          :skip_validation => @skip_write_validation
+          :skip_validation => @skip_validation
         )
       end
       

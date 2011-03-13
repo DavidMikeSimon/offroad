@@ -612,14 +612,14 @@ class MirrorDataTest < Test::Unit::TestCase
     assert_equal false, cs.has_cargo_named?(deletion_cargo_name)
   end
 
-  offline_test "can only create mirror files containing invalid records when skip_write_validation is true" do
+  offline_test "can only create mirror files containing invalid records when skip_validation is true" do
     group_rec = GroupOwnedRecord.new(:description => "Invalid record", :group => @offline_group, :should_be_even => 3)
     group_rec.save_without_validation
     assert_raise Offroad::DataError do
       Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
     assert_nothing_raised do
-      Offroad::MirrorData.new(@offline_group, :skip_write_validation => true).write_upwards_data
+      Offroad::MirrorData.new(@offline_group, :skip_validation => true).write_upwards_data
     end
   end
 
@@ -628,7 +628,7 @@ class MirrorDataTest < Test::Unit::TestCase
     in_offline_app do
       group_rec = GroupOwnedRecord.new(:description => "Invalid record", :group => @offline_group, :should_be_even => 3)
       group_rec.save_without_validation
-      mirror_data = Offroad::MirrorData.new(@offline_group, :skip_write_validation => true).write_upwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group, :skip_validation => true).write_upwards_data
     end
 
     in_online_app do
@@ -643,7 +643,7 @@ class MirrorDataTest < Test::Unit::TestCase
     in_online_app do
       global_rec = GlobalRecord.new(:title => "Invalid record", :should_be_odd => 2)
       global_rec.save_without_validation
-      mirror_data = Offroad::MirrorData.new(@offline_group, :skip_write_validation => true).write_downwards_data
+      mirror_data = Offroad::MirrorData.new(@offline_group, :skip_validation => true).write_downwards_data
     end
 
     in_offline_app do
@@ -659,7 +659,7 @@ class MirrorDataTest < Test::Unit::TestCase
       group_rec = GroupOwnedRecord.new(:description => "Invalid record", :group => @online_group, :should_be_even => 3)
       group_rec.save_without_validation
       @online_group.group_offline = true
-      writer = Offroad::MirrorData.new(@online_group, :skip_write_validation => true, :initial_mode => true)
+      writer = Offroad::MirrorData.new(@online_group, :skip_validation => true, :initial_mode => true)
       mirror_data = writer.write_downwards_data
     end
 
