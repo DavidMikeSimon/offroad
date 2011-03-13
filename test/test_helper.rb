@@ -287,6 +287,8 @@ class Test::Unit::TestCase
   @@online_database = nil
   @@offline_database = nil
   
+  include Test::Unit::Util::BacktraceFilter
+  
   def setup
     begin
       unless ActiveRecord::Base.connection.table_exists?("schema_migrations")
@@ -308,7 +310,7 @@ class Test::Unit::TestCase
     rescue Exception => e
       puts ""
       puts "!!!!! Test framework setup error: #{e.to_s}"
-      puts "  " + e.backtrace.join("\n  ")
+      puts "  " + filter_backtrace(e.backtrace).join("\n  ")
       puts ""
       raise SystemExit
     end
