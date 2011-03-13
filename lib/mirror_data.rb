@@ -304,18 +304,13 @@ module Offroad
         model.import batch, :validate => false, :timestamps => false
       end
 
-      # Destroy records here which were destroyed there (except for group_base records, that would cause trouble)
-      unless model == Offroad::group_base_model
-        cs.each_cargo_section(MirrorData::deletion_cargo_name_for_model(model)) do |batch|
-          batch.each do |deletion_srs|
-            rrs = rrs_source.find_by_remote_record_id(deletion_srs.local_record_id)
-            next unless rrs # No problem if we can't find record, it means this deletion request duplicates an earlier one
-            local_record = rrs.app_record
-            local_record.bypass_offroad_readonly_checks
-            local_record.destroy
-            rrs.destroy
-          end
-        end
+      # Delete records here which were destroyed there (except for group_base records, that would cause trouble)
+      return if model == Offroad::group_base_model
+      cs.each_cargo_section(MirrorData::deletion_cargo_name_for_model(model)) do |batch|
+        # Each deletion batch is made up of SendableRecordStates from the remote system
+        dying_rrs_batch = rrs_source.all(:conditions => {:remote_record_id => batch.map(&:local_record_id)})
+        model.delete dying_rrs_batch.map(&:local_record_id)
+        ReceivedRecordState.delete dying_rrs_batch.map(&:id)
       end
     end
 

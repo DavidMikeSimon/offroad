@@ -276,6 +276,20 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
 
+  cross_test "records destroyed by up mirror file did not have their callbacks called" do
+    mirror_data = nil
+    in_offline_app do
+      @offline_group_data.destroy
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
+    end
+
+    in_online_app do
+      GroupOwnedRecord.reset_callback_called
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert !GroupOwnedRecord.callback_called
+    end
+  end
+
   cross_test "can delete group data using an up mirror file" do
     mirror_data = nil
 
