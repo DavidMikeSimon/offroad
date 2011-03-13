@@ -43,4 +43,26 @@ class TestFrameworkTest < Test::Unit::TestCase
       assert_not_equal "Foo", @offline_group.name
     end
   end
+
+  offline_test "callback detection switch on GroupOwnedRecord works on save" do
+    GroupOwnedRecord.reset_callback_called
+    assert !GroupOwnedRecord.callback_called
+    @offline_group_data.description = "Testing"
+    @offline_group_data.save!
+    assert GroupOwnedRecord.callback_called
+  end
+
+  offline_test "callback detection switch on GroupOwnedRecord works on create" do
+    GroupOwnedRecord.reset_callback_called
+    assert !GroupOwnedRecord.callback_called
+    GroupOwnedRecord.create!(:description => "Another new one", :group => @offline_group)
+    assert GroupOwnedRecord.callback_called
+  end
+
+  offline_test "callback detection switch on GroupOwnedRecord works on destroy" do
+    GroupOwnedRecord.reset_callback_called
+    assert !GroupOwnedRecord.callback_called
+    @offline_group_data.destroy
+    assert GroupOwnedRecord.callback_called
+  end
 end
