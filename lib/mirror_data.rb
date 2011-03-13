@@ -210,7 +210,7 @@ module Offroad
           # In initial mode the remote app will create records with the same id's as the corresponding records here
           # So we'll create RRSes indicating that we've already "received" the data we're about to send
           # Later when the remote app sends new information on those records, we'll know which ones it means
-          rrs_source = Offroad::ReceivedRecordState.for_model(model).for_group(@group)
+          rrs_source = Offroad::ReceivedRecordState.for_model_and_group_if_apropos(model, @group)
           batch.each do |rec|
             existing_rrs = rrs_source.find_by_remote_record_id(rec.id)
             ReceivedRecordState.for_record(rec).create!(:remote_record_id => rec.id) unless existing_rrs
@@ -266,13 +266,10 @@ module Offroad
     def import_model_cargo(cs, model)
       @imported_models_to_validate.push model
       
-      rrs_source = ReceivedRecordState.for_model(model)
-      rrs_source = rrs_source.for_group(@group) if model.offroad_group_data?
-      
       if @initial_mode && model.offroad_group_data?
         import_initial_model_cargo(cs, model)
       else
-        import_non_initial_model_cargo(cs, model, rrs_source)
+        import_non_initial_model_cargo(cs, model)
       end
     end
     
@@ -287,7 +284,9 @@ module Offroad
       end
     end
 
-    def import_non_initial_model_cargo(cs, model, rrs_source)
+    def import_non_initial_model_cargo(cs, model)
+      rrs_source = ReceivedRecordState.for_model_and_group_if_apropos(model, @group)
+
       # Update/create records
       cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
         # Update foreign key associations to use local ids instead of remote ids
@@ -320,8 +319,7 @@ module Offroad
         
         rrs_source = nil
         unless @initial_mode
-          rrs_source = Offroad::ReceivedRecordState.for_model(model)
-          rrs_source = rrs_source.for_group(@group) if model.offroad_group_data?
+          rrs_source = Offroad::ReceivedRecordState.for_model_and_group_if_apropos(model, @group)
         end
         
         cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|

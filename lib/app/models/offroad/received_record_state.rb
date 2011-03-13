@@ -41,14 +41,15 @@ module Offroad
     named_scope :for_model, lambda { |model| { :conditions => {
       :model_state_id => model.offroad_model_state.id
     } } }
-    
-    named_scope :for_group, lambda { |group| { :conditions => {
-      :group_state_id => (group && group.group_state) ? group.group_state.id : 0
+
+    named_scope :for_model_and_group_if_apropos, lambda { |model, group| { :conditions => {
+      :model_state_id => model.offroad_model_state.id,
+      :group_state_id => (group && model.offroad_group_data? && group.group_state) ? group.group_state.id : 0
     } } }
     
     named_scope :for_record, lambda { |rec| { :conditions => {
       :model_state_id => rec.class.offroad_model_state.id,
-      :group_state_id => rec.class.offroad_group_data? ? rec.group_state.id : 0,
+      :group_state_id => (rec.class.offroad_group_data? && rec.group_state) ? rec.group_state.id : 0,
       :local_record_id => rec.id
     } } }
 
@@ -68,8 +69,7 @@ module Offroad
 
     def self.redirect_to_local_ids(records, column, model, group)
       column = column.to_sym
-      source = self.for_model(model)
-      source = source.for_group(group) if model.offroad_group_data?
+      source = self.for_model_and_group_if_apropos(model, group)
       already_allocated = source.all(:conditions => { :remote_record_id => records.map{|r| r[column]} }).index_by(&:remote_record_id)
 
       remaining = {} # Maps newly discovered remote id to list of records in batch that reference that id

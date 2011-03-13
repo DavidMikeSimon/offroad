@@ -37,11 +37,11 @@ class AppStateTrackingTest < Test::Unit::TestCase
   end
   
   online_test "state data is destroyed when offline group is made online" do
-    rrs_scope = Offroad::ReceivedRecordState.for_group(@offline_group)
-    assert_not_equal 0, rrs_scope.count
+    group_state_id = @offline_group.group_state.id
+    assert_not_equal 0, Offroad::ReceivedRecordState.all(:conditions => {:group_state_id => group_state_id}).count
     @offline_group.group_offline = false
     assert_nil Offroad::GroupState::find_by_app_group_id(@offline_group.id)
-    assert_equal 0, rrs_scope.count
+    assert_equal 0, Offroad::ReceivedRecordState.all(:conditions => {:group_state_id => group_state_id}).count
   end
   
   offline_test "creating group owned record causes creation of valid sendable record state" do
@@ -193,14 +193,12 @@ class AppStateTrackingTest < Test::Unit::TestCase
   end
   
   online_test "cannot create valid received record state of online group data records" do
-    rrs_scope = Offroad::ReceivedRecordState.for_group(@online_group).for_model(GroupOwnedRecord)
-    rrs = rrs_scope.new(:local_record_id => @online_group_data.id, :remote_record_id => 1)
+    rrs = Offroad::ReceivedRecordState.for_record(@online_group_data).new(:remote_record_id => 1)
     assert_equal false, rrs.valid?
   end
   
   online_test "cannot create valid received record state of online indirect group data records" do
-    rrs_scope = Offroad::ReceivedRecordState.for_group(@online_group).for_model(SubRecord)
-    rrs = rrs_scope.new(:local_record_id => @online_indirect_data.id, :remote_record_id => 1)
+    rrs = Offroad::ReceivedRecordState.for_record(@online_indirect_data).new(:remote_record_id => 1)
     assert_equal false, rrs.valid?
   end
 
@@ -224,20 +222,18 @@ class AppStateTrackingTest < Test::Unit::TestCase
   
   online_test "cannot create valid received record state of global data records" do
     global_rec = GlobalRecord.create(:title => "Testing")
-    rrs_scope = Offroad::ReceivedRecordState.for_group(@online_group).for_model(GlobalRecord)
+    rrs_scope = Offroad::ReceivedRecordState.for_model(GlobalRecord)
     rrs = rrs_scope.new(:local_record_id => global_rec.id, :remote_record_id => 1)
     assert_equal false, rrs.valid?
   end
   
   offline_test "cannot create valid received record state of group data records" do
-    rrs_scope = Offroad::ReceivedRecordState.for_group(@offline_group).for_model(GroupOwnedRecord)
-    rrs = rrs_scope.new(:local_record_id => @offline_group_data.id)
+    rrs = Offroad::ReceivedRecordState.for_record(@offline_group_data).new(:remote_record_id => 1)
     assert_equal false, rrs.valid?
   end
   
   offline_test "cannot create valid received record state of indirect group data records" do
-    rrs_scope = Offroad::ReceivedRecordState.for_group(@offline_group).for_model(SubRecord)
-    rrs = rrs_scope.new(:local_record_id => @offline_indirect_data.id)
+    rrs = Offroad::ReceivedRecordState.for_record(@offline_indirect_data).new(:remote_record_id => 1)
     assert_equal false, rrs.valid?
   end
   
