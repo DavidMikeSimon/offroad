@@ -4,6 +4,7 @@ High priority:
 - Creating/updating the installer (ideally, git pull on target platform, one rake task, then git push)
 
 Low priority:
+- Don't allow group_single records to reference non-single group records, since group_single "ownership" can change
 - Don't assume "id" as primary key name, look it up with the appropriate ActiveRecord method
 - Allow offline app to relinquish ownership by setting a belongs_to field to 0 or NULL
 - Figure out why the test app won't generate initial down mirror files with cache_classes = false
