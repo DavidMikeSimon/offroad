@@ -22,7 +22,6 @@ Low priority:
 - Try streaming out with large data sets and make sure it is sufficiently speedy, and is actually streaming (i.e. no Content-Length header)
 - Change mime-type of mirror files being downloaded to something that doesn't allow it to be accidentally viewed in-browser
 - Use md5sum on the entire cargo file instead of just each individual part, to protect against corruption outside the actual data segments
-- Consider using activerecord-import, if available, to speed up insertions
 - Allow app to optionally specify batch sizes on a model-by-model basis
 - Mirror file imports in the down mirror app should happen through GUI, and GUI should delete files once succesfully imported
 - If offline app attempts to import a down mirror file and it doesn't work, it should:
