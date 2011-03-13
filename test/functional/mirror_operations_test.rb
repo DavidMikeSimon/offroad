@@ -47,6 +47,7 @@ class MirrorOperationsTest < ActionController::TestCase
       
       assert_equal GroupOwnedRecord.find_by_description("Third Item"), test_group.favorite
       assert_equal GroupOwnedRecord.find_by_description("Third Item"), SubRecord.find_by_description("Subitem A").group_owned_record
+      assert_equal GroupOwnedRecord.find_by_description("Third Item"), SubRecord.find_by_description("Subitem B").group_owned_record
       
       assert_equal 2, GlobalRecord.count
       grec_a = GlobalRecord.find_by_title("Important Announcement")
@@ -65,6 +66,13 @@ class MirrorOperationsTest < ActionController::TestCase
       
       second_item = GroupOwnedRecord.find_by_description("Second Item")
       second_item.destroy
+
+      subitem_a = SubRecord.find_by_description("Subitem A")
+      subitem_a.description = "Subitem Apple"
+      subitem_a.save!
+
+      subitem_b = SubRecord.find_by_description("Subitem B")
+      subitem_b.destroy
       
       get :download_up_mirror, "id" => group.id
       mirror_data = @response.binary_content
@@ -89,6 +97,9 @@ class MirrorOperationsTest < ActionController::TestCase
       assert_not_nil GroupOwnedRecord.find_by_description("Absolutely The First Item")
       assert_nil GroupOwnedRecord.find_by_description("Second Item")
       assert_not_nil GroupOwnedRecord.find_by_description("Third Item")
+      assert_nil SubRecord.find_by_description("Subitem A")
+      assert_not_nil SubRecord.find_by_description("Subitem Apple")
+      assert_nil SubRecord.find_by_description("Subitem B")
       
       get :download_down_mirror, "id" => Group.find_by_name("Renamed Group").id
       mirror_data = @response.binary_content
@@ -113,6 +124,10 @@ class MirrorOperationsTest < ActionController::TestCase
       third_item.parent = third_item
       third_item.save
       
+      subitem = SubRecord.find_by_description("Subitem Apple")
+      subitem.group_owned_record = first_item
+      subitem.save
+      
       get :download_up_mirror, "id" => Group.first.id
       mirror_data = @response.binary_content
     end
@@ -123,9 +138,11 @@ class MirrorOperationsTest < ActionController::TestCase
       group = Group.find_by_name("Renamed Group")
       first_item = GroupOwnedRecord.find_by_description("Absolutely The First Item")
       third_item = GroupOwnedRecord.find_by_description("Third Item")
+      subrec = SubRecord.find_by_description("Subitem Apple")
       assert_equal first_item, group.favorite
       assert_equal third_item, first_item.parent
       assert_equal third_item, third_item.parent
+      assert_equal first_item, subrec.group_owned_record
     end
   end
 end
