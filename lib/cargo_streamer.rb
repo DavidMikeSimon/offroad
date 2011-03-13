@@ -50,13 +50,13 @@ module Offroad
       unless value.all? { |e| e.class.respond_to?(:safe_to_load_from_cargo_stream?) && e.class.safe_to_load_from_cargo_stream? }
         raise CargoStreamerError.new("All element classes must be models which are safe_to_load_from_cargo_stream")
       end
-      
+
       unless options[:skip_validation]
-        unless value.all? { |e| e.valid? }
+        unless value.all?(&:valid?)
           raise CargoStreamerError.new("All elements must be valid")
         end
       end
-      
+
       if options[:human_readable]
         human_data = value.map{ |rec|
           rec.attributes.map{ |k, v| "#{k.to_s.titleize}: #{v.to_s}" }.join("\n")
