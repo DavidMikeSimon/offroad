@@ -166,7 +166,7 @@ module Offroad
       
       Offroad::group_base_model.connection.transaction do
         yield cs, mirror_info, group_state
-        validate_imported_models(cs)
+        validate_imported_models(cs) unless @skip_validation
                 
         # Load information into our group state that the remote app is in a better position to know about
         @group.group_state.update_from_remote_group_state!(group_state) if @group

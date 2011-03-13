@@ -623,7 +623,7 @@ class MirrorDataTest < Test::Unit::TestCase
     end
   end
 
-  cross_test "cannot import up mirror files with invalid records" do
+  cross_test "cannot import up mirror files with invalid records unless skip_validation is enabled" do
     mirror_data = nil
     in_offline_app do
       group_rec = GroupOwnedRecord.new(:description => "Invalid record", :group => @offline_group, :should_be_even => 3)
@@ -635,10 +635,13 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_raise Offroad::DataError do
         Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
       end
+      assert_nothing_raised do
+        Offroad::MirrorData.new(@offline_group, :skip_validation => true).load_upwards_data(mirror_data)
+      end
     end
   end
 
-  cross_test "cannot import down mirror files with invalid records" do
+  cross_test "cannot import down mirror files with invalid records unless skip_validation is enabled" do
     mirror_data = nil
     in_online_app do
       global_rec = GlobalRecord.new(:title => "Invalid record", :should_be_odd => 2)
@@ -650,10 +653,13 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_raise Offroad::DataError do
         Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
       end
+      assert_nothing_raised do
+        Offroad::MirrorData.new(@offline_group, :skip_validation => true).load_downwards_data(mirror_data)
+      end
     end
   end
 
-  cross_test "cannot import initial down mirror files with invalid records" do
+  cross_test "cannot import initial down mirror files with invalid records unless skip_validation is enabled" do
     mirror_data = nil
     in_online_app do
       group_rec = GroupOwnedRecord.new(:description => "Invalid record", :group => @online_group, :should_be_even => 3)
@@ -666,6 +672,9 @@ class MirrorDataTest < Test::Unit::TestCase
     in_offline_app(false, true) do
       assert_raise Offroad::DataError do
         Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      end
+      assert_nothing_raised do
+        Offroad::MirrorData.new(nil, :initial_mode => true, :skip_validation => true).load_downwards_data(mirror_data)
       end
     end
   end

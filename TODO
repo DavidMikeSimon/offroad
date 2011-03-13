@@ -4,7 +4,6 @@ High priority:
 - Creating/updating the installer (ideally, git pull on target platform, one rake task, then git push)
 
 Low priority:
-- Allow validation of records after mirror load to be optional
 - Use finer-grained exceptions to allow for better error testing
 - Don't allow group_single records to reference non-single group records, since group_single "ownership" can change
 - Don't assume "id" as primary key name, always look it up with the appropriate ActiveRecord method
