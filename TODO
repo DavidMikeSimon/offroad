@@ -8,7 +8,6 @@ Low priority:
 - Don't allow group_single records to reference non-single group records, since group_single "ownership" can change
 - Don't assume "id" as primary key name, always look it up with the appropriate ActiveRecord method
 - Allow offline app to relinquish ownership by setting a belongs_to field to 0 or NULL
-- Figure out why the test app won't generate initial down mirror files with cache_classes = false
 - Get the plugin installer to work well
 - Assign a random number to group state when it is created, only accept mirror files with matching random number
   - This is to prevent confusion if a group is made offline, then online, then offline again
