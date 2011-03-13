@@ -6,7 +6,7 @@ class MirrorDataTest < Test::Unit::TestCase
       Offroad::MirrorData.new(@online_group)
     end
   end
-  
+
   def all_records_from_section_named(cs, name)
     recs = []
     cs.each_cargo_section(name) do |batch|
@@ -223,6 +223,23 @@ class MirrorDataTest < Test::Unit::TestCase
       Offroad::MirrorData.new(@offline_group).load_downwards_data("FOO BAR BLAH")
     end
   end
+  
+  def assert_record_states_all_valid
+    Offroad::ReceivedRecordState.all.each do |rrs|
+      assert rrs.valid?
+    end
+    Offroad::SendableRecordState.all.each do |srs|
+      assert srs.valid?
+    end
+  end
+
+  online_test "initial online record states all valid" do
+    assert_record_states_all_valid
+  end
+
+  offline_test "initial offline record states all valid" do
+    assert_record_states_all_valid
+  end
 
   cross_test "can insert and update group data using an up mirror file" do
     mirror_data = nil
@@ -239,6 +256,7 @@ class MirrorDataTest < Test::Unit::TestCase
     in_online_app do
       prior_rrs_count = Offroad::ReceivedRecordState.count
       Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_record_states_all_valid
       assert_equal prior_rrs_count+1, Offroad::ReceivedRecordState.count 
       assert_equal @offline_group.id, Group.find_by_name("TEST 123").id
       assert GroupOwnedRecord.find_by_description("TEST ABC")
@@ -301,6 +319,7 @@ class MirrorDataTest < Test::Unit::TestCase
       prior_rrs_count = Offroad::ReceivedRecordState.count
       assert_equal 1, GroupOwnedRecord.count(:conditions => { :group_id => @offline_group.id })
       Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_record_states_all_valid
       assert_equal prior_rrs_count-1, Offroad::ReceivedRecordState.count
       assert_equal 0, GroupOwnedRecord.count(:conditions => { :group_id => @offline_group.id })
     end
@@ -321,6 +340,7 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_equal 0, rrs_scope.count
       assert_equal 0, GlobalRecord.count
       Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      assert_record_states_all_valid
       assert_equal 2, rrs_scope.count
       assert_equal 2, GlobalRecord.count
       assert_not_nil GlobalRecord.find_by_title("ABC")
@@ -342,6 +362,7 @@ class MirrorDataTest < Test::Unit::TestCase
     in_offline_app do
       rrs_scope = Offroad::ReceivedRecordState.for_model(GlobalRecord)
       Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      assert_record_states_all_valid
       assert_equal 1, rrs_scope.count
       assert_equal 1, GlobalRecord.count
       assert_nil GlobalRecord.find_by_title("ABC")
@@ -363,6 +384,7 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_equal 0, Offroad::SendableRecordState.for_model(Group).count
       assert_equal 0, Offroad::SendableRecordState.for_model(GroupOwnedRecord).count
       Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      assert_record_states_all_valid
       assert_equal 1, Group.count
       assert_equal 1, GroupOwnedRecord.count
       assert_equal 1, Offroad::SendableRecordState.for_model(Group).count
@@ -395,6 +417,7 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_equal 0, Offroad::SendableRecordState.for_model(GlobalRecord).count
       assert_equal 0, Offroad::ReceivedRecordState.for_model(GlobalRecord).count
       Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      assert_record_states_all_valid
       assert_equal 1, GlobalRecord.count
       assert_not_nil GlobalRecord.find_by_title("Something")
       assert_equal 0, Offroad::SendableRecordState.for_model(GlobalRecord).count
@@ -543,6 +566,7 @@ class MirrorDataTest < Test::Unit::TestCase
 
     in_online_app do
       Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_record_states_all_valid
       rec = GroupOwnedRecord.find_by_description("One More")
       assert rec
       assert_equal offline_id_of_new_rec, Offroad::ReceivedRecordState.for_record(rec).first.remote_record_id
@@ -559,6 +583,7 @@ class MirrorDataTest < Test::Unit::TestCase
 
     in_offline_app do
       Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      assert_record_states_all_valid
       rec = GroupOwnedRecord.find_by_description("Sam")
       assert_equal online_id_of_offline_rec, rec.id
       rec.description = "Samuel Jackson"
@@ -655,6 +680,7 @@ class MirrorDataTest < Test::Unit::TestCase
 
     in_online_app do
       Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_record_states_all_valid
 
       @offline_group.reload
       @offline_group_data.reload
@@ -688,6 +714,7 @@ class MirrorDataTest < Test::Unit::TestCase
 
     in_offline_app do
       Offroad::MirrorData.new(@offline_group).load_downwards_data(mirror_data)
+      assert_record_states_all_valid
       alice = GlobalRecord.find_by_title("Alice")
       bob = GlobalRecord.find_by_title("Bob")
       claire = GlobalRecord.find_by_title("Claire")
@@ -1157,6 +1184,7 @@ class MirrorDataTest < Test::Unit::TestCase
 
     in_online_app do
       Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_record_states_all_valid
 
       fry = GroupOwnedRecord.find_by_description("Phillip J. Fry")
       assert fry
