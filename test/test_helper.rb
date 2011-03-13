@@ -70,13 +70,6 @@ def force_save_and_reload(*records)
   end
 end
 
-def force_destroy(*records)
-  records.each do |record|
-    record.class.delete(record.id)
-    record.after_mirrored_data_destroy
-  end
-end
-
 class VirtualTestDatabase
   @@current_database = nil
   @@test_instance = nil
