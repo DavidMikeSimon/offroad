@@ -66,7 +66,6 @@ def force_save_and_reload(*records)
       record.id = record.class.last(:select => record.class.primary_key, :order => record.class.primary_key).id
     end
     record.reload
-    record.after_mirrored_data_save
   end
 end
 
