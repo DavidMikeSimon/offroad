@@ -288,21 +288,29 @@ class Test::Unit::TestCase
   @@offline_database = nil
   
   def setup
-    unless ActiveRecord::Base.connection.table_exists?("schema_migrations")
-      # FIXME : Figure out why ActionController::TestCase keeps on deleting all the tables before each method
-      
-      # First time the setup method has ran, create our test databases
-      ActiveRecord::Migration.verbose = false
-      ActiveRecord::Migrator.migrate("#{Rails.root}/db/migrate") # Migrations for the testing pseudo-app
-      ActiveRecord::Migrator.migrate("#{File.dirname(__FILE__)}/../lib/migrate/") # Plugin-internal tables
-      
-      Offroad::config_app_online(true)
-      @@online_database = OnlineTestDatabase.new(self)
-      
-      Offroad::config_app_online(false)
-      @@offline_database = OfflineTestDatabase.new(self)
-      
-      Offroad::config_app_online(nil)
+    begin
+      unless ActiveRecord::Base.connection.table_exists?("schema_migrations")
+        # FIXME : Figure out why ActionController::TestCase keeps on deleting all the tables before each method
+        
+        # First time the setup method has ran, create our test databases
+        ActiveRecord::Migration.verbose = false
+        ActiveRecord::Migrator.migrate("#{Rails.root}/db/migrate") # Migrations for the testing pseudo-app
+        ActiveRecord::Migrator.migrate("#{File.dirname(__FILE__)}/../lib/migrate/") # Plugin-internal tables
+        
+        Offroad::config_app_online(true)
+        @@online_database = OnlineTestDatabase.new(self)
+        
+        Offroad::config_app_online(false)
+        @@offline_database = OfflineTestDatabase.new(self)
+        
+        Offroad::config_app_online(nil)
+      end
+    rescue Exception => e
+      puts ""
+      puts "!!!!! Test framework setup error: #{e.to_s}"
+      puts "  " + e.backtrace.join("\n  ")
+      puts ""
+      raise SystemExit
     end
   end
   
