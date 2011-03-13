@@ -32,12 +32,12 @@ class CargoStreamerTest < Test::Unit::TestCase
     end
   end
   
-  def generate_cargo_string(hash)
+  def generate_cargo_string(hash, skip_validation = false)
     return StringIO.open do |sio|
       writer = Offroad::CargoStreamer.new(sio, "w")
       hash.each do |key, arr|
         arr.each do |elem|
-          writer.write_cargo_section(key, elem)
+          writer.write_cargo_section(key, elem, :skip_validation => skip_validation)
         end
       end
       
@@ -271,18 +271,21 @@ class CargoStreamerTest < Test::Unit::TestCase
     end
   end
   
-  agnostic_test "cannot encode invalid records" do
+  agnostic_test "cannot encode invalid records except with :skip_validation option" do
     rec = TestModel.new() # Nothing set to the required "data" field
     assert_equal false, rec.valid?
     assert_raise Offroad::CargoStreamerError do
       generate_cargo_string "foo" => [[rec]]
+    end
+    assert_nothing_raised Offroad::CargoStreamerError do
+      generate_cargo_string({"foo" => [[rec]]}, true)
     end
     rec.data = "Something"
     assert_nothing_raised do
       generate_cargo_string "foo" => [[rec]]
     end
   end
-  
+
   agnostic_test "cannot encode a non-safe model class" do
     begin
       TestModel.set_safe
