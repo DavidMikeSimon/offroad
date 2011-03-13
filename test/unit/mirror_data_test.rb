@@ -226,10 +226,14 @@ class MirrorDataTest < Test::Unit::TestCase
   
   def assert_record_states_all_valid
     Offroad::ReceivedRecordState.all.each do |rrs|
-      assert rrs.valid?
+      if not rrs.valid?
+        flunk "Invalid RRS (#{rrs.attributes.map{|k,v| "#{k}:#{v}"}.join(",")}) : #{rrs.errors.full_messages.join(",")}"
+      end
     end
     Offroad::SendableRecordState.all.each do |srs|
-      assert srs.valid?
+      if not srs.valid?
+        flunk "Invalid SRS (#{srs.attributes.map{|k,v| "#{k}:#{v}"}.join(",")}) : #{srs.errors.full_messages.join(",")}"
+      end
     end
   end
 
