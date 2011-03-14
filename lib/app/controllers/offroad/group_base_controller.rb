@@ -30,20 +30,22 @@ module Offroad
     def load_up_mirror_file(group, data, options = {})
       ensure_group_offline(group)
       raise PluginError.new("Cannot accept up mirror file when app is in offline mode") if Offroad::app_offline?
-      MirrorData.new(
+      m = MirrorData.new(
         group,
         :skip_validation => options[:skip_validation]
-      ).load_upwards_data(data)
+      )
+      m.load_upwards_data(data)
     end
     
     def load_down_mirror_file(group, data, options = {})
       ensure_group_offline(group) if group
       raise PluginError.new("Cannot accept down mirror file when app is in online mode") if Offroad::app_online?
-      MirrorData.new(
+      m = MirrorData.new(
         group,
         :initial_mode => options[:initial_mode],
         :skip_validation => options[:skip_validation]
-      ).load_downwards_data(data)
+      )
+      m.load_downwards_data(data)
     end
     
     private
