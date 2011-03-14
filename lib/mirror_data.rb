@@ -40,13 +40,13 @@ module Offroad
     def load_upwards_data(src)
       raise PluginError.new("Can only load upwards data in online mode") unless Offroad.app_online?
       raise PluginError.new("No such thing as initial upwards data") if @initial_mode
-      
+
       read_data_from("offline", src) do |cs, mirror_info, cargo_group_state|
         unless cargo_group_state.confirmed_group_data_version > @group.group_state.confirmed_group_data_version
           raise OldDataError.new("File contains old up-mirror data")
         end
-        
         import_group_specific_cargo(cs)
+        @group.group_offline = false if cargo_group_state.group_locked?
       end
     end
     
@@ -169,7 +169,7 @@ module Offroad
         validate_imported_models(cs) unless @skip_validation
                 
         # Load information into our group state that the remote app is in a better position to know about
-        @group.group_state.update_from_remote_group_state!(group_state) if @group
+        @group.group_state.update_from_remote_group_state!(group_state) if @group && @group.group_offline?
       end
       
       SystemState::increment_mirror_version if @initial_mode

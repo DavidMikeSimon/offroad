@@ -1218,4 +1218,16 @@ class MirrorDataTest < Test::Unit::TestCase
       assert_equal @offline_group_data.id, @offline_group_data.parent.id
     end
   end
+
+  cross_test "when a locked group is loaded by an up mirror, it is brought online" do
+    mirror_data = nil
+    in_offline_app do
+      @offline_group.offroad_group_lock!
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
+    end
+    in_online_app do
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert @offline_group.group_online?
+    end
+  end
 end
