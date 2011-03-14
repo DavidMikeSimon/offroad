@@ -11,6 +11,11 @@ class CreateOffroadTables < ActiveRecord::Migration
       # Without this, groups with :dependent => :destroy would not be allowed on the online app.
       # This is NOT used to propogate group deletion through mirror files.
       t.column :group_being_destroyed, :boolean, :default => false, :null => false
+
+      # If a group is locked (which can only occur offline) then its records cannot be altered anymore.
+      # If a locked group is sent up to the online system, then after loading it the online system puts that group back
+      # online.
+      t.column :group_locked, :boolean, :default => false, :null => false
       
       # On both the online and offline systems, these are the latest data versions remote side is known to have
       t.column :confirmed_group_data_version, :integer, :null => false

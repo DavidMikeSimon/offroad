@@ -329,4 +329,18 @@ class GroupDataTest < Test::Unit::TestCase
       SubRecord.create(:description => "Test", :group_owned_record => @offline_group_data)
     end
   end
+
+  offline_test "offline app can lock its group to prevent any further changes" do
+    @offline_group.offroad_group_lock!
+    assert_raise ActiveRecord::ReadOnlyRecord do
+      GroupOwnedRecord.create(:description => "Test", :group => @offline_group)
+    end
+    assert_raise ActiveRecord::ReadOnlyRecord do
+      @offline_group_data.description = "Wev"
+      @offline_group_data.save!
+    end
+    assert_raise ActiveRecord::ReadOnlyRecord do
+      @offline_group_data.destroy
+    end
+  end
 end

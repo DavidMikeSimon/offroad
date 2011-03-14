@@ -207,10 +207,16 @@ module Offroad
     
     module GroupDataInstanceMethods
       def locked_by_offroad?
-        Offroad::app_online? && group_offline?
+        return true if Offroad::app_online? && group_offline?
+        return true if Offroad::app_offline? && (!group_state || group_state.group_locked?)
+        return false
       end
       
       # If called on a group_owned_model, methods below bubble up to the group_base_model
+
+      def offroad_group_lock!
+        group_state.update_attribute(:group_locked, true)
+      end
       
       # Returns a hash with the latest information about this group in the offline app
       def last_known_status
@@ -280,12 +286,13 @@ module Offroad
         
         return true if unlocked_group_single_record?
         
-        if group_offline?
-          # If the app is online, the only thing that can be deleted is the entire group (possibly with its records)
-          # If the app is offline, the only thing that CAN'T be deleted is the group
-          raise ActiveRecord::ReadOnlyRecord if Offroad::app_offline? and offroad_mode == :group_base
-          raise ActiveRecord::ReadOnlyRecord if Offroad::app_online? and offroad_mode != :group_base and !group_being_destroyed
+        if locked_by_offroad?
+          # The only thing that can be deleted is the entire group (possibly with its dependent records), and only if we're online
+          raise ActiveRecord::ReadOnlyRecord unless Offroad::app_online? and (offroad_mode == :group_base or group_being_destroyed)
         end
+        
+        # If the app is offline, the only thing that CAN'T be deleted even if unlocked is the group
+        raise ActiveRecord::ReadOnlyRecord if Offroad::app_offline? and offroad_mode == :group_base
         
         return true
       end
@@ -301,8 +308,7 @@ module Offroad
       def before_mirrored_data_save
         return true if unlocked_group_single_record?
         
-        raise DataError.new("Invalid owning group") if owning_group == nil
-        raise ActiveRecord::ReadOnlyRecord if locked_by_offroad?
+        raise DataError.new("Invalid owning group") unless owning_group
         
         if Offroad::app_offline?
           case offroad_mode
@@ -314,6 +320,9 @@ module Offroad
         end
         
         validate_changed_id_columns
+        
+        raise ActiveRecord::ReadOnlyRecord if locked_by_offroad?
+        
         return true
       end
       
