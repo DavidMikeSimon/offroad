@@ -65,9 +65,6 @@ module Offroad
           
           import_global_cargo(cs) # Global cargo must be done first because group data might belong_to global data
           import_group_specific_cargo(cs)
-        elsif Offroad::offline_group == nil
-          # If there's no offline group, then we can't accept non-initial down mirror files
-          raise DataError.new("Initial down mirror file required")
         else
           # Regular, non-initial down mirror file
           unless cargo_group_state.confirmed_global_data_version > @group.group_state.confirmed_global_data_version
