@@ -244,6 +244,14 @@ class AppStateTrackingTest < Test::Unit::TestCase
     srs = srs_scope.new(:local_record_id => global_rec.id)
     assert_equal false, srs.valid?
   end
+
+  offline_test "cannot create valid received record state of global data records if associated with a group" do
+    global_rec = GlobalRecord.new(:title => "Testing")
+    force_save_and_reload(global_rec)
+    rrs = Offroad::ReceivedRecordState.for_record(global_rec).new(:remote_record_id => 1)
+    rrs.group_state = @offline_group.group_state
+    assert_equal false, rrs.valid?
+  end
   
   online_test "cannot create valid received record state of unsaved records" do
     group_data = GroupOwnedRecord.new(:description => "Test", :group => @offline_group)
