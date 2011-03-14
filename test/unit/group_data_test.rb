@@ -343,4 +343,10 @@ class GroupDataTest < Test::Unit::TestCase
       @offline_group_data.destroy
     end
   end
+
+  online_test "online app cannot lock groups" do
+    assert_raise Offroad::DataError do
+      @offline_group.offroad_group_lock!
+    end
+  end
 end

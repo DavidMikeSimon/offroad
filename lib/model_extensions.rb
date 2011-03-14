@@ -215,6 +215,7 @@ module Offroad
       # If called on a group_owned_model, methods below bubble up to the group_base_model
 
       def offroad_group_lock!
+        raise DataError.new("Cannot lock groups from online app") if Offroad::app_online?
         group_state.update_attribute(:group_locked, true)
       end
       
