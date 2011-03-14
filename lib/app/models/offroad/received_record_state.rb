@@ -57,16 +57,6 @@ module Offroad
       model_state.app_model.find(local_record_id)
     end
 
-    def app_record_find_or_initialize
-      begin
-        return app_record
-      rescue ActiveRecord::RecordNotFound
-        rec = model_state.app_model.new
-        rec.id = local_record_id
-        return rec
-      end
-    end
-
     def self.redirect_to_local_ids(records, column, model, group)
       column = column.to_sym
       source = self.for_model_and_group_if_apropos(model, group)
