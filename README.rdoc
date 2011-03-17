@@ -1,11 +1,9 @@
-=======================
-OFFROAD
-=======================
+*NOTE*: This gem is a work in progress. It does work, but it's not especially convenient, yet.
+Better documentation and scripts will follow in time.
 
+*NOTE*: Currently the gem is only compatible with Rails 2.
 
-======
-OVERVIEW
-======
+== Overview
 
 This plugin allows users without Internet access to still use your app. It requires that your application can
 be thought of in the following way:
