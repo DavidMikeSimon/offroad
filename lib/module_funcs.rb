@@ -1,7 +1,4 @@
 module Offroad
-  VERSION_MAJOR = 0
-  VERSION_MINOR = 1
-  
   @@app_online_flag = nil
   @@group_base_model = nil
   @@global_data_models = {}

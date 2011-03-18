@@ -1,7 +1,7 @@
 # Offroad
 
+require 'version'
 require 'module_funcs'
-
 require 'cargo_streamer'
 require 'exceptions'
 require 'mirror_data'

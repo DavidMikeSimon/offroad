@@ -40,7 +40,7 @@ module Offroad
         :app_mode => mode.titleize,
         :app_version => Offroad::app_version,
         :operating_system => RUBY_PLATFORM,
-        :generator => "Offroad " + Offroad::VERSION_MAJOR.to_s + "." + Offroad::VERSION_MINOR.to_s,
+        :generator => "Offroad " + Offroad::VERSION,
         :schema_migrations => migrations.join(","),
         :initial_file => initial_file
       )
