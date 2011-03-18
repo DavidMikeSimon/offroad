@@ -6,6 +6,7 @@ High priority:
 - Resolve issue of too-long index names
 
 Low priority:
+- Get README into the auto-generated gem rdocs
 - Get the test suite to stop generating a log file, it's annoying
 - Use finer-grained exceptions to allow for better error testing
 - Don't allow group_single records to reference non-single group records, since group_single "ownership" can change
