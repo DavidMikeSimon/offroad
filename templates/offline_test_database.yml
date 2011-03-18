@@ -1,8 +1,0 @@
-# Database settings for the offroad plugin
-# This database config file is used by the 'offline' environment
-
-offline:
-  adapter: sqlite3
-  database: db/offline_test.sqlite3
-  pool: 5
-  timeout: 5000

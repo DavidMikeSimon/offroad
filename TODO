@@ -1,6 +1,6 @@
 High priority:
 - Creating/updating the installer (ideally, git pull on target platform, one rake task, then git push)
-- Get the plugin installer to work well
+- Add a generate task to initialize config files in a Rails app
 - Convert to gem
 - Documentation
 - Resolve issue of too-long index names

@@ -5,10 +5,10 @@ begin
   Dir.chdir("#{File.dirname(__FILE__)}/..")
   
   begin
-    # Used when running plugin files directly
+    # Used when running test files directly
     require "#{File.dirname(__FILE__)}/app_root/config/environment"
   rescue LoadError
-    # This is needed for root-level rake task test:plugins
+    # This is needed for root-level rake task 'test'
     require "app_root/config/environment"
   end
 ensure
@@ -25,7 +25,7 @@ begin
 rescue LoadError
 end
 
-# Monkey patch the backtrace filter to include source files in the plugin
+# Monkey patch the backtrace filter to include project source files 
 module Test::Unit::Util::BacktraceFilter
   def filter_backtrace(backtrace, prefix = nil)
     backtrace = backtrace.select do |e|
@@ -290,7 +290,7 @@ class Test::Unit::TestCase
         # First time the setup method has ran, create our test databases
         ActiveRecord::Migration.verbose = false
         ActiveRecord::Migrator.migrate("#{Rails.root}/db/migrate") # Migrations for the testing pseudo-app
-        ActiveRecord::Migrator.migrate("#{File.dirname(__FILE__)}/../lib/migrate/") # Plugin-internal tables
+        ActiveRecord::Migrator.migrate("#{File.dirname(__FILE__)}/../lib/migrate/") # Offroad internal tables
         
         Offroad::config_app_online(true)
         @@online_database = OnlineTestDatabase.new(self)

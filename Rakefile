@@ -14,12 +14,12 @@ end
 desc 'Default: run unit and functional tests.'
 task :default => :test
 
-desc 'Test the <%= file_name %> plugin.'
+desc 'Test Offroad'
 Rake::TestTask.new(:test) do |t|
   common_test_settings(t)
 end
 
-desc 'Generate documentation for the offroad plugin.'
+desc 'Generate documentation for Offroad.'
 Rake::RDocTask.new(:rdoc) do |rdoc|
   rdoc.rdoc_dir = 'rdoc'
   rdoc.title    = 'Offroad'

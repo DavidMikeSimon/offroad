@@ -3,7 +3,7 @@ require 'forwardable'
 module Offroad
   private
   
-  # State of the Offroad plugin as a whole; there should only be one record in this table
+  # State of the Offroad-managed app as a whole; there should only be one record in this table
   # Attributes of that record can be read via the class methods of this class
   class SystemState < ActiveRecord::Base
     set_table_name "offroad_system_state"

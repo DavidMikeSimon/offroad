@@ -125,7 +125,7 @@ module Offroad
 
     module CommonInstanceMethods
       # Methods below this point are only to be used internally by Offroad
-      # However, making all of them private would make using them from elsewhere in the plugin troublesome
+      # However, making all of them private would make using them from elsewhere troublesome
       
       # TODO Should put common save and destroy wrappers in here, with access to a method that checks if SRS needed
       # TODO That method should also be used in import_model_cargo instead of explicitly trying to find the srs
@@ -170,7 +170,7 @@ module Offroad
     
     module GlobalDataInstanceMethods
       # Methods below this point are only to be used internally by Offroad
-      # However, marking all of them private would make using them from elsewhere in the plugin troublesome
+      # However, marking all of them private would make using them from elsewhere troublesome
       
       #:nodoc#
       def before_mirrored_data_destroy
@@ -277,7 +277,7 @@ module Offroad
       end
       
       # Methods below this point are only to be used internally by Offroad
-      # However, marking them private makes using them from elsewhere in the plugin troublesome
+      # However, marking them private makes using them from elsewhere troublesome
       
       #:nodoc#
       def before_mirrored_data_destroy
