@@ -5,6 +5,7 @@ High priority:
 - Documentation
 
 Low priority:
+- Get the test suite to stop generating a log file, it's annoying
 - Use finer-grained exceptions to allow for better error testing
 - Don't allow group_single records to reference non-single group records, since group_single "ownership" can change
 - Don't assume "id" as primary key name, always look it up with the appropriate ActiveRecord method
