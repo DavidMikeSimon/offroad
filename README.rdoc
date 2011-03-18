@@ -5,7 +5,7 @@ Better documentation and scripts will follow in time.
 
 == Overview
 
-This plugin allows users without Internet access to still use your app. It requires that your application can
+This gem allows users without Internet access to still use your app. It requires that your application can
 be thought of in the following way:
 
 Your site is broken down into a set of "groups" or "organizations". Each group has their own distinct set of
