@@ -36,3 +36,4 @@ Low priority:
 - App creates a record then deletes it then sends mirror; does a deletion srs still get sent?
   - For any fix to this: make sure that if app updates record then deletes it then sends mirror that deletion gets sent
   - Maybe that means we need both create_version and update_version on srs?
+- Put the CargoStreamer into its own gem, it might be handy for other stuff
