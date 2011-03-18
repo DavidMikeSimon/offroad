@@ -2,6 +2,7 @@ require 'rubygems'
 require 'rake'
 require 'rake/testtask'
 require 'rake/rdoctask'
+require 'rake/gempackagetask'
 
 def common_test_settings(t)
   t.libs << 'lib'
@@ -50,4 +51,25 @@ begin
   end
 rescue LoadError
   # Ruby-prof wasn't available
+end
+
+require 'lib/version'
+gemspec = Gem::Specification.new do |s|
+  s.name         = "offroad"
+  s.version      = Offroad::VERSION
+  s.authors      = ["David Mike Simon"]
+  s.email        = "david.mike.simon@gmail.com"
+  s.homepage     = "http://github.com/DavidMikeSimon/offroad"
+  s.summary      = "Manages off-Internet instances of a Rails app"
+  s.description  = "Offroad manages offline instances of a Rails app on computers without Internet access. The online and offline instances can communicate via mirror files, transported by the user via thumbdrive, burned CD, etc."
+
+  s.files        = `git ls-files .`.split("\n") - [".gitignore"]
+  s.platform     = Gem::Platform::RUBY
+  s.require_path = 'lib'
+  s.rubyforge_project = '[none]'
+
+  s.add_dependency('ar-extensions')
+end
+
+Rake::GemPackageTask.new(gemspec) do |pkg|
 end
