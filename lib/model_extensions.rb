@@ -171,10 +171,14 @@ module Offroad
     module GlobalDataInstanceMethods
       # Methods below this point are only to be used internally by Offroad
       # However, marking all of them private would make using them from elsewhere troublesome
+
+      def locked_by_offroad?
+        Offroad::app_offline?
+      end
       
       #:nodoc#
       def before_mirrored_data_destroy
-        ensure_online
+        raise ActiveRecord::ReadOnlyRecord if locked_by_offroad?
         return true
       end
       
@@ -186,7 +190,7 @@ module Offroad
       
       #:nodoc#
       def before_mirrored_data_save
-        ensure_online
+        raise ActiveRecord::ReadOnlyRecord if locked_by_offroad?
         validate_changed_id_columns
         return true
       end
@@ -201,7 +205,6 @@ module Offroad
       
       def ensure_online
         # Only the online app can change global data
-        raise ActiveRecord::ReadOnlyRecord if Offroad::app_offline?
       end
     end
     
@@ -211,7 +214,7 @@ module Offroad
         return true if Offroad::app_offline? && (!group_state || group_state.group_locked?)
         return false
       end
-      
+
       # If called on a group_owned_model, methods below bubble up to the group_base_model
 
       def offroad_group_lock!
