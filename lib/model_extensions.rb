@@ -200,12 +200,6 @@ module Offroad
         Offroad::SendableRecordState::note_record_created_or_updated(self) if Offroad::app_online? && changed?
         return true
       end
-      
-      private
-      
-      def ensure_online
-        # Only the online app can change global data
-      end
     end
     
     module GroupDataInstanceMethods
