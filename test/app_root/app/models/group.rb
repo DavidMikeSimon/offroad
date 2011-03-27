@@ -1,5 +1,5 @@
 class Group < ActiveRecord::Base
-  hobo_model if HOBO_TEST_MODE
+  include CommonHobo if HOBO_TEST_MODE
   acts_as_offroadable :group_base
   validates_presence_of :name
   has_many :group_owned_records, :dependent => :destroy

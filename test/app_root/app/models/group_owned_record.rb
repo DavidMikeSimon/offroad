@@ -1,5 +1,5 @@
 class GroupOwnedRecord < ActiveRecord::Base
-  hobo_model if HOBO_TEST_MODE
+  include CommonHobo if HOBO_TEST_MODE
   belongs_to :group
   acts_as_offroadable :group_owned, :parent => :group
 

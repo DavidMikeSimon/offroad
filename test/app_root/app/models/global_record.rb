@@ -1,5 +1,5 @@
 class GlobalRecord < ActiveRecord::Base
-  hobo_model if HOBO_TEST_MODE
+  include CommonHobo if HOBO_TEST_MODE
   acts_as_offroadable :global
   validates_presence_of :title
   belongs_to :unmirrored_record
