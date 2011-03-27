@@ -22,6 +22,7 @@ class GlobalDataTest < Test::Unit::TestCase
   
   online_test "global data is writable and destroyable" do
     global_record = GlobalRecord.create(:title => "Something or other")
+    assert !global_record.locked_by_offroad?
     assert_nothing_raised do
       global_record.title = "Something else"
       global_record.save!
@@ -32,6 +33,7 @@ class GlobalDataTest < Test::Unit::TestCase
   offline_test "global data is not writable or destroyable" do
     global_record = GlobalRecord.new(:title => "Something or other")
     force_save_and_reload(global_record)
+    assert global_record.locked_by_offroad?
     
     assert_raise ActiveRecord::ReadOnlyRecord, "expect exception on title change" do
       global_record.title = "Something else"
