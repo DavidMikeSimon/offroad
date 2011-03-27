@@ -65,4 +65,22 @@ class TestFrameworkTest < Test::Unit::TestCase
     @offline_group_data.destroy
     assert GroupOwnedRecord.callback_called
   end
+
+  if HOBO_TEST_MODE
+    class CommonHoboTestModel < ActiveRecord::Base
+      include CommonHobo
+      set_table_name "broken_records" # Not important since we won't be saving anything
+    end
+    agnostic_test "simple unmirrored data hobo permissions work as expected" do
+      g = Guest.new
+      c = CommonHoboTestModel.new
+      assert !c.creatable_by?(g)
+      assert !c.updatable_by?(g)
+      assert !c.destroyable_by?(g)
+      c.permissive = true
+      assert c.creatable_by?(g)
+      assert c.updatable_by?(g)
+      assert c.destroyable_by?(g)
+    end
+  end
 end
