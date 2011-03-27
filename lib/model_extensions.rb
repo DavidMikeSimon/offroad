@@ -62,6 +62,10 @@ module Offroad
       after_destroy :after_mirrored_data_destroy
       before_save :before_mirrored_data_save
       after_save :after_mirrored_data_save
+
+      if Object.const_defined?(:Hobo) and included_modules.include?(Hobo::Model)
+        include HoboPermissionsInstanceMethods
+      end
     end
     
     def offroad_model_state
@@ -342,6 +346,33 @@ module Offroad
       #:nodoc:#
       def unlocked_group_single_record?
         offroad_mode == :group_single && Offroad::GroupState.count == 0
+      end
+    end
+
+    module HoboPermissionsInstanceMethods
+      def create_permitted?
+        pre_check_passed?(:before_mirrored_data_save) && super
+      end
+      
+      def update_permitted?
+        pre_check_passed?(:before_mirrored_data_save) && super
+      end
+      
+      def destroy_permitted?
+        pre_check_passed?(:before_mirrored_data_destroy) && super
+      end
+
+      private
+
+      def pre_check_passed?(method_name)
+        begin
+          send(method_name)
+        rescue ActiveRecord::ReadOnlyRecord
+          return false
+        rescue Offroad::DataError
+          return false
+        end
+        return true
       end
     end
   end

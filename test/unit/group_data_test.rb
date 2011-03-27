@@ -3,6 +3,11 @@ require File.expand_path(File.dirname(__FILE__) + '/../test_helper')
 # This is a unit test on the ability of model_extensions to handle group data models
 
 class GroupDataTest < Test::Unit::TestCase
+  def setup
+    @guest = Guest.new if HOBO_TEST_MODE
+    super
+  end
+
   online_test "a new group is online by default" do
     g = Group.create(:name => "This Should Be Online")
     assert g.group_online?
@@ -52,6 +57,13 @@ class GroupDataTest < Test::Unit::TestCase
     assert_nothing_raised do
       @online_group.save!
     end
+
+    if HOBO_TEST_MODE
+      @offline_group.permissive = true
+      @online_group.permissive = true
+      assert !@offline_group.updatable_by?(@guest)
+      assert @online_group.updatable_by?(@guest)
+    end
   end
   
   online_test "only offline group owned data locked and unsaveable" do
@@ -64,6 +76,13 @@ class GroupDataTest < Test::Unit::TestCase
     assert_nothing_raised do
       @online_group_data.save!
     end
+    
+    if HOBO_TEST_MODE
+      @offline_group_data.permissive = true
+      @online_group_data.permissive = true
+      assert !@offline_group_data.updatable_by?(@guest)
+      assert @online_group_data.updatable_by?(@guest)
+    end
   end
   
   online_test "only offline group indirect data locked and unsaveable" do
@@ -75,6 +94,13 @@ class GroupDataTest < Test::Unit::TestCase
     assert_equal false, @online_indirect_data.locked_by_offroad?, "Online indirect data should not be locked"
     assert_nothing_raised do
       @online_indirect_data.save!
+    end
+
+    if HOBO_TEST_MODE
+      @offline_indirect_data.permissive = true
+      @online_indirect_data.permissive = true
+      assert !@offline_indirect_data.updatable_by?(@guest)
+      assert @online_indirect_data.updatable_by?(@guest)
     end
   end
 
@@ -106,6 +132,13 @@ class GroupDataTest < Test::Unit::TestCase
     assert_nothing_raised do
       @online_group.destroy
     end
+
+    if HOBO_TEST_MODE
+      @offline_group.permissive = true
+      @online_group.permissive = true
+      assert @offline_group.destroyable_by?(@guest)
+      assert @online_group.destroyable_by?(@guest)
+    end
   end
   
   online_test "only offline group owned data cannot be destroyed" do
@@ -115,6 +148,13 @@ class GroupDataTest < Test::Unit::TestCase
     
     assert_nothing_raised do
       @online_group_data.destroy
+    end
+
+    if HOBO_TEST_MODE
+      @offline_group_data.permissive = true
+      @online_group_data.permissive = true
+      assert !@offline_group_data.destroyable_by?(@guest)
+      assert @online_group_data.destroyable_by?(@guest)
     end
   end
   
@@ -126,12 +166,24 @@ class GroupDataTest < Test::Unit::TestCase
     assert_nothing_raised do
       @online_indirect_data.destroy
     end
+
+    if HOBO_TEST_MODE
+      @offline_indirect_data.permissive = true
+      @online_indirect_data.permissive = true
+      assert !@offline_indirect_data.destroyable_by?(@guest)
+      assert @online_indirect_data.destroyable_by?(@guest)
+    end
   end
   
   offline_test "offline groups unlocked and writable" do
     assert_equal false, @offline_group.locked_by_offroad?
     assert_nothing_raised do
       @offline_group.save!
+    end
+
+    if HOBO_TEST_MODE
+      @offline_group.permissive = true
+      assert @offline_group.updatable_by?(@guest)
     end
   end
   
@@ -140,6 +192,11 @@ class GroupDataTest < Test::Unit::TestCase
     assert_nothing_raised do
       @offline_group_data.save!
     end
+
+    if HOBO_TEST_MODE
+      @offline_group_data.permissive = true
+      assert @offline_group_data.updatable_by?(@guest)
+    end
   end
   
   offline_test "offline indirectly owned data unlocked and writable" do
@@ -147,11 +204,21 @@ class GroupDataTest < Test::Unit::TestCase
     assert_nothing_raised do
       @offline_indirect_data.save!
     end
+
+    if HOBO_TEST_MODE
+      @offline_indirect_data.permissive = true
+      assert @offline_indirect_data.updatable_by?(@guest)
+    end
   end
   
   offline_test "offline group owned data destroyable" do
     assert_nothing_raised do
       @offline_group_data.destroy
+    end
+    
+    if HOBO_TEST_MODE
+      @offline_group_data.permissive = true
+      assert @offline_group_data.destroyable_by?(@guest)
     end
   end
   
@@ -159,17 +226,33 @@ class GroupDataTest < Test::Unit::TestCase
     assert_nothing_raised do
       @offline_indirect_data.destroy
     end
+    
+    if HOBO_TEST_MODE
+      @offline_indirect_data.permissive = true
+      assert @offline_indirect_data.destroyable_by?(@guest)
+    end
   end
   
   offline_test "cannot create another group" do
+    new_group = Group.new(:name => "Another Offline Group?")
     assert_raise Offroad::DataError do
-      Group.create(:name => "Another Offline Group?")
+      new_group.save
+    end
+
+    if HOBO_TEST_MODE
+      new_group.permissive = true
+      assert !new_group.creatable_by?(@guest)
     end
   end
   
   offline_test "cannot destroy the group" do
     assert_raise ActiveRecord::ReadOnlyRecord do
       @offline_group.destroy
+    end
+
+    if HOBO_TEST_MODE
+      @offline_group.permissive = true
+      assert !@offline_group.destroyable_by?(@guest)
     end
   end
   

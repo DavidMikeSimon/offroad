@@ -28,6 +28,14 @@ class GlobalDataTest < Test::Unit::TestCase
       global_record.save!
       global_record.destroy
     end
+
+    if HOBO_TEST_MODE
+      guest = Guest.new
+      global_record.permissive = true
+      assert global_record.creatable_by?(guest)
+      assert global_record.updatable_by?(guest)
+      assert global_record.destroyable_by?(guest)
+    end
   end
   
   offline_test "global data is not writable or destroyable" do
@@ -42,6 +50,14 @@ class GlobalDataTest < Test::Unit::TestCase
     
     assert_raise ActiveRecord::ReadOnlyRecord, "expect exception on destroy" do
       global_record.destroy
+    end
+
+    if HOBO_TEST_MODE
+      guest = Guest.new
+      global_record.permissive = true
+      assert !global_record.creatable_by?(guest)
+      assert !global_record.updatable_by?(guest)
+      assert !global_record.destroyable_by?(guest)
     end
   end
   
