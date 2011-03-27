@@ -113,8 +113,6 @@ module Offroad
         end
       end
 
-      # FIXME: It doesn't seem like the conditions are being generated quite right
-
       includes = {}
       included_assocs.reverse.each do |assoc|
         includes = {assoc.name => includes}
