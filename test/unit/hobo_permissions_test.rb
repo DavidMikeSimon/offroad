@@ -27,8 +27,10 @@ class HoboPermissionsTest < Test::Unit::TestCase
 
       acts_as_offroadable :global
     end
+  end
 
-    offline_test "can override hobo permissions on group base data" do
+  offline_test "can override hobo permissions on group base data" do
+    if HOBO_TEST_MODE
       rec = HoboPermissionsTestModel.new
       force_save_and_reload(rec)
       assert !rec.destroyable_by?(@guest)
