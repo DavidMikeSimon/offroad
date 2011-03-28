@@ -65,6 +65,15 @@ module Offroad
 
       if Object.const_defined?(:Hobo) and included_modules.include?(Hobo::Model)
         include HoboPermissionsInstanceMethods
+        [
+          [:create, :save],
+          [:update, :save],
+          [:destroy, :destroy]
+        ].each do |perm_name, check_name|
+          define_method "#{perm_name}_permitted?".to_sym do
+            pre_check_passed?("before_mirrored_data_#{check_name}".to_sym) && super
+          end
+        end
       end
     end
     
@@ -350,18 +359,6 @@ module Offroad
     end
 
     module HoboPermissionsInstanceMethods
-      def create_permitted?
-        pre_check_passed?(:before_mirrored_data_save) && super
-      end
-      
-      def update_permitted?
-        pre_check_passed?(:before_mirrored_data_save) && super
-      end
-      
-      def destroy_permitted?
-        pre_check_passed?(:before_mirrored_data_destroy) && super
-      end
-
       private
 
       def pre_check_passed?(method_name)
