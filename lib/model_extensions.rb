@@ -70,9 +70,10 @@ module Offroad
           [:update, :save],
           [:destroy, :destroy]
         ].each do |perm_name, check_name|
-          define_method "#{perm_name}_permitted?".to_sym do
-            pre_check_passed?("before_mirrored_data_#{check_name}".to_sym) && super
+          define_method "#{perm_name}_permitted_with_offroad_check?".to_sym do
+            pre_check_passed?("before_mirrored_data_#{check_name}".to_sym) && send("#{perm_name}_permitted_without_offroad_check?")
           end
+          alias_method_chain "#{perm_name}_permitted?", "offroad_check"
         end
       end
     end

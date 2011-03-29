@@ -29,12 +29,29 @@ class HoboPermissionsTest < Test::Unit::TestCase
     end
   end
 
-  offline_test "can override hobo permissions on group base data" do
+  offline_test "can override hobo permissions" do
     if HOBO_TEST_MODE
       rec = HoboPermissionsTestModel.new
       force_save_and_reload(rec)
-      assert !rec.destroyable_by?(@guest)
+
+      # We are in offline mode and rec is offroad as global
+      # Therefore we should not be able to edit it
+      assert !rec.creatable_by?(@guest)
       assert !rec.updatable_by?(@guest)
+      assert !rec.destroyable_by?(@guest)
+    end
+  end
+
+  online_test "overriding hobo permissions does not block off user specified permissions" do
+    if HOBO_TEST_MODE
+      rec = HoboPermissionsTestModel.new
+      force_save_and_reload(rec)
+
+      # We are in offline mode and rec is offroad as global
+      # Therefore we should be able to edit it
+      assert rec.creatable_by?(@guest)
+      assert rec.updatable_by?(@guest)
+      assert rec.destroyable_by?(@guest)
     end
   end
 end
