@@ -12,6 +12,7 @@ Low priority:
 - Don't allow group_single records to reference non-single group records, since group_single "ownership" can change
 - Don't assume "id" as primary key name, always look it up with the appropriate ActiveRecord method
 - Allow offline app to relinquish ownership by setting a belongs_to field to 0 or NULL
+- Figure out why Hobo assumes all fields non-editable (something I'm doing in the patched-in updatable check...)
 - Assign a random number to group state when it is created, only accept mirror files with matching random number
   - This is to prevent confusion if a group is made offline, then online, then offline again
 - Also assign a random number to the online app, and only accept mirror files which match this number as well
