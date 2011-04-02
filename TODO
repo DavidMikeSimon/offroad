@@ -1,11 +1,12 @@
 High priority:
 - Creating/updating the installer (ideally, git pull on target platform, one rake task, then git push)
 - Add a generate task to initialize config files in a Rails app
-- Convert to gem
 - Documentation
 - Resolve issue of too-long index names
 
 Low priority:
+- Do not require that group base controller derive from an Offroad class, it blocks access to anything provided by app's
+  regular ApplicationController
 - Get README into the auto-generated gem rdocs
 - Get the test suite to stop generating a log file, it's annoying
 - Use finer-grained exceptions to allow for better error testing
