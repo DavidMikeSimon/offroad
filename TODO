@@ -5,6 +5,7 @@ High priority:
 - Resolve issue of too-long index names
 
 Low priority:
+- Make sure ModelStates don't continue to stick around and cause trouble even after a class no longer acts_as_offroadable
 - Do not require that group base controller derive from an Offroad class, it blocks access to anything provided by app's
   regular ApplicationController
 - Get README into the auto-generated gem rdocs
