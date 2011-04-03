@@ -6,8 +6,6 @@ High priority:
 
 Low priority:
 - Make sure ModelStates don't continue to stick around and cause trouble even after a class no longer acts_as_offroadable
-- Do not require that group base controller derive from an Offroad class, it blocks access to anything provided by app's
-  regular ApplicationController
 - Get README into the auto-generated gem rdocs
 - Get the test suite to stop generating a log file, it's annoying
 - Use finer-grained exceptions to allow for better error testing

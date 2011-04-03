@@ -6,13 +6,16 @@ require 'cargo_streamer'
 require 'exceptions'
 require 'mirror_data'
 
-%w{ models controllers }.each do |dir|
-  path = File.join(File.dirname(__FILE__), 'app', dir)
-  $LOAD_PATH << path
-  ActiveSupport::Dependencies.autoload_paths << path
-end
+path = File.join(File.dirname(__FILE__), 'app', 'models')
+$LOAD_PATH << path
+ActiveSupport::Dependencies.autoload_paths << path
 
 require 'ar-extensions' # External dependency
+
+require 'controller_extensions'
+class ActionController::Base
+  extend Offroad::ControllerExtensions
+end
 
 require 'model_extensions'
 class ActiveRecord::Base
