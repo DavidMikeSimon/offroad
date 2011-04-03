@@ -288,8 +288,8 @@ module Offroad
           GroupState.for_group(model.first).create!
         end
         SendableRecordState.setup_imported(model, batch)
-        batch.each do |rec|
-          rec.after_offroad_upload if rec.respond_to?(:after_offroad_upload)
+        if model.instance_methods.include?("after_offroad_upload")
+          batch.each { |rec| rec.after_offroad_upload }
         end
       end
     end
@@ -312,8 +312,8 @@ module Offroad
         ReceivedRecordState.redirect_to_local_ids(batch, model.primary_key, model, @group)
         model.import batch, :validate => false, :timestamps => false
 
-        batch.each do |rec|
-          rec.after_offroad_upload if rec.respond_to?(:after_offroad_upload)
+        if model.instance_methods.include?("after_offroad_upload")
+          batch.each { |rec| rec.after_offroad_upload }
         end
       end
 
