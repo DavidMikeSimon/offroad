@@ -6,6 +6,7 @@ begin
   
   begin
     # Used when running test files directly
+    $LOAD_PATH << "#{File.dirname(__FILE__)}/../lib"
     require "#{File.dirname(__FILE__)}/app_root/config/environment"
   rescue LoadError
     # This is needed for root-level rake task 'test'
