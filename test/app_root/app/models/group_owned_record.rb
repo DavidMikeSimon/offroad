@@ -52,4 +52,17 @@ class GroupOwnedRecord < ActiveRecord::Base
   def self.after_upload_count
     @@after_upload_count
   end
+  
+  def after_offroad_destroy
+    @@after_destroy_count ||= 0
+    @@after_destroy_count += 1
+  end
+
+  def self.reset_after_destroy_count
+    @@after_destroy_count = 0
+  end
+
+  def self.after_destroy_count
+    @@after_destroy_count
+  end
 end

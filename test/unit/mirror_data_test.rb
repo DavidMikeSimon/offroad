@@ -1252,12 +1252,20 @@ class MirrorDataTest < Test::Unit::TestCase
       @offline_group_data.save!
       mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
     end
+  end
+
+  cross_test "model method after_offroad_destroy is called after object destruction propagated to online app" do
+    mirror_data = nil
+    in_offline_app do
+      @offline_group_data.destroy
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
+    end
 
     in_online_app do
-      GroupOwnedRecord.reset_after_upload_count
-      assert_equal 0, GroupOwnedRecord.after_upload_count
+      GroupOwnedRecord.reset_after_destroy_count
+      assert_equal 0, GroupOwnedRecord.after_destroy_count
       Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
-      assert_equal 1, GroupOwnedRecord.after_upload_count # One record changed
+      assert_equal 1, GroupOwnedRecord.after_destroy_count # One record destroyed
     end
   end
 end

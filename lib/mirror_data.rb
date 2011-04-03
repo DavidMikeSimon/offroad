@@ -320,10 +320,17 @@ module Offroad
       # Delete records here which were destroyed there (except for group_base records, that would cause trouble)
       return if model == Offroad::group_base_model
       cs.each_cargo_section(MirrorData::deletion_cargo_name_for_model(model)) do |batch|
+        # If there's a callback, we need to load the local records before deleting them
+        local_recs = []
+        if model.instance_methods.include?("after_offroad_destroy")
+          local_recs = model.all(:conditions => {:id => batch.map(&:local_record_id)})
+        end
+
         # Each deletion batch is made up of SendableRecordStates from the remote system
         dying_rrs_batch = rrs_source.all(:conditions => {:remote_record_id => batch.map(&:local_record_id)})
         model.delete dying_rrs_batch.map(&:local_record_id)
         ReceivedRecordState.delete dying_rrs_batch.map(&:id)
+        local_recs.each { |rec| rec.after_offroad_destroy }
       end
     end
 
