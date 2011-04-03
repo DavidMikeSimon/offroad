@@ -1230,4 +1230,34 @@ class MirrorDataTest < Test::Unit::TestCase
       assert @offline_group.group_online?
     end
   end
+
+  cross_test "model method after_offroad_upload is called after it is uploaded to initial offline app" do
+    mirror_data = nil 
+    in_online_app do
+      mirror_data = Offroad::MirrorData.new(@offline_group, :initial_mode => true).write_downwards_data
+    end
+
+    in_offline_app(false, true) do
+      GroupOwnedRecord.reset_after_upload_count
+      assert_equal 0, GroupOwnedRecord.after_upload_count
+      Offroad::MirrorData.new(nil, :initial_mode => true).load_downwards_data(mirror_data)
+      assert_equal GroupOwnedRecord.count, GroupOwnedRecord.after_upload_count
+    end
+  end
+  
+  cross_test "model method after_offroad_upload is called after it is uploaded to online app" do
+    mirror_data = nil 
+    in_offline_app do
+      @offline_group_data.description = "The Mystery Spot"
+      @offline_group_data.save!
+      mirror_data = Offroad::MirrorData.new(@offline_group).write_upwards_data
+    end
+
+    in_online_app do
+      GroupOwnedRecord.reset_after_upload_count
+      assert_equal 0, GroupOwnedRecord.after_upload_count
+      Offroad::MirrorData.new(@offline_group).load_upwards_data(mirror_data)
+      assert_equal 1, GroupOwnedRecord.after_upload_count # One record changed
+    end
+  end
 end

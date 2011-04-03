@@ -279,7 +279,7 @@ module Offroad
         import_non_initial_model_cargo(cs, model)
       end
     end
-    
+
     def import_initial_model_cargo(cs, model)
       cs.each_cargo_section(MirrorData::data_cargo_name_for_model(model)) do |batch|
         # Notice we are using the same primary key values as the online system, not allocating new ones
@@ -288,6 +288,9 @@ module Offroad
           GroupState.for_group(model.first).create!
         end
         SendableRecordState.setup_imported(model, batch)
+        batch.each do |rec|
+          rec.after_offroad_upload if rec.respond_to?(:after_offroad_upload)
+        end
       end
     end
 
@@ -308,6 +311,10 @@ module Offroad
         # Update the primary keys to use local ids, then insert the records
         ReceivedRecordState.redirect_to_local_ids(batch, model.primary_key, model, @group)
         model.import batch, :validate => false, :timestamps => false
+
+        batch.each do |rec|
+          rec.after_offroad_upload if rec.respond_to?(:after_offroad_upload)
+        end
       end
 
       # Delete records here which were destroyed there (except for group_base records, that would cause trouble)

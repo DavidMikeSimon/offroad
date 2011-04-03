@@ -11,7 +11,7 @@ class GroupOwnedRecord < ActiveRecord::Base
   validates_presence_of :description, :group
   validates_numericality_of :should_be_even, :even => true
   attr_protected :protected_integer
-  
+
   def to_s
     description
   end
@@ -38,5 +38,18 @@ class GroupOwnedRecord < ActiveRecord::Base
 
   def self.callback_called
     @@callback_called
+  end
+
+  def after_offroad_upload
+    @@after_upload_count ||= 0
+    @@after_upload_count += 1
+  end
+
+  def self.reset_after_upload_count
+    @@after_upload_count = 0
+  end
+
+  def self.after_upload_count
+    @@after_upload_count
   end
 end
