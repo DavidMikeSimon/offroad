@@ -167,7 +167,7 @@ module Offroad
           end
 
           if self.class.offroad_group_data?
-            if obj.class.offroad_group_data? && obj.owning_group.id != owning_group.id
+            if obj.class.offroad_group_data? && obj.owning_group && obj.owning_group.id != owning_group.id
               raise DataError.new("Invalid #{colname}: Group data cannot hold a foreign key to data owned by another group")
             end
           elsif self.class.offroad_global_data?
