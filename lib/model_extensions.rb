@@ -148,7 +148,7 @@ module Offroad
           orig_val = arr[0]
           new_val = arr[1]
           
-          raise DataError.new("Cannot change id of offroad-tracked records") if colname == self.class.primary_key
+          raise DataError.new("Cannot change id of offroad-tracked records (orig #{orig_val.inspect}, new #{new_val.inspect}") if colname == self.class.primary_key && orig_val != nil
           
           # FIXME : Use association reflection instead
           next unless colname.end_with? "_id"
