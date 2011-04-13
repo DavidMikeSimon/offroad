@@ -35,13 +35,13 @@ module Offroad
         named_scope :owned_by_offroad_group, lambda { |group| { :conditions => { :id => group.id } } }
         named_scope :offline_groups, {
           :joins =>
-          "INNER JOIN `#{Offroad::GroupState.table_name}` ON `#{Offroad::GroupState.table_name}`.app_group_id = `#{table_name}`.`#{primary_key}`"
+          "INNER JOIN \"#{Offroad::GroupState.table_name}\" ON \"#{Offroad::GroupState.table_name}\".app_group_id = \"#{table_name}\".\"#{primary_key}\""
         }
         named_scope :online_groups, {
           :joins =>
-          "LEFT JOIN `#{Offroad::GroupState.table_name}` ON `#{Offroad::GroupState.table_name}`.app_group_id = `#{table_name}`.`#{primary_key}`",
+          "LEFT JOIN \"#{Offroad::GroupState.table_name}\" ON \"#{Offroad::GroupState.table_name}\".app_group_id = \"#{table_name}\".\"#{primary_key}\"",
           :conditions =>
-          "`#{Offroad::GroupState.table_name}`.app_group_id IS NULL"
+          "\"#{Offroad::GroupState.table_name}\".app_group_id IS NULL"
         }
       when :group_owned then
         named_scope :owned_by_offroad_group, lambda { |group| args_for_ownership_scope(group) }
@@ -117,10 +117,10 @@ module Offroad
       assoc = offroad_parent_assoc
       while true
         if assoc.klass.offroad_group_base?
-          conditions << "`#{assoc_owner.table_name}`.`#{assoc.primary_key_name}` = #{group.id}"
+          conditions << "\"#{assoc_owner.table_name}\".\"#{assoc.primary_key_name}\" = #{group.id}"
           break
         else
-          conditions << "`#{assoc_owner.table_name}`.`#{assoc.primary_key_name}` = `#{assoc.klass.table_name}`.`#{assoc.klass.primary_key}`"
+          conditions << "\"#{assoc_owner.table_name}\".\"#{assoc.primary_key_name}\" = \"#{assoc.klass.table_name}\".\"#{assoc.klass.primary_key}\""
           included_assocs << assoc
           assoc_owner = assoc.klass
           assoc = assoc.klass.offroad_parent_assoc
