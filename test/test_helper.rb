@@ -101,7 +101,10 @@ class VirtualTestDatabase
   end
     
   def delete_all_rows
-    tables = ["sqlite_sequence"] + ActiveRecord::Base.connection.tables
+    tables = ActiveRecord::Base.connection.tables
+    if ActiveRecord::Base.connection.is_a?(ActiveRecord::ConnectionAdapters::SQLiteAdapter)
+      tables << "sqlite_sequence"
+    end
     tables.each do |table|
       next if table.start_with?("VIRTUAL_")
       next if table == "schema_migrations"
@@ -147,7 +150,10 @@ class VirtualTestDatabase
   end
   
   def copy_tables(src_prefix, dst_prefix)
-    tables = ["sqlite_sequence"] + ActiveRecord::Base.connection.tables
+    tables = ActiveRecord::Base.connection.tables
+    if ActiveRecord::Base.connection.is_a?(ActiveRecord::ConnectionAdapters::SQLiteAdapter)
+      tables << "sqlite_sequence"
+    end
     tables.each do |src_table|
       next if src_table.end_with?("schema_migrations")
       next unless src_table.start_with?(src_prefix)
