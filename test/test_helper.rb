@@ -286,11 +286,22 @@ end
 class Test::Unit::TestCase
   @@online_database = nil
   @@offline_database = nil
+  @@initial_setup = false
   
   include Test::Unit::Util::BacktraceFilter
   
   def setup
     begin
+      unless @@initial_setup
+        if ActiveRecord::Base.connection.adapter_name.downcase.include?("postgresql")
+          puts "Dropping all postgresql tables"
+          tables = ActiveRecord::Base.connection.tables.each do |table|
+            ActiveRecord::Base.connection.execute "DROP TABLE #{table}"
+          end
+        end
+        @@initial_setup = true
+      end
+
       unless ActiveRecord::Base.connection.table_exists?("schema_migrations")
         # FIXME : Figure out why ActionController::TestCase keeps on deleting all the tables before each method
         
