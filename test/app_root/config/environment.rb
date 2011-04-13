@@ -14,4 +14,11 @@ Rails::Initializer.run do |config|
   else
     HOBO_TEST_MODE = false
   end
+  
+  if ENV['PSQL_TEST_MODE']
+    puts "Using postgresql for a test database"
+    config.database_configuration_file = "#{RAILS_ROOT}/config/database-pg.yml"
+  else
+    puts "Using sqlite for a test database"
+  end
 end

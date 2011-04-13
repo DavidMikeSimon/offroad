@@ -1,0 +1,7 @@
+test:
+  adapter: postgresql
+  encoding: unicode
+  database: offroad_test
+  pool: 5
+  username: david
+  password: foobar
