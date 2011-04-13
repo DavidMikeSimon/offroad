@@ -102,7 +102,7 @@ class VirtualTestDatabase
     
   def delete_all_rows
     tables = ActiveRecord::Base.connection.tables
-    if ActiveRecord::Base.connection.is_a?(ActiveRecord::ConnectionAdapters::SQLiteAdapter)
+    if ActiveRecord::Base.connection.adapter_name.downcase.include?("sqlite")
       tables << "sqlite_sequence"
     end
     tables.each do |table|
@@ -151,7 +151,7 @@ class VirtualTestDatabase
   
   def copy_tables(src_prefix, dst_prefix)
     tables = ActiveRecord::Base.connection.tables
-    if ActiveRecord::Base.connection.is_a?(ActiveRecord::ConnectionAdapters::SQLiteAdapter)
+    if ActiveRecord::Base.connection.adapter_name.downcase.include?("sqlite")
       tables << "sqlite_sequence"
     end
     tables.each do |src_table|
