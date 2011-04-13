@@ -30,7 +30,11 @@ end
 module Test::Unit::Util::BacktraceFilter
   def filter_backtrace(backtrace, prefix = nil)
     backtrace = backtrace.select do |e|
-      e.include?("offroad") || !(e.include?("/ruby/") || e.include?("/gems/"))
+      if ENV['FULL_BACKTRACE']
+        true
+      else
+        e.include?("offroad") || !(e.include?("/ruby/") || e.include?("/gems/"))
+      end
     end
     
     common_prefix = nil
