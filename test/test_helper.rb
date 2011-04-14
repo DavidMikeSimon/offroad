@@ -110,7 +110,7 @@ class VirtualTestDatabase
       tables << "sqlite_sequence"
     end
     tables.each do |table|
-      next if table.start_with?("VIRTUAL_")
+      next if table.downcase.start_with?("virtual_")
       next if table == "schema_migrations"
       ActiveRecord::Base.connection.execute "DELETE FROM #{table}"
     end
@@ -163,7 +163,7 @@ class VirtualTestDatabase
       next unless src_table.start_with?(src_prefix)
       next if dst_prefix != "" && src_table.start_with?(dst_prefix)
       dst_table = dst_prefix + src_table[(src_prefix.size)..(src_table.size)]
-      next if src_table.start_with?("VIRTUAL") && dst_table.start_with?("VIRTUAL")
+      next if src_table.downcase.start_with?("virtual_") && dst_table.downcase.start_with?("virtual_")
       if tables.include?(dst_table)
         ActiveRecord::Base.connection.execute "DELETE FROM #{dst_table}"
         ActiveRecord::Base.connection.execute "INSERT INTO #{dst_table} SELECT * FROM #{src_table}"
