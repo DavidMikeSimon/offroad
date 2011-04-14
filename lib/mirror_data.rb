@@ -89,11 +89,14 @@ module Offroad
     end
     
     def delete_all_existing_database_records!
-      # Emptying sqlite_sequence resets SQLite's autoincrement counters.
-      # SQLite's autoincrement is nice in that automatically picks largest ever id + 1.
-      # This means that after clearing sqlite_sequence and then populating database with manually-id'd rows,
-      # new records will be inserted with unique id's, no problem.
-      tables = ["sqlite_sequence"] + ActiveRecord::Base.connection.tables
+      tables = ActiveRecord::Base.connection.tables
+      if ActiveRecord::Base.connection.adapter_name.downcase.include?("sqlite")
+        # Emptying sqlite_sequence resets SQLite's autoincrement counters.
+        # SQLite's autoincrement is nice in that it automatically picks largest ever id + 1.
+        # This means that after clearing sqlite_sequence and then populating database with manually-id'd rows,
+        # new records will be inserted with unique id's, no problem.
+        tables << "sqlite_sequence"
+      end
       
       tables.each do |table|
         next if table.start_with?("VIRTUAL_") # Used in testing
