@@ -49,11 +49,23 @@ class MirrorDataTest < Test::Unit::TestCase
     assert_equal @offline_group.id, group_state.app_group_id
   end
 
+  def strip_msecs_in_values(hash)
+    new_hash = {}
+    hash.each do |k,v|
+      if v.is_a?(DateTime) || v.is_a?(Time)
+        new_hash[k] = v.to_i
+      else
+        new_hash[k] = v
+      end
+    end
+    new_hash
+  end
+
   def assert_single_model_cargo_entry_matches(cs, record)
     record.reload
     data_name = Offroad::MirrorData.send(:data_cargo_name_for_model, record.class)
     assert_single_cargo_section_named cs, data_name
-    assert_equal record.attributes, cs.first_cargo_element(data_name).attributes
+    assert_equal strip_msecs_in_values(record.attributes), strip_msecs_in_values(cs.first_cargo_element(data_name).attributes)
   end
 
   def assert_record_not_present(cs, record)
