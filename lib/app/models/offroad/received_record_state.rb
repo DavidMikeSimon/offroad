@@ -81,12 +81,18 @@ module Offroad
 
       return unless remaining.size > 0
 
-      # Reserve access to a block of local ids by creating temporary records to advance the autoincrement counter
-      # TODO I'm pretty sure this is safe because it'll always be used in a transaction, but I should check
-      model.import([model.primary_key.to_sym], [[nil]]*remaining.size, :validate => false, :timestamps => false)
-      last_id = model.last(:select => model.primary_key, :order => model.primary_key).id
-      local_ids = (last_id+1-remaining.size)..last_id
-      model.delete(local_ids)
+      # Reserve access to a block of local ids
+      if model.connection.adapter_name.downcase.include?("postgres")
+        nextval_cmd = model.connection.select_value("SELECT column_default FROM information_schema.columns WHERE table_name = '#{model.table_name}' AND column_name = '#{model.primary_key}'")
+        local_ids = model.connection.select_values("SELECT #{nextval_cmd} FROM generate_series(1,#{remaining.size})").map(&:to_i)
+      else
+        # Reserve access to a block of local ids by creating temporary records to advance the autoincrement counter
+        # TODO I'm pretty sure this is safe because it'll always be used in a transaction, but I should check
+        model.import([model.primary_key.to_sym], [[nil]]*remaining.size, :validate => false, :timestamps => false)
+        last_id = model.last(:select => model.primary_key, :order => model.primary_key).id
+        local_ids = ((last_id+1-remaining.size)..last_id).to_a
+        model.delete(local_ids)
+      end
 
       # Create the corresponding RRSes
       model_state_id = model.offroad_model_state.id
@@ -101,7 +107,7 @@ module Offroad
       # Finally do the redirection to the new ids
       remaining.each_key.each_with_index do |remote_id, i|
         remaining[remote_id].each do |r|
-          r[column] = local_ids.first+i
+          r[column] = local_ids[i]
         end
       end
     end
