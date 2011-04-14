@@ -99,7 +99,7 @@ module Offroad
       end
       
       tables.each do |table|
-        next if table.start_with?("VIRTUAL_") # Used in testing
+        next if table.start_with?("virtual_") # Used in testing
         next if table == "schema_migrations"
         ActiveRecord::Base.connection.execute "DELETE FROM #{table}"
       end

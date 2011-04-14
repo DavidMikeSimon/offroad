@@ -125,11 +125,11 @@ class VirtualTestDatabase
   private
   
   def normal_prefix
-    "VIRTUAL_normal_#{@prefix}_"
+    "virtual_normal_#{@prefix}_"
   end
   
   def fresh_prefix
-    "VIRTUAL_fresh_#{@prefix}_"
+    "virtual_fresh_#{@prefix}_"
   end
     
   def put_away
