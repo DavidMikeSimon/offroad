@@ -345,6 +345,7 @@ module Offroad
     end
 
     def validate_imported_models(cs)
+      Offroad::group_base_model.connection.clear_query_cache
       while @imported_models_to_validate.size > 0
         model = @imported_models_to_validate.pop
         rrs_source = Offroad::ReceivedRecordState.for_model_and_group_if_apropos(model, @group)
