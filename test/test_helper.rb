@@ -109,10 +109,19 @@ class VirtualTestDatabase
     if ActiveRecord::Base.connection.adapter_name.downcase.include?("sqlite")
       tables << "sqlite_sequence"
     end
+
     tables.each do |table|
       next if table.downcase.start_with?("virtual_")
       next if table == "schema_migrations"
       ActiveRecord::Base.connection.execute "DELETE FROM #{table}"
+    end
+
+    if ActiveRecord::Base.connection.adapter_name.downcase.include?("postgres")
+      # Reset all sequences so that autoincremented ids start from 1 again
+      seqnames = ActiveRecord::Base.connection.select_values "SELECT c.relname FROM pg_class c WHERE c.relkind = 'S'"
+      seqnames.each do |s|
+        ActiveRecord::Base.connection.execute "SELECT setval('#{s}', 1, false)"
+      end
     end
   end
   

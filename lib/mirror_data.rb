@@ -102,12 +102,13 @@ module Offroad
         next if table.start_with?("virtual_") # Used in testing # FIXME Should pick something less likely to collide with app name
         next if table == "schema_migrations"
         ActiveRecord::Base.connection.execute "DELETE FROM #{table}"
-        if ActiveRecord::Base.connection.adapter_name.downcase.include?("postgres")
-          # Reset all sequences so that autoincremented ids start from 1 again
-          seqnames = ActiveRecord::Base.connection.select_values "SELECT c.relname FROM pg_class c WHERE c.relkind = 'S'"
-          seqnames.each do |s|
-            ActiveRecord::Base.connection.execute "SELECT setval('#{s}', 1, false)"
-          end
+      end
+        
+      if ActiveRecord::Base.connection.adapter_name.downcase.include?("postgres")
+        # Reset all sequences so that autoincremented ids start from 1 again
+        seqnames = ActiveRecord::Base.connection.select_values "SELECT c.relname FROM pg_class c WHERE c.relkind = 'S'"
+        seqnames.each do |s|
+          ActiveRecord::Base.connection.execute "SELECT setval('#{s}', 1, false)"
         end
       end
     end
@@ -300,6 +301,16 @@ module Offroad
         SendableRecordState.setup_imported(model, batch)
         if model.instance_methods.include?("after_offroad_upload")
           batch.each { |rec| rec.after_offroad_upload }
+        end
+      end
+      if ActiveRecord::Base.connection.adapter_name.downcase.include?("postgres")
+        # Need to adjust the sequences so that records inserted from this point on don't collide with existing ids
+        cols = ActiveRecord::Base.connection.select_rows "select table_name, column_name, column_default from information_schema.columns WHERE column_default like 'nextval%'"
+        cols.each do |table_name, column_name, column_default|
+          if column_default =~ /nextval\('(.+)'(?:::.+)?\)/
+            seqname = $1
+            ActiveRecord::Base.connection.execute "SELECT setval('#{seqname}', (SELECT MAX(\"#{column_name}\") FROM \"#{table_name}\"))"
+          end
         end
       end
     end
