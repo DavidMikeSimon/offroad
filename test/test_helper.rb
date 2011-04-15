@@ -171,6 +171,24 @@ class VirtualTestDatabase
         ActiveRecord::Base.connection.execute "CREATE TABLE #{dst_table} AS SELECT * FROM #{src_table}"
       end
     end
+        
+    if ActiveRecord::Base.connection.adapter_name.downcase.include?("postgres")
+      # Manage postgresql sequences by keeping non-current sequence vals backed up in Ruby
+      @pg_seq_vals ||= {}
+      if src_prefix.blank?
+        # PG Sequences -> Ruby
+        @pg_seq_vals[dst_prefix] ||= {}
+        seqnames = ActiveRecord::Base.connection.select_values "SELECT c.relname FROM pg_class c WHERE c.relkind = 'S'"
+        seqnames.each do |s|
+          @pg_seq_vals[dst_prefix][s] = ActiveRecord::Base.connection.select_value "SELECT last_value FROM \"#{s}\""
+        end
+      else
+        # Ruby -> PG Sequences
+        @pg_seq_vals[src_prefix].each do |s, v|
+          ActiveRecord::Base.connection.execute "SELECT setval('#{s}', #{v}, true)"
+        end
+      end
+    end
   end
   
   def backup_instance_vars(key)

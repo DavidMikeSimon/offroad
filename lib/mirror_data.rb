@@ -102,6 +102,13 @@ module Offroad
         next if table.start_with?("virtual_") # Used in testing # FIXME Should pick something less likely to collide with app name
         next if table == "schema_migrations"
         ActiveRecord::Base.connection.execute "DELETE FROM #{table}"
+        if ActiveRecord::Base.connection.adapter_name.downcase.include?("postgres")
+          # Reset all sequences so that autoincremented ids start from 1 again
+          seqnames = ActiveRecord::Base.connection.select_values "SELECT c.relname FROM pg_class c WHERE c.relkind = 'S'"
+          seqnames.each do |s|
+            ActiveRecord::Base.connection.execute "SELECT setval('#{s}', 1, false)"
+          end
+        end
       end
     end
 
