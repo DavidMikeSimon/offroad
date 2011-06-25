@@ -155,6 +155,7 @@ module Offroad
           accessor_name = colname[0, colname.size-3]
           next unless respond_to? accessor_name
           obj = send(accessor_name)
+          next unless obj
           
           raise DataError.new("Mirrored data cannot hold a foreign key to unmirrored data") unless obj.class.acts_as_offroadable?
           

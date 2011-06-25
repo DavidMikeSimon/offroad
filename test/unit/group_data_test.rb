@@ -354,6 +354,13 @@ class GroupDataTest < Test::Unit::TestCase
       @editable_indirect_data.save!
     end
   end
+
+  double_test "group data can hold a foreign key to an invalid record" do
+    assert_nothing_raised do
+      @editable_group.favorite_id = GroupOwnedRecord.maximum("id") + 37
+      @editable_group.save!
+    end
+  end
   
   online_test "last_known_status is not available for online groups" do
     assert_raise Offroad::DataError do
