@@ -1,6 +1,6 @@
 require File.join(File.dirname(__FILE__), 'boot')
 
-RAILS_GEM_VERSION = '2.3.11'
+RAILS_GEM_VERSION = '2.3.12'
 
 Rails::Initializer.run do |config|
   config.cache_classes = false
